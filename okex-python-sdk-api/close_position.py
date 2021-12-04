@@ -40,6 +40,10 @@ class ReducePosition(OKExAPI):
         spot_position = self.spot_position()
         swap_position = self.swap_position()
 
+        if target_position < contract_val:
+            fprint(target_position_text, target_position, less_than_ctval, contract_val)
+            fprint(abort_text)
+            return 0.
         if target_position > spot_position or target_position > swap_position:
             self.close(price_diff, accelerate_after)
         else:
@@ -206,8 +210,8 @@ class ReducePosition(OKExAPI):
                                             fprint(swap_order)
                                         fprint(reduced_amount, filled_sum, self.coin)
                                         if usdt_release != 0:
-                                            if self.add_margin(usdt_release):
-                                                fprint(spot_recoup, usdt_release, "USDT")
+                                            fprint(spot_recoup, usdt_release, "USDT")
+                                            self.add_margin(usdt_release)
                                         return usdt_release
 
                                 if spot_order_state == 'filled' and swap_order_state == 'filled':
@@ -251,8 +255,8 @@ class ReducePosition(OKExAPI):
                 Ledger.mycol.insert_many(mylist)
             fprint(reduced_amount, filled_sum, self.coin)
             if usdt_release != 0:
-                if self.add_margin(usdt_release):
-                    fprint(spot_recoup, usdt_release, "USDT")
+                fprint(spot_recoup, usdt_release, "USDT")
+                self.add_margin(usdt_release)
             mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'reduce'}
             OP.mycol.delete_one(mydict)
             return usdt_release
@@ -273,6 +277,9 @@ class ReducePosition(OKExAPI):
         swap_position = self.swap_position()
         target_position = min(spot_position, swap_position)
 
+        # 初始保证金
+        swap_balance = self.swap_balance()
+
         fprint(self.coin, amount_to_close, target_position)
         OP = record.Record('OP')
         mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'close'}
@@ -286,6 +293,11 @@ class ReducePosition(OKExAPI):
         swap_notional = 0.
         time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
         Stat = trading_data.Stat(self.coin)
+
+        if target_position < contract_val:
+            fprint(target_position_text, target_position, less_than_ctval, contract_val)
+            fprint(abort_text)
+            return 0.
         # 如果仍未减仓完毕
         while target_position > 0 and not self.exitFlag:
             # 判断是否加速
@@ -463,11 +475,15 @@ class ReducePosition(OKExAPI):
                                     return usdt_release
 
                             if spot_order_state == 'filled' and swap_order_state == 'filled':
+                                prev_swap_balance = swap_balance
+                                swap_balance = self.swap_balance()
                                 spot_filled = float(spot_order_info['accFillSz'])
                                 swap_filled = float(swap_order_info['accFillSz']) * contract_val
                                 filled_sum += swap_filled
                                 spot_price = float(spot_order_info['avgPx'])
-                                usdt_release += spot_filled * spot_price + float(spot_order_info['fee'])
+                                # 现货成交量加保证金变动
+                                usdt_release += spot_filled * spot_price + float(spot_order_info['fee']) \
+                                    + prev_swap_balance - swap_balance
                                 fee_total += float(spot_order_info['fee'])
                                 spot_notional += spot_filled * spot_price
                                 fee_total += float(swap_order_info['fee'])
@@ -504,8 +520,6 @@ class ReducePosition(OKExAPI):
             mylist.append(mydict)
             Ledger.mycol.insert_many(mylist)
         fprint(closed_amount, filled_sum, self.coin)
-        swap_balance = self.swap_balance()
-        usdt_release += swap_balance
         if usdt_release != 0:
             fprint(spot_recoup, usdt_release, "USDT")
         mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'close'}

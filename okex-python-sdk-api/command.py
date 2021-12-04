@@ -5,7 +5,6 @@ import open_position
 import close_position
 import trading_data
 import record
-import threading
 import multiprocessing
 from log import fprint
 from lang import *
@@ -106,8 +105,6 @@ def get_command(account=1):
     command = input(main_menu)
     while command != 'q':
         if command == '1':
-            thread = threading.Thread(target=record.record_ticker)
-            thread.start()
             monitor_all(account)
         elif command == '2':
             coin = input(input_crypto)

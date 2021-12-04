@@ -41,6 +41,7 @@ class AddPosition(OKExAPI):
             time.sleep(1)
             setting = self.accountAPI.get_leverage(self.swap_ID, 'isolated')
             # print(setting)
+        fprint(finished_leverage)
 
     def add(self, usdt_size=0.0, target_size=0.0, leverage=2, price_diff=0.002, accelerate_after=0):
         """加仓期现组合
@@ -79,6 +80,11 @@ class AddPosition(OKExAPI):
         swap_notional = 0
         time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
         Stat = trading_data.Stat(self.coin)
+
+        if target_position < contract_val:
+            fprint(target_position_text,target_position,less_than_ctval,contract_val)
+            fprint(abort_text)
+            return 0.
         # 如果仍未建仓完毕
         while target_position >= contract_val and not self.exitFlag:
             # 判断是否加速

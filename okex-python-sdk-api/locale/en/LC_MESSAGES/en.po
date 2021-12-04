@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2021-11-12 13:35-0600\n"
-"PO-Revision-Date: 2021-11-12 13:36-0600\n"
+"POT-Creation-Date: 2021-12-03 21:36-0600\n"
+"PO-Revision-Date: 2021-12-03 21:37-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
@@ -218,129 +218,153 @@ msgid "Set leverage:"
 msgstr "Set leverage:"
 
 #: lang.py:176
+msgid "Finished setting leverage."
+msgstr "Finished setting leverage."
+
+#: lang.py:179
 msgid "Swap market is down"
 msgstr "Swap market is down"
 
-#: lang.py:179
+#: lang.py:182
 msgid "Spot order failed"
 msgstr "Spot order failed"
 
-#: lang.py:182
+#: lang.py:185
 msgid "Swap order failed"
 msgstr "Swap order failed"
 
-#: lang.py:185
+#: lang.py:188
 msgid "Swap order retracted:"
 msgstr "Swap order retracted:"
 
-#: lang.py:188
+#: lang.py:191
 msgid "Spot order retracted:"
 msgstr "Spot order retracted:"
 
-#: lang.py:191
+#: lang.py:194
 msgid "Swap order state:"
 msgstr "Swap order state:"
 
-#: lang.py:194
+#: lang.py:197
 msgid "Spot order state:"
 msgstr "Spot order state:"
 
-#: lang.py:197
+#: lang.py:200
 msgid "Await status update"
 msgstr "Await status update"
 
-#: lang.py:200
+#: lang.py:203
 msgid ". Remaining "
 msgstr ". Remaining "
 
-#: lang.py:203
+#: lang.py:206
 msgid "Position exists"
 msgstr "Position exists"
 
-#: lang.py:206
+#: lang.py:209
 msgid "amounts to reduce:"
 msgstr "amounts to reduce:"
 
-#: lang.py:209
+#: lang.py:212
 msgid "Reduced"
 msgstr "Reduced"
 
-#: lang.py:212
+#: lang.py:215
 msgid "Spot recouped"
 msgstr "Spot recouped"
 
-#: lang.py:215
+#: lang.py:218
 msgid "amounts to close:"
 msgstr "amounts to close:"
 
-#: lang.py:218
+#: lang.py:221
 msgid "Closed"
 msgstr "Closed"
 
-#: lang.py:221
+#: lang.py:224
 msgid "Start monitoring"
 msgstr "Start monitoring"
 
-#: lang.py:224
+#: lang.py:227
 msgid "Cost to close: {:.3%}"
 msgstr "Cost to close: {:.3%}"
 
-#: lang.py:227
+#: lang.py:230
 msgid "Proceed to close"
 msgstr "Proceed to close"
 
-#: lang.py:230
+#: lang.py:233
 msgid "Approaching liquidation. Reduce spot."
 msgstr "Approaching liquidation. Reduce spot."
 
-#: lang.py:233
+#: lang.py:236
 msgid "Too much margin. Add spot."
 msgstr "Too much margin. Add spot."
 
-#: lang.py:236
+#: lang.py:239
 msgid "Transferred "
 msgstr "Transferred "
 
-#: lang.py:239
+#: lang.py:242
 msgid "to spot account"
 msgstr "to spot account"
 
-#: lang.py:242
+#: lang.py:245
 msgid "to swap account"
 msgstr "to swap account"
 
-#: lang.py:245
+#: lang.py:248
 msgid "Spot: "
 msgstr "Spot: "
 
-#: lang.py:248
+#: lang.py:251
 msgid "Swap: "
 msgstr "Swap: "
 
-#: lang.py:251
+#: lang.py:254
 msgid "{} Receive funding fee {:.3f}"
 msgstr "{} Receive funding fee {:.3f}"
 
-#: lang.py:254
+#: lang.py:257
 msgid "{} Backtrack funding fee records {}"
 msgstr "{} Backtrack funding fee records {}"
 
-#: lang.py:257
+#: lang.py:260
 msgid "Reach max retry."
 msgstr "Reach max retry."
 
-#: lang.py:260
+#: lang.py:263
 msgid "{} has more than one swap position"
 msgstr "{} has more than one swap position"
 
-#: lang.py:263
+#: lang.py:266
 msgid "Upgrade account mode to margin mode."
 msgstr "Upgrade account mode to margin mode."
 
-#: lang.py:266
+#: lang.py:269
 msgid "Position mode is {}."
 msgstr "Position mode is {}."
 
-#: lang.py:269
+#: lang.py:272
 msgid "Changed to net_mode."
 msgstr "Changed to net_mode."
+
+#: lang.py:275
+msgid "Target position"
+msgstr "Target position"
+
+#: lang.py:278
+msgid "less than contract value"
+msgstr "less than contract value"
+
+#: lang.py:281
+msgid "Abort."
+msgstr "Abort."
+
+#: lang.py:284
+msgid "Added margin"
+msgstr "Added margin"
+
+#: lang.py:287
+msgid "Reduced margin"
+msgstr "Reduced margin"

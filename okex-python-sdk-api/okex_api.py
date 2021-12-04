@@ -37,7 +37,7 @@ class OKExAPI:
         if accountid == 3:
             self.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
             self.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
-            self.publicAPI = public.PublicAPI()
+            self.publicAPI = public.PublicAPI(test=True)
         else:
             self.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
             self.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
@@ -139,7 +139,11 @@ class OKExAPI:
         if transfer_amount <= 0:
             return False
         try:
-            return self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='add', amt=transfer_amount)
+            if self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='add', amt=transfer_amount):
+                fprint(added_margin, transfer_amount, "USDT")
+                return True
+            else:
+                return False
         except OkexAPIException as e:
             fprint(e)
             fprint(transfer_failed)
@@ -157,7 +161,11 @@ class OKExAPI:
         if transfer_amount <= 0:
             return False
         try:
-            return self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='reduce', amt=transfer_amount)
+            if self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='reduce', amt=transfer_amount):
+                fprint(reduced_margin, transfer_amount, "USDT")
+                return True
+            else:
+                return False
         except OkexAPIException as e:
             fprint(e)
             fprint(transfer_failed)

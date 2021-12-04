@@ -173,6 +173,9 @@ current_leverage = _('Current leverage:')
 set_leverage = _('Set leverage:')
 # "设置杠杆:"
 
+finished_leverage = _("Finished setting leverage.")
+# "设置杠杆完毕。"
+
 futures_market_down = _('Swap market is down')
 # "合约系统出错"
 
@@ -268,3 +271,18 @@ position_mode = _('Position mode is {}.')
 
 change_net_mode = _('Changed to net_mode.')
 # "设置为单向持仓。"
+
+target_position_text = _('Target position')
+# "目标数量"
+
+less_than_ctval = _('less than contract value')
+# "小于合约面值"
+
+abort_text = _('Abort.')
+# "中止。"
+
+added_margin = _('Added margin')
+# "增加保证金"
+
+reduced_margin = _('Reduced margin')
+# "减少保证金"
