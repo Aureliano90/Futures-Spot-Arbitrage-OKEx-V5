@@ -195,8 +195,12 @@ def get_command(account=1):
                 else:
                     print(wrong_command)
                 command = input(account_menu)
+        elif command == '5':
+            process = multiprocessing.Process(target=record.record_ticker)
+            process.start()
+            process.join(0.1)
         elif command == 'q':
-            exit()
+            break
         else:
             print(wrong_command)
         command = input(main_menu)

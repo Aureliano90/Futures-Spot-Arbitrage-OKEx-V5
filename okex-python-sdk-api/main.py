@@ -6,14 +6,10 @@ import monitor
 import trading_data
 from log import fprint
 import record
-import multiprocessing
 import command
-from lang import *
 
 if __name__ == '__main__':
     print(datetime.now())
-    process = multiprocessing.Process(target=record.record_ticker)
-    process.start()
     command.get_command(3)
     # command.monitor_all(2)
     # command.open_diff_all(2)

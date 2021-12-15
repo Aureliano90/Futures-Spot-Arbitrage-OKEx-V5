@@ -6,7 +6,7 @@ import key
 import time
 from mythread import MyThread
 from log import fprint
-from lang import *
+import lang
 
 SLEEP = 0.2
 CONFIRMATION = 3
@@ -60,22 +60,22 @@ class OKExAPI:
         try:
             self.swap_info = self.publicAPI.get_specific_instrument('SWAP', self.swap_ID)
         except:
-            fprint(nonexistent_crypto)
+            fprint(lang.nonexistent_crypto)
             self.exist = False
             del self
 
     def check_account_level(self):
         level = self.accountAPI.get_account_config()['acctLv']
         if level == '1':
-            fprint(upgrade_account)
+            fprint(lang.upgrade_account)
             exit()
 
     def check_position_mode(self):
         mode = self.accountAPI.get_account_config()['posMode']
         if mode != 'net_mode':
-            fprint(position_mode.format(mode))
+            fprint(lang.position_mode.format(mode))
             self.accountAPI.set_position_mode('net_mode')
-            fprint(change_net_mode)
+            fprint(lang.change_net_mode)
 
     def usdt_balance(self):
         """获取USDT保证金
@@ -100,7 +100,7 @@ class OKExAPI:
         """
         result = self.accountAPI.get_specific_position(self.swap_ID)
         if len(result) > 1:
-            fprint(more_than_one_position.format(self.swap_ID))
+            fprint(lang.more_than_one_position.format(self.swap_ID))
             exit()
         else:
             for n in result:
@@ -140,13 +140,13 @@ class OKExAPI:
             return False
         try:
             if self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='add', amt=transfer_amount):
-                fprint(added_margin, transfer_amount, "USDT")
+                fprint(lang.added_margin, transfer_amount, "USDT")
                 return True
             else:
                 return False
         except OkexAPIException as e:
             fprint(e)
-            fprint(transfer_failed)
+            fprint(lang.transfer_failed)
             if e.code == "58110":
                 time.sleep(600)
             return False
@@ -162,13 +162,13 @@ class OKExAPI:
             return False
         try:
             if self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='reduce', amt=transfer_amount):
-                fprint(reduced_margin, transfer_amount, "USDT")
+                fprint(lang.reduced_margin, transfer_amount, "USDT")
                 return True
             else:
                 return False
         except OkexAPIException as e:
             fprint(e)
-            fprint(transfer_failed)
+            fprint(lang.transfer_failed)
             if e.code == "58110":
                 time.sleep(600)
             return False

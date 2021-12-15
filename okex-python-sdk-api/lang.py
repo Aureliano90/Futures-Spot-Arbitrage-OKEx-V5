@@ -50,6 +50,7 @@ main_menu = _("""
 2   Act on given crypto
 3   Funding rates
 4   Portfolio related
+5   Fetch ticker
 q   Quit
 """)
 # """
@@ -57,6 +58,7 @@ q   Quit
 # 2   单一币种操作
 # 3   资金费数据
 # 4   账户数据
+# 5   记录报价
 # q   退出
 # """
 

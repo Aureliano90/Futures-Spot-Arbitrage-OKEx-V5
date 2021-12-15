@@ -60,6 +60,7 @@ class Client(object):
 
                 # Cloudflare error
                 if str(response.status_code).startswith('5'):
+                    # print(response)
                     retry += 1
                     time.sleep(30)
                 else:

@@ -85,7 +85,7 @@ class Monitor(OKExAPI):
                 if not Ledger.mycol.find_one(mydict):
                     Ledger.mycol.insert_one(mydict)
                     count += 1
-        fprint(back_track_funding.format(self.coin, count))
+        fprint(lang.back_track_funding.format(self.coin, count))
 
     def record_funding(self):
         Ledger = record.Record('Ledger')
@@ -99,7 +99,7 @@ class Monitor(OKExAPI):
                           'title': "资金费", 'funding': realized_rate}
                 Ledger.mycol.insert_one(mydict)
                 break
-        fprint(received_funding.format(self.coin, realized_rate))
+        fprint(lang.received_funding.format(self.coin, realized_rate))
 
     def position_exist(self):
         """判断是否有仓位
@@ -119,7 +119,7 @@ class Monitor(OKExAPI):
         """
         if not self.position_exist():
             exit()
-        fprint(start_monitoring, self.coin)
+        fprint(lang.start_monitoring, self.coin)
 
         fundingRate = funding_rate.FundingRate()
         addPosition = open_position.AddPosition(self.coin, self.accountid)
@@ -165,22 +165,23 @@ class Monitor(OKExAPI):
 
                     cost = open_pd - close_pd + 2 * trade_fee
                     if (timestamp.hour + 4) % 8 == 0 and current_rate + next_rate < cost:
-                        fprint(coin_current_next)
+                        fprint(lang.coin_current_next)
                         fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
-                        fprint(cost_to_close.format(cost))
-                        fprint(proceed_to_close, self.coin)
+                        fprint(lang.cost_to_close.format(cost))
+                        fprint(lang.proceed_to_close, self.coin)
                         reducePosition.close(price_diff=close_pd)
                         break
 
                     if timestamp.hour % 8 == 0:
                         self.record_funding()
-                        fprint(coin_current_next)
+                        fprint(lang.coin_current_next)
                         fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
 
             # 线程未创建
             if not thread_started:
                 # 接近强平价，现货减仓
                 if liquidation_price < last * (1 + 1 / (leverage + 1)):
+                    # 等待上一操作完成
                     if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
                         timestamp = datetime.utcnow()
                         delta = timestamp.__sub__(begin).total_seconds()
@@ -188,9 +189,9 @@ class Monitor(OKExAPI):
                             time.sleep(10 - delta)
                         continue
                     if not addPosition.is_hedged():
-                        fprint(self.coin, hedge_fail)
+                        fprint(self.coin, lang.hedge_fail)
                         exit()
-                    fprint(approaching_liquidation)
+                    fprint(lang.approaching_liquidation)
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
                               'title': "自动减仓"}
                     Ledger.mycol.insert_one(mydict)
@@ -209,6 +210,7 @@ class Monitor(OKExAPI):
 
                 # 保证金过多，现货加仓
                 if liquidation_price > last * (1 + 1 / (leverage - 1)):
+                    # 等待上一操作完成
                     if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
                         timestamp = datetime.utcnow()
                         delta = timestamp.__sub__(begin).total_seconds()
@@ -216,9 +218,9 @@ class Monitor(OKExAPI):
                             time.sleep(10 - delta)
                         continue
                     if not addPosition.is_hedged():
-                        fprint(self.coin, hedge_fail)
+                        fprint(self.coin, lang.hedge_fail)
                         exit()
-                    fprint(too_much_margin)
+                    fprint(lang.too_much_margin)
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
                               'title': "自动加仓"}
                     Ledger.mycol.insert_one(mydict)
@@ -239,7 +241,7 @@ class Monitor(OKExAPI):
                     else:
                         retry += 1
                         if retry == 3:
-                            print(reach_max_retry)
+                            print(lang.reach_max_retry)
                             exit()
             # 线程已运行
             else:

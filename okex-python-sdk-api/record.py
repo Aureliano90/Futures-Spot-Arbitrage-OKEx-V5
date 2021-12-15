@@ -31,17 +31,23 @@ class Record:
         for x in self.mycol.aggregate(pipeline):
             return x
 
-    def delete(self):
-        myquery = {
-            'instrument': 'CFX',
-            'title': '自动加仓',
-            'timestamp': {
-                '$gt': datetime.fromisoformat("2021-04-18T03:23:00.000")
-            }}
-        self.mycol.delete_many(myquery)
+    def insert(self, match: dict):
+        """插入对应记录
+
+        :param match: 匹配条件
+        """
+        self.mycol.insert_one(match)
+
+    def delete(self, match: dict):
+        """删除对应记录
+
+        :param match: 匹配条件
+        """
+        self.mycol.delete_one(match)
 
 
 def record_ticker():
+    print('Recording ticker')
     ticker = Record('Ticker')
     funding = Record('Funding')
     fundingRate = funding_rate.FundingRate()
@@ -67,7 +73,7 @@ def record_ticker():
 
                     myquery = {
                         'timestamp': {
-                            '$lt': timestamp.__sub__(timedelta(hours=24))
+                            '$lt': timestamp.__sub__(timedelta(hours=48))
                         }}
                     ticker.mycol.delete_many(myquery)
 
