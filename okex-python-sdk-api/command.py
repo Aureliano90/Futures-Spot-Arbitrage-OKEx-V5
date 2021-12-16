@@ -105,6 +105,10 @@ def get_command(account=1):
     command = input(main_menu)
     while command != 'q':
         if command == '1':
+            Monitor = monitor.Monitor(coin='BTC', accountid=account)
+            Monitor.check_account_level()
+            Monitor.check_position_mode()
+            del Monitor
             monitor_all(account)
         elif command == '2':
             coin = input(input_crypto)

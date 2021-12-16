@@ -262,8 +262,8 @@ back_track_funding = _('{} Backtrack funding fee records {}')
 reach_max_retry = _('Reach max retry.')
 # "达到最大重试次数。"
 
-more_than_one_position = _('{} has more than one swap position')
-# "{}仓位不止一个，需手动检查"
+more_than_one_position = _('{} has more than one swap position.')
+# "{}合约仓位不止一个。"
 
 upgrade_account = _('Upgrade account mode to margin mode.')
 # "升级账户模式为保证金模式。"
@@ -273,6 +273,9 @@ position_mode = _('Position mode is {}.')
 
 change_net_mode = _('Changed to net_mode.')
 # "设置为单向持仓。"
+
+set_mode_fail =  _('Failed to set net_mode.')
+# "设置单向持仓失败。"
 
 target_position_text = _('Target position')
 # "目标数量"

@@ -76,6 +76,10 @@ class OKExAPI:
             fprint(lang.position_mode.format(mode))
             self.accountAPI.set_position_mode('net_mode')
             fprint(lang.change_net_mode)
+        mode = self.accountAPI.get_account_config()['posMode']
+        if mode != 'net_mode':
+            fprint(lang.set_mode_fail)
+            exit()
 
     def usdt_balance(self):
         """获取USDT保证金
@@ -101,6 +105,7 @@ class OKExAPI:
         result = self.accountAPI.get_specific_position(self.swap_ID)
         if len(result) > 1:
             fprint(lang.more_than_one_position.format(self.swap_ID))
+            fprint(result)
             exit()
         else:
             for n in result:

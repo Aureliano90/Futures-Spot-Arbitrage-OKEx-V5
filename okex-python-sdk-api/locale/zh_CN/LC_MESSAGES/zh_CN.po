@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2021-12-15 03:14-0600\n"
-"PO-Revision-Date: 2021-12-15 03:15-0600\n"
+"POT-Creation-Date: 2021-12-16 03:27-0600\n"
+"PO-Revision-Date: 2021-12-16 03:27-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -341,8 +341,8 @@ msgid "Reach max retry."
 msgstr "达到最大重试次数。"
 
 #: lang.py:265
-msgid "{} has more than one swap position"
-msgstr "{}仓位不止一个，需手动检查"
+msgid "{} has more than one swap position."
+msgstr "{}合约仓位不止一个。"
 
 #: lang.py:268
 msgid "Upgrade account mode to margin mode."
@@ -357,21 +357,25 @@ msgid "Changed to net_mode."
 msgstr "设置为单向持仓。"
 
 #: lang.py:277
+msgid "Failed to set net_mode."
+msgstr "设置单向持仓失败。"
+
+#: lang.py:280
 msgid "Target position"
 msgstr "目标数量"
 
-#: lang.py:280
+#: lang.py:283
 msgid "less than contract value"
 msgstr "小于合约面值"
 
-#: lang.py:283
+#: lang.py:286
 msgid "Abort."
 msgstr "中止。"
 
-#: lang.py:286
+#: lang.py:289
 msgid "Added margin"
 msgstr "增加保证金"
 
-#: lang.py:289
+#: lang.py:292
 msgid "Reduced margin"
 msgstr "减少保证金"
