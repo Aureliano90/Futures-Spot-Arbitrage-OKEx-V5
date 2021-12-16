@@ -103,13 +103,15 @@ class OKExAPI:
         """获取合约持仓
         """
         result = self.accountAPI.get_specific_position(self.swap_ID)
-        if len(result) > 1:
-            fprint(lang.more_than_one_position.format(self.swap_ID))
-            fprint(result)
-            exit()
-        else:
-            for n in result:
+        # if len(result) > 1:
+        #     fprint(lang.more_than_one_position.format(self.swap_ID))
+        #     fprint(result)
+        #     exit()
+        # else:
+        for n in result:
+            if n['mgnMode'] == 'isolated':
                 return n
+        return None
 
     def swap_position(self):
         """获取合约仓位

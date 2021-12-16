@@ -119,48 +119,51 @@ def get_command(account=1):
                 command = input(coin_menu)
             else:
                 continue
-            if command == '1':
-                usdt = float(input(input_USDT))
-                AddPosition = open_position.AddPosition(coin=coin, accountid=account)
-                hours = 2
-                Stat = trading_data.Stat(coin)
-                recent = Stat.recent_open_stat(hours)
-                open_pd = recent['avg'] + 2 * recent['std']
-                AddPosition.open(usdt_size=usdt, leverage=3, price_diff=open_pd, accelerate_after=hours)
-                if AddPosition.is_hedged():
-                    fprint(coin, hedge_success)
-                else:
-                    fprint(coin, hedge_fail)
-            elif command == '2':
-                usdt = float(input(input_USDT))
-                ReducePosition = close_position.ReducePosition(coin=coin, accountid=account)
-                hours = 2
-                Stat = trading_data.Stat(coin)
-                recent = Stat.recent_close_stat(hours)
-                close_pd = recent['avg'] - 2 * recent['std']
-                ReducePosition.reduce(usdt_size=usdt, price_diff=close_pd, accelerate_after=hours)
-            elif command == '3':
-                ReducePosition = close_position.ReducePosition(coin=coin, accountid=account)
-                hours = 2
-                Stat = trading_data.Stat(coin)
-                recent = Stat.recent_close_stat(hours)
-                close_pd = recent['avg'] - 2 * recent['std']
-                ReducePosition.close(price_diff=close_pd, accelerate_after=hours)
-            elif command == '4':
-                if not Monitor.position_exist():
-                    fprint(no_position)
-                else:
-                    fprint(apy_message.format(coin, Monitor.apy(1), Monitor.apy(7), Monitor.apy()))
+
+            while command != 'b':
+                if command == '1':
+                    usdt = float(input(input_USDT))
+                    AddPosition = open_position.AddPosition(coin=coin, accountid=account)
+                    hours = 2
                     Stat = trading_data.Stat(coin)
-                    funding = Stat.history_funding(account)
-                    cost = Stat.history_cost(account)
-                    localtime = Stat.open_time(account).replace(tzinfo=timezone.utc).astimezone().replace(
-                        tzinfo=None)
-                    fprint(open_time_pnl.format(localtime.isoformat(timespec='minutes'), funding + cost))
-            elif command == 'b':
-                pass
-            else:
-                print(wrong_command)
+                    recent = Stat.recent_open_stat(hours)
+                    open_pd = recent['avg'] + 2 * recent['std']
+                    AddPosition.open(usdt_size=usdt, leverage=3, price_diff=open_pd, accelerate_after=hours)
+                    if AddPosition.is_hedged():
+                        fprint(coin, hedge_success)
+                    else:
+                        fprint(coin, hedge_fail)
+                elif command == '2':
+                    usdt = float(input(input_USDT))
+                    ReducePosition = close_position.ReducePosition(coin=coin, accountid=account)
+                    hours = 2
+                    Stat = trading_data.Stat(coin)
+                    recent = Stat.recent_close_stat(hours)
+                    close_pd = recent['avg'] - 2 * recent['std']
+                    ReducePosition.reduce(usdt_size=usdt, price_diff=close_pd, accelerate_after=hours)
+                elif command == '3':
+                    ReducePosition = close_position.ReducePosition(coin=coin, accountid=account)
+                    hours = 2
+                    Stat = trading_data.Stat(coin)
+                    recent = Stat.recent_close_stat(hours)
+                    close_pd = recent['avg'] - 2 * recent['std']
+                    ReducePosition.close(price_diff=close_pd, accelerate_after=hours)
+                elif command == '4':
+                    if not Monitor.position_exist():
+                        fprint(no_position)
+                    else:
+                        fprint(apy_message.format(coin, Monitor.apy(1), Monitor.apy(7), Monitor.apy()))
+                        Stat = trading_data.Stat(coin)
+                        funding = Stat.history_funding(account)
+                        cost = Stat.history_cost(account)
+                        localtime = Stat.open_time(account).replace(tzinfo=timezone.utc).astimezone().replace(
+                            tzinfo=None)
+                        fprint(open_time_pnl.format(localtime.isoformat(timespec='minutes'), funding + cost))
+                elif command == 'b':
+                    pass
+                else:
+                    print(wrong_command)
+                command = input(coin_menu)
         elif command == '3':
             FundingRate = funding_rate.FundingRate()
             command = input(funding_menu)
