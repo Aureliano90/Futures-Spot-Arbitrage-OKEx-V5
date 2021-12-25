@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2021-12-16 03:27-0600\n"
-"PO-Revision-Date: 2021-12-16 03:27-0600\n"
+"POT-Creation-Date: 2021-12-25 04:28-0600\n"
+"PO-Revision-Date: 2021-12-25 04:35-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -68,7 +68,7 @@ msgstr "统计最近几小时？\n"
 msgid ""
 "\n"
 "1   Monitor existing positions\n"
-"2   Act on given crypto\n"
+"2   Manipulate given crypto\n"
 "3   Funding rates\n"
 "4   Portfolio related\n"
 "5   Fetch ticker\n"
@@ -79,7 +79,7 @@ msgstr ""
 "2   单一币种操作\n"
 "3   资金费数据\n"
 "4   账户数据\n"
-"5   记录报价\n"
+"5   记录行情\n"
 "q   退出\n"
 
 #: lang.py:65
@@ -89,6 +89,7 @@ msgid ""
 "2   Reduce\n"
 "3   Close\n"
 "4   PnL\n"
+"5   Premium/discount statistics\n"
 "b   Back\n"
 msgstr ""
 "\n"
@@ -96,43 +97,44 @@ msgstr ""
 "2   减仓\n"
 "3   平仓\n"
 "4   收益统计\n"
+"5   期现差价统计\n"
 "b   返回\n"
 
-#: lang.py:80
+#: lang.py:82
 msgid ""
 "\n"
 "1   Top 10 for arbitrage\n"
 "2   Portfolio current funding rates\n"
-"3   Last 7 days funding rates for all\n"
-"4   Last 30 days funding rates for all\n"
+"3   Current funding rates for all\n"
+"4   Last 7 days funding rates for all\n"
+"5   Last 30 days funding rates for all\n"
 "b   Back\n"
 msgstr ""
 "\n"
 "1   显示收益最高十个币种\n"
 "2   显示持仓币种当前资金费\n"
-"3   显示全币种最近7天资金费\n"
-"4   显示全币种最近30天资金费\n"
+"3   显示全币种当前资金费\n"
+"4   显示全币种最近7天资金费\n"
+"5   显示全币种最近30天资金费\n"
 "b   返回\n"
 
-#: lang.py:95
+#: lang.py:99
 msgid ""
 "\n"
 "1   Backtrack funding fees\n"
 "2   Portfolio PnL\n"
-"3   Premium/discount statistics\n"
 "b   Back\n"
 msgstr ""
 "\n"
 "1   补录资金费\n"
 "2   持仓币种收益统计\n"
-"3   期现差价统计\n"
 "b   返回\n"
 
-#: lang.py:108
-msgid "Crypto  Current  Predicted"
-msgstr "币种    当期资金费   预测资金费"
+#: lang.py:110
+msgid "Crypto    Current  Predicted"
+msgstr "币种      当期资金费   预测资金费"
 
-#: lang.py:111
+#: lang.py:113
 msgid ""
 "{:6s} Funding Rate: {:7.3%}, Avg premium at close: {:7.3%}, Std: {:7.3%}, "
 "Min: {:7.3%}, Minus 2 std: {:7.3%}"
@@ -140,242 +142,266 @@ msgstr ""
 "{:6s} 资金费：{:7.3%}，平仓价差：{:7.3%}，标准差：{:7.3%}，最小值："
 "{:7.3%}，减2个标准差：{:7.3%}"
 
-#: lang.py:115
+#: lang.py:117
 msgid "Crypto  7 day funding"
 msgstr "币种     7天资金费"
 
-#: lang.py:118
+#: lang.py:120
 msgid "Crypto  30 day funding"
 msgstr "币种     30天资金费"
 
-#: lang.py:121
-msgid "Crypto   7 day  30 day\n"
-msgstr "币种   7天资金费 30天资金费\n"
+#: lang.py:123
+msgid "Crypto     7 day  30 day\n"
+msgstr "币种     7天资金费 30天资金费\n"
 
-#: lang.py:124
-msgid "Crypto Funding Profitability"
-msgstr "币种     资金费   投资价值"
+#: lang.py:126
+msgid "Crypto   Funding Profitability"
+msgstr "币种       资金费   投资价值"
 
-#: lang.py:127
+#: lang.py:129
 msgid "Premium/discount at open"
 msgstr "开仓期现差价"
 
-#: lang.py:130
+#: lang.py:132
 msgid "Premium/discount at close"
 msgstr "平仓期现差价"
 
-#: lang.py:133
+#: lang.py:135
 msgid "Two standard deviation"
 msgstr "两个标准差"
 
-#: lang.py:136
+#: lang.py:138
 msgid "Time"
 msgstr "时间"
 
-#: lang.py:139
+#: lang.py:141
 msgid "Premium"
 msgstr "差价"
 
-#: lang.py:142
+#: lang.py:144
 msgid "{:s} premium in {:d} hours"
 msgstr "{:s} {:d}小时期现差价"
 
-#: lang.py:145
-msgid "Nonexistent crypto"
-msgstr "币种不存在"
+#: lang.py:147
+msgid "Crypto {:s} does not exist."
+msgstr "{:s}币种不存在。"
 
-#: lang.py:148
-msgid "Nonexistent account"
-msgstr "账户不存在"
+#: lang.py:150
+msgid "Position {:s} does not exist."
+msgstr "{:s}仓位不存在。"
 
-#: lang.py:151
+#: lang.py:153
+msgid "Account does not exist."
+msgstr "账户不存在。"
+
+#: lang.py:156
 msgid "Transfer failed"
 msgstr "划转失败"
 
-#: lang.py:154
+#: lang.py:159
 msgid "amounts to add:"
 msgstr "加仓数量:"
 
-#: lang.py:157
+#: lang.py:162
 msgid "Added "
 msgstr "已加仓"
 
-#: lang.py:160
+#: lang.py:165
 msgid "Insufficient USDT"
 msgstr "USDT余额不足"
 
-#: lang.py:163
+#: lang.py:168
 msgid "Insufficient margin"
 msgstr "合约余额不足"
 
-#: lang.py:166
+#: lang.py:171
 msgid "Insufficient spot"
 msgstr "现货仓位不足"
 
-#: lang.py:169
+#: lang.py:174
 msgid "Insufficient swap"
 msgstr "合约仓位不足"
 
-#: lang.py:172
+#: lang.py:177
 msgid "Current leverage:"
 msgstr "当前杠杆:"
 
-#: lang.py:175
+#: lang.py:180
 msgid "Set leverage:"
 msgstr "设置杠杆:"
 
-#: lang.py:178
+#: lang.py:183
 msgid "Finished setting leverage."
 msgstr "设置杠杆完毕。"
 
-#: lang.py:181
+#: lang.py:186
 msgid "Swap market is down"
 msgstr "合约系统出错"
 
-#: lang.py:184
+#: lang.py:189
 msgid "Spot order failed"
 msgstr "现货下单失败"
 
-#: lang.py:187
+#: lang.py:192
 msgid "Swap order failed"
 msgstr "合约下单失败"
 
-#: lang.py:190
+#: lang.py:195
 msgid "Swap order retracted:"
 msgstr "合约撤单:"
 
-#: lang.py:193
+#: lang.py:198
 msgid "Spot order retracted:"
 msgstr "现货撤单:"
 
-#: lang.py:196
+#: lang.py:201
 msgid "Swap order state:"
 msgstr "合约订单状态:"
 
-#: lang.py:199
+#: lang.py:204
 msgid "Spot order state:"
 msgstr "现货订单状态:"
 
-#: lang.py:202
+#: lang.py:207
 msgid "Await status update"
 msgstr "等待状态更新"
 
-#: lang.py:205
+#: lang.py:210
 msgid ". Remaining "
 msgstr "，剩余"
 
-#: lang.py:208
-msgid "Position exists"
-msgstr "已有仓位"
+#: lang.py:213
+msgid "{:f} {:s} position exists."
+msgstr "已有{:f} {:s}仓位。"
 
-#: lang.py:211
+#: lang.py:216
 msgid "amounts to reduce:"
 msgstr "减仓数量:"
 
-#: lang.py:214
+#: lang.py:219
 msgid "Reduced"
 msgstr "已减仓"
 
-#: lang.py:217
+#: lang.py:222
 msgid "Spot recouped"
 msgstr "现货回收"
 
-#: lang.py:220
+#: lang.py:225
 msgid "amounts to close:"
 msgstr "平仓数量:"
 
-#: lang.py:223
-msgid "Closed"
-msgstr "已平仓"
+#: lang.py:228
+msgid "{:s} has been closed."
+msgstr "{:s}已平仓。"
 
-#: lang.py:226
+#: lang.py:231
+msgid "{:f} {:s} has been closed."
+msgstr "已平仓{:f} {:s}。"
+
+#: lang.py:234
 msgid "Start monitoring"
 msgstr "开始监控"
 
-#: lang.py:229
+#: lang.py:237
 msgid "Cost to close: {:.3%}"
 msgstr "平仓成本{:.3%}"
 
-#: lang.py:232
-msgid "Proceed to close"
-msgstr "进行平仓"
+#: lang.py:240
+msgid "Closing {:s}"
+msgstr "正在平仓{:s}"
 
-#: lang.py:235
+#: lang.py:243
 msgid "Approaching liquidation. Reduce spot."
 msgstr "接近强平价，现货减仓"
 
-#: lang.py:238
+#: lang.py:246
 msgid "Too much margin. Add spot."
 msgstr "保证金过多，现货加仓"
 
-#: lang.py:241
+#: lang.py:249
 msgid "Transferred "
 msgstr "划转"
 
-#: lang.py:244
+#: lang.py:252
 msgid "to spot account"
 msgstr "到现货账户"
 
-#: lang.py:247
+#: lang.py:255
 msgid "to swap account"
 msgstr "到合约账户"
 
-#: lang.py:250
+#: lang.py:258
 msgid "Spot: "
 msgstr "现货:"
 
-#: lang.py:253
+#: lang.py:261
 msgid "Swap: "
 msgstr "期货:"
 
-#: lang.py:256
+#: lang.py:264
 msgid "{} Receive funding fee {:.3f}"
 msgstr "{}收到资金费{:.3f}"
 
-#: lang.py:259
+#: lang.py:267
 msgid "{} Backtrack funding fee records {}"
 msgstr "{}补录资金费{}条"
 
-#: lang.py:262
+#: lang.py:270
 msgid "Reach max retry."
 msgstr "达到最大重试次数。"
 
-#: lang.py:265
+#: lang.py:273
 msgid "{} has more than one swap position."
 msgstr "{}合约仓位不止一个。"
 
-#: lang.py:268
+#: lang.py:276
 msgid "Upgrade account mode to margin mode."
 msgstr "升级账户模式为保证金模式。"
 
-#: lang.py:271
+#: lang.py:279
 msgid "Position mode is {}."
 msgstr "持仓方式为{}。"
 
-#: lang.py:274
+#: lang.py:282
 msgid "Changed to net_mode."
 msgstr "设置为单向持仓。"
 
-#: lang.py:277
+#: lang.py:285
 msgid "Failed to set net_mode."
 msgstr "设置单向持仓失败。"
 
-#: lang.py:280
+#: lang.py:288
 msgid "Target position"
 msgstr "目标数量"
 
-#: lang.py:283
+#: lang.py:291
 msgid "less than contract value"
 msgstr "小于合约面值"
 
-#: lang.py:286
+#: lang.py:294
 msgid "Abort."
 msgstr "中止。"
 
-#: lang.py:289
+#: lang.py:297
 msgid "Added margin"
 msgstr "增加保证金"
 
-#: lang.py:292
+#: lang.py:300
 msgid "Reduced margin"
 msgstr "减少保证金"
+
+#: lang.py:303
+msgid "Fetch ticker first."
+msgstr "先记录行情。"
+
+#~ msgid "Nonexistent crypto"
+#~ msgstr "币种不存在"
+
+#~ msgid "Nonexistent account"
+#~ msgstr "账户不存在"
+
+#~ msgid "Closed"
+#~ msgstr "已平仓"
+
+#~ msgid "Proceed to close"
+#~ msgstr "进行平仓"

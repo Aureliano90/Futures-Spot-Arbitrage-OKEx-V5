@@ -1,13 +1,15 @@
 from math import sqrt
 from typing import List
-import okex.spot_api as spot
+import okex.asset as asset
+import okex.public as public
 from datetime import datetime, timedelta, timezone
 import statistics
 import record
-import funding_rate
 import matplotlib.pyplot as plt
 from log import fprint
 from lang import *
+import asyncio
+from asyncio import create_task, gather
 
 
 def high(candle: list):
@@ -34,45 +36,178 @@ def close(candle: list):
     return float(candle[4])
 
 
-def profitability(days=7) -> List[dict]:
-    """显示各币种资金费率除以波动率
+def true_range(candle: list, previous: list):
+    """相对振幅
 
-    :param days: 最近几天
+    :param candle: 当前K线
+    :param previous: 上一K线
     """
-    fd = funding_rate.FundingRate()
-    funding_rate_list = fd.get_rate(days)
-    funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
-    funding_rate_list = funding_rate_list[:20]
-    for n in funding_rate_list:
-        s = Stat(n['instrument'])
-        candles = s.get_candles()
-        atr = s.atr(candles, days)
-        n['profitability'] = int(n['funding_rate'] / sqrt(atr) * 10000)
-    funding_rate_list.sort(key=lambda x: x['profitability'], reverse=True)
-    funding_rate_list = funding_rate_list[:10]
-    fprint(coin_funding_value)
-    for n in funding_rate_list:
-        fprint('{:7s}{:7.3%}{:6d}'.format(n['instrument'], n['funding_rate'], n['profitability']))
-    return funding_rate_list
+    return max(high(candle) - low(candle), abs(high(candle) - close(previous)),
+               abs(low(candle) - close(previous))) / close(previous)
+
+
+def average_true_range(candles: list, days=7):
+    """平均相对振幅
+
+    :param candles: K线列表
+    :param days:最近几天
+    """
+    tr = []
+    # Use 4h candles
+    if days * 6 > 1440:
+        days = 240
+    if days * 6 <= len(candles) + 1:
+        nrange = days * 6
+    else:
+        nrange = len(candles) - 1
+    for n in range(nrange):
+        tr.append(true_range(candles[n], candles[n + 1]))
+    return statistics.mean(tr)
 
 
 class Stat:
     """交易数据统计功能类
     """
 
-    def __init__(self, coin=''):
-        self.spotAPI = spot.SpotAPI(api_key='', api_secret_key='', passphrase='')
+    def __init__(self, coin: str = None):
+        # print('Stat init started')
+        self.publicAPI = public.PublicAPI()
+        self.assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
 
         self.coin = coin
-        self.spot_ID = coin + '-USDT'
-        self.swap_ID = coin + '-USDT-SWAP'
-        self.exist = True
+        if coin:
+            self.coin = coin
+            self.spot_ID = coin + '-USDT'
+            self.swap_ID = coin + '-USDT-SWAP'
+            self.exist = True
 
-        self.spot_info = self.spotAPI.get_instrument(self.spot_ID)
-        if not self.spot_info:
-            print(nonexistent_crypto)
+            try:
+                # begin = time.monotonic()
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # 在async上下文内呼叫构造函数，不能再run
+                    # print('Event loop is running. Call with await.')
+                    pass
+                else:
+                    # 在async上下文外呼叫构造函数
+                    self.spot_info = loop.create_task(
+                        self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
+                    self.swap_info = loop.create_task(
+                        self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                    loop.run_until_complete(gather(self.spot_info, self.swap_info))
+                    self.spot_info = self.spot_info.result()
+                    self.swap_info = self.swap_info.result()
+                # print(f'Stat({self.coin}) init finished')
+                # end = time.monotonic()
+                # print(f'Stat init takes {end-begin} s')
+            except Exception as e:
+                print(f'Stat({self.coin}) init error')
+                print(e)
+                self.exist = False
+                fprint(nonexistent_crypto.format(self.coin))
+        else:
             self.exist = False
-            del self
+
+    def __await__(self):
+        """异步构造函数\n
+        await Stat()先召唤__init__()，然后是awaitable __await__()。
+
+        :return:Stat
+        """
+        if self.coin:
+            try:
+                # print('Stat__await__ started')
+                # begin = time.monotonic()
+                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
+                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                yield from gather(self.spot_info, self.swap_info)
+                self.spot_info = self.spot_info.result()
+                self.swap_info = self.swap_info.result()
+                # print('Stat__await__ finished')
+                # end = time.monotonic()
+                # print('Stat__await__ takes {:f} s'.format(end-begin))
+            except Exception as e:
+                print(f'Stat__async__init__({self.coin}) error')
+                print(e)
+                self.exist = False
+                fprint(nonexistent_crypto.format(self.coin))
+        else:
+            self.exist = False
+        return self
+        # return self.__async__init__().__await__()
+
+    async def __async__init__(self):
+        if self.coin:
+            try:
+                # print('Stat__async__init__ started')
+                # begin = time.monotonic()
+                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
+                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                await self.spot_info
+                await self.swap_info
+                self.spot_info = self.spot_info.result()
+                self.swap_info = self.swap_info.result()
+                # print(f'Stat__async__init__({self.coin}) finished')
+                # end = time.monotonic()
+                # print(f'Stat__async__init__ takes {end - begin} s')
+            except Exception as e:
+                print(f'Stat__async__init__({self.coin}) error')
+                print(e)
+                self.exist = False
+                fprint(nonexistent_crypto.format(self.coin))
+        else:
+            self.exist = False
+        return self
+
+    def __del__(self):
+        # print("Stat del started")
+        del self.assetAPI
+        del self.publicAPI
+        # print("Stat del finished")
+
+    async def get_candles(self, sem, instId, bar='4H') -> dict:
+        """获取4小时K线
+
+        :param sem: Semaphore
+        :param instId: 产品ID
+        :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H]
+        """
+        async with sem:
+            candles = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='300')
+            await asyncio.sleep(1)
+            temp = candles
+            while len(temp) == 300:
+                temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit='300')
+                await asyncio.sleep(1)
+                candles.extend(temp)
+            return {'instId': instId, 'candles': candles}
+
+    async def profitability(self, funding_rate_list, days=7) -> List[dict]:
+        """显示各币种资金费率除以波动率
+        """
+        # begin = time.monotonic()
+        task_list = []
+        sem = asyncio.Semaphore(10)
+        for n in funding_rate_list:
+            task_list.append(self.get_candles(sem, n['instrument'] + '-USDT'))
+        gather_result = await gather(*task_list)
+        # end = time.monotonic()
+        # print("get_candles takes %f s" % (end - begin))
+
+        for n in gather_result:
+            instId = n['instId']
+            instrument = instId[:instId.find('-')]
+            atr = average_true_range(n['candles'], days)
+            for m in funding_rate_list:
+                if m['instrument'] == instrument:
+                    m['profitability'] = int(m['funding_rate'] / sqrt(atr) * 10000)
+                    break
+        funding_rate_list.sort(key=lambda x: x['profitability'], reverse=True)
+        funding_rate_list = funding_rate_list[:10]
+        fprint(coin_funding_value)
+        for n in funding_rate_list:
+            fprint('{:9s}{:7.3%}{:6d}'.format(n['instrument'], n['funding_rate'], n['profitability']))
+        return funding_rate_list
 
     def open_dist(self):
         """开仓期现差价正态分布统计
@@ -394,36 +529,6 @@ class Stat:
         print('{:.2%}'.format(frequency1), '{:.2%}'.format(frequency15), '{:.2%}'.format(frequency2),
               '{:.2%}'.format(frequency3))
 
-    def get_candles(self, granularity=14400):
-        """获取4小时K线
-
-        :param granularity: 秒数
-        :rtype: List[list]
-        """
-        return self.spotAPI.get_kline(instrument_id=self.spot_ID, granularity=granularity)
-
-    @staticmethod
-    def tr(candle: list, previous: list):
-        """相对振幅
-
-        :param candle: 当前K线
-        :param previous: 上一K线
-        """
-        return max(high(candle) - low(candle), abs(high(candle) - close(previous)),
-                   abs(low(candle) - close(previous))) / close(previous)
-
-    def atr(self, candles: list, days=7):
-        """平均相对振幅
-
-        :param candles: K线列表
-        :param days:最近几天
-        """
-        tr = []
-        # Use 4h candles
-        for n in range(days * 6):
-            tr.append(self.tr(candles[n], candles[n + 1]))
-        return statistics.mean(tr)
-
     def recent_ticker(self, hours=4):
         """返回近期期现差价列表
 
@@ -445,7 +550,7 @@ class Stat:
                     }
                 }
             }
-            ]
+        ]
         timelist: List[datetime] = []
         open_pd: List[float] = []
         close_pd: List[float] = []
@@ -670,16 +775,3 @@ class Stat:
         plt.legend(loc="best")
         plt.title(plot_title.format(self.coin, hours))
         plt.show()
-
-
-if __name__ == '__main__':
-    # BADGER, CHZ, DORA, FTM, LON, MASK, MIR, TORN
-    # for m in ['BADGER', 'CHZ', 'DORA', 'FTM', 'LON', 'MASK', 'MIR', 'TORN']:
-    #     stat = Stat(m)
-    #     stat.open_dist()
-    #     stat.close_dist()
-
-    # profitability(day=14)
-
-    stat = Stat('BTT')
-    stat.plot(4)

@@ -1,7 +1,14 @@
 # coding=utf-8
 import json
 
-class OkexAPIException(Exception):
+
+class OkexException(Exception):
+
+    def __init__(self):
+        super().__init__(self)
+
+
+class OkexAPIException(OkexException):
 
     def __init__(self, response):
         print(response.text + ', ' + str(response.status_code))
@@ -26,7 +33,7 @@ class OkexAPIException(Exception):
         return 'API Request Error(error_code=%s): %s' % (self.code, self.message)
 
 
-class OkexRequestException(Exception):
+class OkexRequestException(OkexException):
 
     def __init__(self, message):
         self.message = message
@@ -35,7 +42,7 @@ class OkexRequestException(Exception):
         return 'OkexRequestException: %s' % self.message
 
 
-class OkexParamsException(Exception):
+class OkexParamsException(OkexException):
 
     def __init__(self, message):
         self.message = message

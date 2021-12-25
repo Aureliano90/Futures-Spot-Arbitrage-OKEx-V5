@@ -47,7 +47,7 @@ how_many_hours = _('How many hours?\n')
 
 main_menu = _("""
 1   Monitor existing positions
-2   Act on given crypto
+2   Manipulate given crypto
 3   Funding rates
 4   Portfolio related
 5   Fetch ticker
@@ -58,7 +58,7 @@ q   Quit
 # 2   单一币种操作
 # 3   资金费数据
 # 4   账户数据
-# 5   记录报价
+# 5   记录行情
 # q   退出
 # """
 
@@ -67,6 +67,7 @@ coin_menu = _("""
 2   Reduce
 3   Close
 4   PnL
+5   Premium/discount statistics
 b   Back
 """)
 # """
@@ -74,39 +75,40 @@ b   Back
 # 2   减仓
 # 3   平仓
 # 4   收益统计
+# 5   期现差价统计
 # b   返回
 # """
 
 funding_menu = _("""
 1   Top 10 for arbitrage
 2   Portfolio current funding rates
-3   Last 7 days funding rates for all
-4   Last 30 days funding rates for all
+3   Current funding rates for all
+4   Last 7 days funding rates for all
+5   Last 30 days funding rates for all
 b   Back
 """)
 # """
 # 1   显示收益最高十个币种
 # 2   显示持仓币种当前资金费
-# 3   显示全币种最近7天资金费
-# 4   显示全币种最近30天资金费
+# 3   显示全币种当前资金费
+# 4   显示全币种最近7天资金费
+# 5   显示全币种最近30天资金费
 # b   返回
 # """
 
 account_menu = _("""
 1   Backtrack funding fees
 2   Portfolio PnL
-3   Premium/discount statistics
 b   Back
 """)
 # """
 # 1   补录资金费
 # 2   持仓币种收益统计
-# 3   期现差价统计
 # b   返回
 # """
 
-coin_current_next = _('Crypto  Current  Predicted')
-# '币种    当期资金费   预测资金费'
+coin_current_next = _('Crypto    Current  Predicted')
+# '币种      当期资金费   预测资金费'
 
 funding_close = _('{:6s} Funding Rate: {:7.3%}, Avg premium at close: {:7.3%}, Std: {:7.3%},'
                   ' Min: {:7.3%}, Minus 2 std: {:7.3%}')
@@ -118,11 +120,11 @@ funding_7day = _('Crypto  7 day funding')
 funding_30day = _('Crypto  30 day funding')
 # "币种     30天资金费"
 
-coin_7_30 = _('Crypto   7 day  30 day\n')
-# "币种   7天资金费 30天资金费\n"
+coin_7_30 = _('Crypto     7 day  30 day\n')
+# "币种     7天资金费 30天资金费\n"
 
-coin_funding_value = _('Crypto Funding Profitability')
-# '币种     资金费   投资价值'
+coin_funding_value = _('Crypto   Funding Profitability')
+# '币种       资金费   投资价值'
 
 pd_open = _('Premium/discount at open')
 # '开仓期现差价'
@@ -142,11 +144,14 @@ plot_premium = _('Premium')
 plot_title = _('{:s} premium in {:d} hours')
 # "{:s} {:d}小时期现差价"
 
-nonexistent_crypto = _('Nonexistent crypto')
-# "币种不存在"
+nonexistent_crypto = _('Crypto {:s} does not exist.')
+# "{:s}币种不存在。"
 
-nonexistent_account = _('Nonexistent account')
-# "账户不存在"
+nonexistent_position = _('Position {:s} does not exist.')
+# "{:s}仓位不存在。"
+
+nonexistent_account = _('Account does not exist.')
+# "账户不存在。"
 
 transfer_failed = _('Transfer failed')
 # "划转失败"
@@ -205,8 +210,8 @@ await_status_update = _('Await status update')
 remaining = _('. Remaining ')
 # "，剩余"
 
-position_exist = _('Position exists')
-# "已有仓位"
+position_exist = _('{:f} {:s} position exists.')
+# "已有{:f} {:s}仓位。"
 
 amount_to_reduce = _('amounts to reduce:')
 # '减仓数量:'
@@ -220,8 +225,11 @@ spot_recoup = _('Spot recouped')
 amount_to_close = _('amounts to close:')
 # '平仓数量:'
 
-closed_amount = _('Closed')
-# "已平仓"
+has_closed = _('{:s} has been closed.')
+# "{:s}已平仓。"
+
+closed_amount = _('{:f} {:s} has been closed.')
+# "已平仓{:f} {:s}。"
 
 start_monitoring = _('Start monitoring')
 # "开始监控"
@@ -229,8 +237,8 @@ start_monitoring = _('Start monitoring')
 cost_to_close = _('Cost to close: {:.3%}')
 # "平仓成本{:.3%}"
 
-proceed_to_close = _('Proceed to close')
-# "进行平仓"
+closing = _('Closing {:s}')
+# "正在平仓{:s}"
 
 approaching_liquidation = _('Approaching liquidation. Reduce spot.')
 # "接近强平价，现货减仓"
@@ -291,3 +299,6 @@ added_margin = _('Added margin')
 
 reduced_margin = _('Reduced margin')
 # "减少保证金"
+
+fetch_ticker_first = _('Fetch ticker first.')
+# "先记录行情。"
