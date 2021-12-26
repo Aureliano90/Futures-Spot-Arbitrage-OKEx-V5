@@ -1,8 +1,8 @@
 import okex.public as public
 import pymongo
 from datetime import datetime, timedelta
+import time
 import funding_rate
-import asyncio
 
 
 class Record:
@@ -47,16 +47,11 @@ class Record:
 
 
 def record_ticker():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(record())
-
-
-async def record():
     print('Recording ticker')
     ticker = Record('Ticker')
     funding = Record('Funding')
     fundingRate = funding_rate.FundingRate()
-    instrumentsID = await fundingRate.get_instruments_ID()
+    instrumentsID = fundingRate.get_instruments_ID()
     publicAPI = public.PublicAPI()
 
     while True:
@@ -69,7 +64,7 @@ async def record():
                 if timestamp.second < 10:
                     funding_rate_list = []
                     for m in instrumentsID:
-                        historical_funding_rate = await publicAPI.get_historical_funding_rate(instId=m, limit='1')
+                        historical_funding_rate = publicAPI.get_historical_funding_rate(instId=m, limit='1')
                         for n in historical_funding_rate:
                             timestamp = funding_rate.utcfrommillisecs(n['fundingTime'])
                             mydict = {'instrument': m[:m.find('-')], 'timestamp': timestamp, 'funding': float(n['realizedRate'])}
@@ -82,7 +77,8 @@ async def record():
                         }}
                     ticker.mycol.delete_many(myquery)
 
-        spot_ticker, swap_ticker = await asyncio.gather(publicAPI.get_tickers('SPOT'), publicAPI.get_tickers('SWAP'))
+        spot_ticker = publicAPI.get_tickers('SPOT')
+        swap_ticker = publicAPI.get_tickers('SWAP')
         mylist = []
         for m in instrumentsID:
             swap_ID = m
@@ -111,4 +107,4 @@ async def record():
         timestamp = datetime.utcnow()
         delta = timestamp.__sub__(begin).total_seconds()
         if delta < 10:
-            await asyncio.sleep(10 - delta)
+            time.sleep(10 - delta)

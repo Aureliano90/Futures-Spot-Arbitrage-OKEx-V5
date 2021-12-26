@@ -32,9 +32,18 @@ Implemented asyncio.
 * The current program uses REST API to fetch tickers which has significant delays. WebSocket API should give more 
   responsive tickers.
 
-## Usage
-Install [MongoDB](https://www.mongodb.com/try/download/community) and required packages. Paste API keys in key.py 
-(use account 3 for demo trading). Un-annotate "lang_en.install()" in lang.py for English support. Simply run main.py.
+## Installation
+Install [MongoDB](https://www.mongodb.com/try/download/community).
+
+Install required packages.
+
+`pip install -r requirements.txt`
+
+Paste API keys in key.py (use account 3 for demo trading).
+
+Un-annotate "lang_en.install()" in lang.py for English support.
+
+Simply run main.py.
 
 ## Background
 Futures spot arbitrage in crypto is profitable because there is a huge demand for long leverage in the crypto market.
@@ -42,6 +51,10 @@ Arbitrageurs act as the counterparty to buyers in the perpetual swap market. The
 transfer the buying pressure in the perpetual swap market to the spot market. Leverage comes at a cost. Therefore 
 arbitrageurs or market makers are entitled to charge interest on futures buyers, just like stockbrokers charge interest 
 for margin. As a result the APY depends on the market sentiment, ranging from 10% to 100%+.
+
+## Disclaimer
+The author is not responsible for any loss caused by the use of this
+program.
 
 ## Reference
 [1] [OKEx V5 API](https://www.okex.com/docs-v5/en)

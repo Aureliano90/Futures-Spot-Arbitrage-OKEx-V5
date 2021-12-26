@@ -1,6 +1,8 @@
 from typing import List
 from .client import Client
 from .consts import *
+from .exceptions import OkexAPIException
+import time
 
 
 class AssetAPI(Client):
@@ -13,16 +15,17 @@ class AssetAPI(Client):
         super().__del__()
         # print("AssetAPI del finished")
 
-    async def get_balance(self, ccy) -> dict:
+    def get_balance(self, ccy) -> dict:
         """获取资金账户余额信息\n
         GET /api/v5/asset/balances
 
         :param ccy: 币种
         """
         params = {'ccy': ccy}
-        return (await self.async_request_with_params(GET, ASSET_BALANCE, params))['data'][0]
+        result = self._request_with_params(GET, ASSET_BALANCE, params)
+        return result['data'][0]
 
-    async def transfer(self, ccy, amt, account_from, account_to, instId='', toInstId='') -> bool:
+    def transfer(self, ccy, amt, account_from, account_to, instId='', toInstId='') -> bool:
         """资金划转\n
         POST /api/v5/asset/transfer
 
@@ -38,7 +41,7 @@ class AssetAPI(Client):
             params['instId'] = instId
         if toInstId:
             params['toInstId'] = toInstId
-        result = await self.async_request_with_params(POST, ASSET_TRANSFER, params)
+        result = self._request_with_params(POST, ASSET_TRANSFER, params)
         if result['code'] == '0':
             return True
         else:
@@ -64,4 +67,5 @@ class AssetAPI(Client):
             params['before'] = before
         if limit:
             params['limit'] = limit
-        return (await self.async_request_with_params(GET, GET_CANDLES, params))['data']
+        result = await self.async_request_with_params(GET, GET_CANDLES, params)
+        return result['data']

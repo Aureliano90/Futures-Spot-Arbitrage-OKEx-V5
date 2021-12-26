@@ -222,10 +222,10 @@ class Monitor(OKExAPI):
                     swap_position = await self.swap_position()
                     target_size = swap_position / (leverage + 1) ** 2
 
-                    # 期现差价控制在1.5个标准差
+                    # 期现差价控制在2个标准差
                     recent = Stat.recent_close_stat()
                     if recent:
-                        close_pd = recent['avg'] - 1.5 * recent['std']
+                        close_pd = recent['avg'] - 2 * recent['std']
                     else:
                         fprint(lang.fetch_ticker_first)
                         break
@@ -308,7 +308,7 @@ class Monitor(OKExAPI):
                         target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         recent = Stat.recent_close_stat(2)
                         if recent:
-                            close_pd = recent['avg'] - 1.5 * recent['std']
+                            close_pd = recent['avg'] - 2 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
                             break

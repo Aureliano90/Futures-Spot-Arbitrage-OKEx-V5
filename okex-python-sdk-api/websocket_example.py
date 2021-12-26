@@ -5,7 +5,6 @@ import hmac
 import json
 import time
 import zlib
-
 import requests
 import websockets
 
@@ -187,7 +186,7 @@ async def subscribe_without_login(url, channels):
                 while True:
                     try:
                         res = await asyncio.wait_for(ws.recv(), timeout=25)
-                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+                    except (asyncio.TimeoutError, websockets.ConnectionClosed) as e:
                         try:
                             await ws.send('ping')
                             res = await ws.recv()
@@ -290,7 +289,7 @@ async def subscribe(url, api_key, passphrase, secret_key, channels):
                 while True:
                     try:
                         res = await asyncio.wait_for(ws.recv(), timeout=25)
-                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+                    except (asyncio.TimeoutError, websockets.ConnectionClosed) as e:
                         try:
                             await ws.send('ping')
                             res = await ws.recv()
@@ -328,7 +327,7 @@ async def trade(url, api_key, passphrase, secret_key, trade_param):
                 while True:
                     try:
                         res = await asyncio.wait_for(ws.recv(), timeout=25)
-                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+                    except (asyncio.TimeoutError, websockets.ConnectionClosed) as e:
                         try:
                             await ws.send('ping')
                             res = await ws.recv()

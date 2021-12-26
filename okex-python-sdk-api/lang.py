@@ -144,14 +144,11 @@ plot_premium = _('Premium')
 plot_title = _('{:s} premium in {:d} hours')
 # "{:s} {:d}小时期现差价"
 
-nonexistent_crypto = _('Crypto {:s} does not exist.')
-# "{:s}币种不存在。"
+nonexistent_crypto = _('Nonexistent crypto')
+# "币种不存在"
 
-nonexistent_position = _('Position {:s} does not exist.')
-# "{:s}仓位不存在。"
-
-nonexistent_account = _('Account does not exist.')
-# "账户不存在。"
+nonexistent_account = _('Nonexistent account')
+# "账户不存在"
 
 transfer_failed = _('Transfer failed')
 # "划转失败"
@@ -210,8 +207,8 @@ await_status_update = _('Await status update')
 remaining = _('. Remaining ')
 # "，剩余"
 
-position_exist = _('{:f} {:s} position exists.')
-# "已有{:f} {:s}仓位。"
+position_exist = _('Position exists')
+# "已有仓位"
 
 amount_to_reduce = _('amounts to reduce:')
 # '减仓数量:'
@@ -225,11 +222,8 @@ spot_recoup = _('Spot recouped')
 amount_to_close = _('amounts to close:')
 # '平仓数量:'
 
-has_closed = _('{:s} has been closed.')
-# "{:s}已平仓。"
-
-closed_amount = _('{:f} {:s} has been closed.')
-# "已平仓{:f} {:s}。"
+closed_amount = _('Closed')
+# "已平仓"
 
 start_monitoring = _('Start monitoring')
 # "开始监控"
@@ -237,8 +231,8 @@ start_monitoring = _('Start monitoring')
 cost_to_close = _('Cost to close: {:.3%}')
 # "平仓成本{:.3%}"
 
-closing = _('Closing {:s}')
-# "正在平仓{:s}"
+proceed_to_close = _('Proceed to close')
+# "进行平仓"
 
 approaching_liquidation = _('Approaching liquidation. Reduce spot.')
 # "接近强平价，现货减仓"
