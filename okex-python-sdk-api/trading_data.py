@@ -1,4 +1,3 @@
-import time
 from math import sqrt
 from typing import List
 import okex.asset as asset
@@ -6,11 +5,11 @@ import okex.public as public
 from datetime import datetime, timedelta, timezone
 import statistics
 import record
-import funding_rate
 import matplotlib.pyplot as plt
 from log import fprint
 from lang import *
 import asyncio
+from asyncio import create_task, gather
 
 
 def high(candle: list):
@@ -86,61 +85,79 @@ class Stat:
                 # begin = time.monotonic()
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    # print('Event loop is running. Call await.')
+                    # 在async上下文内呼叫构造函数，不能再run
+                    # print('Event loop is running. Call with await.')
                     pass
                 else:
-                    tasks = [self.publicAPI.async_get_specific_instrument('SPOT', self.spot_ID),
-                             self.publicAPI.async_get_specific_instrument('SWAP', self.swap_ID)]
-                    results = loop.run_until_complete(asyncio.gather(*tasks))
-                    self.spot_info: dict = results[0]
-                    self.swap_info: dict = results[1]
+                    # 在async上下文外呼叫构造函数
+                    self.spot_info = loop.create_task(
+                        self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
+                    self.swap_info = loop.create_task(
+                        self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                    loop.run_until_complete(gather(self.spot_info, self.swap_info))
+                    self.spot_info = self.spot_info.result()
+                    self.swap_info = self.swap_info.result()
                 # print(f'Stat({self.coin}) init finished')
                 # end = time.monotonic()
-                # print(f'__async__init__ takes {end-begin} s')
+                # print(f'Stat init takes {end-begin} s')
             except Exception as e:
                 print(f'Stat({self.coin}) init error')
                 print(e)
                 self.exist = False
-                fprint(nonexistent_crypto)
+                fprint(nonexistent_crypto.format(self.coin))
         else:
             self.exist = False
+
+    def __await__(self):
+        """异步构造函数\n
+        await Stat()先召唤__init__()，然后是awaitable __await__()。
+
+        :return:Stat
+        """
+        if self.coin:
+            try:
+                # print('Stat__await__ started')
+                # begin = time.monotonic()
+                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
+                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                yield from gather(self.spot_info, self.swap_info)
+                self.spot_info = self.spot_info.result()
+                self.swap_info = self.swap_info.result()
+                # print('Stat__await__ finished')
+                # end = time.monotonic()
+                # print('Stat__await__ takes {:f} s'.format(end-begin))
+            except Exception as e:
+                print(f'Stat__async__init__({self.coin}) error')
+                print(e)
+                self.exist = False
+                fprint(nonexistent_crypto.format(self.coin))
+        else:
+            self.exist = False
+        return self
+        # return self.__async__init__().__await__()
 
     async def __async__init__(self):
         if self.coin:
             try:
-                # print('__async__init__ started')
+                # print('Stat__async__init__ started')
                 # begin = time.monotonic()
-                tasks = [self.publicAPI.async_get_specific_instrument('SPOT', self.spot_ID),
-                         self.publicAPI.async_get_specific_instrument('SWAP', self.swap_ID)]
-                results = await asyncio.gather(*tasks)
-                self.spot_info: dict = results[0]
-                self.swap_info: dict = results[1]
-                # print(f'__async__init__({self.coin}) init finished')
+                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
+                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                await self.spot_info
+                await self.swap_info
+                self.spot_info = self.spot_info.result()
+                self.swap_info = self.swap_info.result()
+                # print(f'Stat__async__init__({self.coin}) finished')
                 # end = time.monotonic()
-                # print(f'__async__init__ takes {end-begin} s')
-                return self
+                # print(f'Stat__async__init__ takes {end - begin} s')
             except Exception as e:
-                print(f'Stat({self.coin}) init error')
+                print(f'Stat__async__init__({self.coin}) error')
                 print(e)
                 self.exist = False
-                fprint(nonexistent_crypto)
-
-    # async def __async__spot(self):
-    #     self.spot_info = await self.publicAPI.async_get_specific_instrument('SPOT', self.spot_ID)
-    #
-    # async def __async__swap(self):
-    #     self.swap_info = await self.publicAPI.async_get_specific_instrument('SWAP', self.swap_ID)
-
-    def __await__(self):
-        # print('__await__ started')
-        # begin = time.monotonic()
-        # tasks = [self.__async__spot(), self.__async__swap()]
-        # results = asyncio.gather(*tasks)
-        # yield from results
-        # print('__await__ finished')
-        # end = time.monotonic()
-        # print('__await__ takes {:f} s'.format(end-begin))
-        return self.__async__init__().__await__()
+                fprint(nonexistent_crypto.format(self.coin))
+        else:
+            self.exist = False
+        return self
 
     def __del__(self):
         # print("Stat del started")
@@ -148,12 +165,12 @@ class Stat:
         del self.publicAPI
         # print("Stat del finished")
 
-    async def get_candles(self, sem, instId, bar='4H'):
+    async def get_candles(self, sem, instId, bar='4H') -> dict:
         """获取4小时K线
 
+        :param sem: Semaphore
         :param instId: 产品ID
         :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H]
-        :rtype: List[list]
         """
         async with sem:
             candles = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='300')
@@ -173,7 +190,7 @@ class Stat:
         sem = asyncio.Semaphore(10)
         for n in funding_rate_list:
             task_list.append(self.get_candles(sem, n['instrument'] + '-USDT'))
-        gather_result = await asyncio.gather(*task_list)
+        gather_result = await gather(*task_list)
         # end = time.monotonic()
         # print("get_candles takes %f s" % (end - begin))
 
@@ -454,16 +471,3 @@ class Stat:
         plt.legend(loc="best")
         plt.title(plot_title.format(self.coin, hours))
         plt.show()
-
-
-if __name__ == '__main__':
-    # BADGER, CHZ, DORA, FTM, LON, MASK, MIR, TORN
-    # for m in ['BADGER', 'CHZ', 'DORA', 'FTM', 'LON', 'MASK', 'MIR', 'TORN']:
-    #     stat = Stat(m)
-    #     stat.open_dist()
-    #     stat.close_dist()
-
-    # profitability(day=14)
-
-    stat = Stat('BTT')
-    stat.plot(4)
