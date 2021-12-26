@@ -1,6 +1,5 @@
 requests~=2.26.0
-httpcore==0.14.3
-httpx~=0.21.1
+httpx~=0.18.2
 pymongo~=4.0.1
 matplotlib~=3.5.1
 websockets~=10.1
