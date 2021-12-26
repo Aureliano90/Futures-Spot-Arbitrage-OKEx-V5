@@ -2,10 +2,11 @@
 ## Introduction
 An object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Written in April for
 my personal use. Functional and stable enough for me. Modified [OKEx V3 API SDK](https://github.com/okex/V3-Open-API-SDK)
-according to [V5 API documentation](https://www.okex.com/docs-v5/en).
-Could be used as a starting point for V5 API SDK.
+according to [V5 API documentation](https://www.okex.com/docs-v5/en). 
 
-Added English support. Annotations are in Chinese. 
+Added English support. Annotations in Chinese. 
+
+Implemented asyncio.
 
 ## Features
 * Command line menu

@@ -226,14 +226,11 @@ class FundingRate:
     async def funding_history(self, instId):
         """下载最近3个月资金费率
         """
-        found = 0
         historical_funding_rate = await self.publicAPI.get_historical_funding_rate(instId=instId)
         temp = historical_funding_rate
-        found += len(temp)
         while len(temp) == 100:
             temp = await self.publicAPI.get_historical_funding_rate(instId=instId, after=temp[99]['fundingTime'])
             historical_funding_rate.extend(temp)
-            found += len(temp)
         return historical_funding_rate
 
     async def back_tracking(self):
@@ -247,18 +244,29 @@ class FundingRate:
         task_list = []
         for m in instrumentsID:
             task_list.append(self.funding_history(m))
-        funding_rate_list = await asyncio.gather(*task_list)
-
-        found = len(funding_rate_list)
-        for n in funding_rate_list:
-            instrument = n['instId'][:n['instId'].find('-')]
-            timestamp = utcfrommillisecs(n['fundingTime'])
-            myquery = {'instrument': instrument, 'timestamp': timestamp}
-            mydict = {'instrument': instrument, 'timestamp': timestamp, 'funding': float(n['realizedRate'])}
-            # 查重
-            if not Record.mycol.find_one(myquery):
-                Record.mycol.insert_one(mydict)
-                inserted += 1
+        # API results
+        api_funding_list = await asyncio.gather(*task_list)
+        for api_funding in api_funding_list:
+            found += len(api_funding)
+            instId = api_funding[0]['instId']
+            instrument = instId[:instId.find('-')]
+            pipeline = [{'$match': {'instrument': instrument}}]
+            results = Record.mycol.aggregate(pipeline)
+            db_funding = []
+            # Results in DB
+            for m in results:
+                db_funding.append(m)
+            # print(db_funding)
+            for m in api_funding:
+                timestamp = utcfrommillisecs(m['fundingTime'])
+                mydict = {'instrument': instrument, 'timestamp': timestamp, 'funding': float(m['realizedRate'])}
+                # Check for duplicate
+                for n in db_funding:
+                    if n['timestamp'] == timestamp:
+                        break
+                else:
+                    Record.mycol.insert_one(mydict)
+                    inserted += 1
         print("Found: {}, Inserted: {}".format(found, inserted))
         end = time.monotonic()
         print("back_tracking takes %f s" % (end - begin))
@@ -269,17 +277,18 @@ class FundingRate:
         funding_rate_list = await self.get_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
         funding_rate_list = funding_rate_list[:20]
-        funding_rate_list = await trading_data.Stat().profitability(funding_rate_list, days)
+        funding_rate_list = [n['instrument'] for n in await trading_data.Stat().profitability(funding_rate_list, days)]
         await self.show_selected_rate(funding_rate_list)
 
-    async def show_selected_rate(self, funding_rate_list: List[dict]):
+    async def show_selected_rate(self, coinlist: List[str]):
         """显示列表币种当前资金费
         """
         task_list = []
-        for m in funding_rate_list:
-            task_list.append(self.publicAPI.get_funding_time(instId=m['instrument'] + '-USDT-SWAP'))
+        for n in coinlist:
+            task_list.append(self.publicAPI.get_funding_time(instId=n + '-USDT-SWAP'))
         gather_result = await asyncio.gather(*task_list)
 
+        funding_rate_list = []
         for funding_time in gather_result:
             instrument = funding_time['instId'][:funding_time['instId'].find('-')]
             if funding_time['fundingRate']:
@@ -290,11 +299,8 @@ class FundingRate:
                 estimated_rate = float(funding_time['nextFundingRate'])
             else:
                 estimated_rate = 0.
-            for m in funding_rate_list:
-                if m['instrument'] == instrument:
-                    m['current_rate'] = current_rate
-                    m['estimated_rate'] = estimated_rate
-                    break
+            funding_rate_list.append(
+                {'instrument': instrument, 'current_rate': current_rate, 'estimated_rate': estimated_rate})
 
         funding_rate_list.sort(key=lambda x: x['current_rate'], reverse=True)
         # pprint(funding_rate_list)

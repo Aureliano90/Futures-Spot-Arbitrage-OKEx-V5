@@ -231,8 +231,7 @@ def get_command(accountid=2):
                 elif command == '2':
                     coinlist = loop.run_until_complete(get_coinlist(accountid))
                     if coinlist:
-                        funding_rate_list = [{'instrument': n} for n in coinlist]
-                        loop.run_until_complete(FundingRate.show_selected_rate(funding_rate_list))
+                        loop.run_until_complete(FundingRate.show_selected_rate(coinlist))
                     else:
                         fprint(no_position)
                 elif command == '3':

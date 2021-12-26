@@ -27,7 +27,7 @@ class ReducePosition(OKExAPI):
         :rtype: float
         """
         if usdt_size:
-            ticker, leverage = gather(self.publicAPI.get_specific_ticker(self.spot_ID), self.get_lever())
+            ticker, leverage = await gather(self.publicAPI.get_specific_ticker(self.spot_ID), self.get_lever())
             last = float(ticker['last'])
             target_position = usdt_size * leverage / (leverage + 1) / last
         else:
@@ -37,7 +37,7 @@ class ReducePosition(OKExAPI):
         size_increment = float(self.spot_info['lotSz'])
         contract_val = float(self.swap_info['ctVal'])
 
-        spot_position, swap_position = gather(self.spot_position(), self.swap_position())
+        spot_position, swap_position = await gather(self.spot_position(), self.swap_position())
 
         if target_position < contract_val:
             fprint(lang.target_position_text, target_position, lang.less_than_ctval, contract_val)

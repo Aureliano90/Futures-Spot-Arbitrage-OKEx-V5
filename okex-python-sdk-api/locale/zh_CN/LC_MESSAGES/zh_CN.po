@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2021-12-25 04:28-0600\n"
-"PO-Revision-Date: 2021-12-25 04:35-0600\n"
+"POT-Creation-Date: 2021-12-26 01:24-0600\n"
+"PO-Revision-Date: 2021-12-26 01:24-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -343,8 +343,8 @@ msgid "{} Receive funding fee {:.3f}"
 msgstr "{}收到资金费{:.3f}"
 
 #: lang.py:267
-msgid "{} Backtrack funding fee records {}"
-msgstr "{}补录资金费{}条"
+msgid "Backtrack {} funding fee records {}"
+msgstr "补录{}资金费{}条"
 
 #: lang.py:270
 msgid "Reach max retry."

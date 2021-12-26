@@ -71,26 +71,35 @@ class Monitor(OKExAPI):
         """
         async with sem:
             Ledger = record.Record('Ledger')
+            pipeline = [{'$match': {'account': self.accountid, 'instrument': self.coin, 'title': "资金费"}}]
+            results = Ledger.mycol.aggregate(pipeline)
+            db_ledger = []
+            # Results in DB
+            for n in results:
+                db_ledger.append(n)
             temp = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
             await asyncio.sleep(1)
-            ledger = temp
-            count = 0
+            api_ledger = temp
+            inserted = 0
             while len(temp) == 100:
                 temp = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8', after=temp[99]['billId'])
                 await asyncio.sleep(1)
-                ledger.extend(temp)
-            for item in ledger:
+                api_ledger.extend(temp)
+            # API results
+            for item in api_ledger:
                 if item['instId'] == self.swap_ID:
                     realized_rate = float(item['pnl'])
                     timestamp = datetime.utcfromtimestamp(float(item['ts']) / 1000)
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
-                              'title': "资金费",
-                              'funding': realized_rate}
+                              'title': "资金费", 'funding': realized_rate}
                     # 查重
-                    if not Ledger.mycol.find_one(mydict):
+                    for n in db_ledger:
+                        if n['timestamp'] == timestamp:
+                            break
+                    else:
                         Ledger.mycol.insert_one(mydict)
-                        count += 1
-            fprint(lang.back_track_funding.format(self.coin, count))
+                        inserted += 1
+            fprint(lang.back_track_funding.format(self.coin, inserted))
 
     async def record_funding(self):
         """记录最近一次资金费
@@ -114,7 +123,7 @@ class Monitor(OKExAPI):
         if not swap_ID:
             swap_ID = self.swap_ID
         if await self.swap_position(swap_ID) == 0:
-            fprint(lang.nonexistent_position.format(swap_ID))
+            # fprint(lang.nonexistent_position.format(swap_ID))
             return swap_ID, False
         else:
             result = record.Record('Ledger').find_last({'account': self.accountid, 'instrument': self.coin})
@@ -150,9 +159,7 @@ class Monitor(OKExAPI):
         swap_trade_fee = float(swap_trade_fee['taker'])
         trade_fee = swap_trade_fee + spot_trade_fee
 
-        thread_started = False
-        add: asyncio.Task
-        reduce: asyncio.Task
+        task_started = False
         time_to_accelerate = None
         accelerated = False
         retry = 0
@@ -195,7 +202,7 @@ class Monitor(OKExAPI):
                         fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
 
             # 线程未创建
-            if not thread_started:
+            if not task_started:
                 # 接近强平价，现货减仓
                 if liquidation_price < last * (1 + 1 / (leverage + 1)):
                     # 等待上一操作完成
@@ -203,7 +210,7 @@ class Monitor(OKExAPI):
                         timestamp = datetime.utcnow()
                         delta = timestamp.__sub__(begin).total_seconds()
                         if delta < 10:
-                            time.sleep(10 - delta)
+                            await asyncio.sleep(10 - delta)
                         continue
                     if not await addPosition.is_hedged():
                         fprint(self.coin, lang.hedge_fail)
@@ -223,9 +230,9 @@ class Monitor(OKExAPI):
                         fprint(lang.fetch_ticker_first)
                         break
 
-                    reduce = asyncio.create_task(reducePosition.reduce(target_size=target_size, price_diff=close_pd))
-                    await reduce
-                    thread_started = True
+                    reduce_task = asyncio.create_task(
+                        reducePosition.reduce(target_size=target_size, price_diff=close_pd))
+                    task_started = True
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
 
                 # 保证金过多，现货加仓
@@ -235,7 +242,7 @@ class Monitor(OKExAPI):
                         timestamp = datetime.utcnow()
                         delta = timestamp.__sub__(begin).total_seconds()
                         if delta < 10:
-                            time.sleep(10 - delta)
+                            await asyncio.sleep(10 - delta)
                         continue
                     if not addPosition.is_hedged():
                         fprint(self.coin, lang.hedge_fail)
@@ -256,10 +263,9 @@ class Monitor(OKExAPI):
                         break
 
                     if await self.reduce_margin(target_size * last):
-                        add = asyncio.create_task(
+                        add_task = asyncio.create_task(
                             addPosition.add(target_size=target_size, leverage=leverage, price_diff=open_pd))
-                        await add
-                        thread_started = True
+                        task_started = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                     else:
                         retry += 1
@@ -269,12 +275,12 @@ class Monitor(OKExAPI):
             # 线程已运行
             else:
                 # 如果减仓时间过长，加速减仓
-                if not reduce.done():
+                if 'reduce_task' in dir() and not reduce_task.done():
                     # 迫近下下级杠杆
                     if liquidation_price < last * (1 + 1 / (leverage + 2)) and not accelerated:
                         # 已加速就不另开线程
                         reducePosition.exitFlag = True
-                        while not reduce.done():
+                        while not reduce_task.done():
                             await asyncio.sleep(1)
 
                         liquidation_price = await self.liquidation_price()
@@ -286,16 +292,15 @@ class Monitor(OKExAPI):
                         else:
                             fprint(lang.fetch_ticker_first)
                             break
-                        reduce = asyncio.create_task(
+                        reduce_task = asyncio.create_task(
                             reducePosition.reduce(target_size=target_size, price_diff=close_pd))
-                        await reduce
                         reducePosition.exitFlag = False
                         accelerated = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
 
                     if timestamp > time_to_accelerate:
                         reducePosition.exitFlag = True
-                        while not reduce.done():
+                        while not reduce_task.done():
                             await asyncio.sleep(1)
 
                         liquidation_price = await self.liquidation_price()
@@ -307,15 +312,14 @@ class Monitor(OKExAPI):
                         else:
                             fprint(lang.fetch_ticker_first)
                             break
-                        reduce = asyncio.create_task(
+                        reduce_task = asyncio.create_task(
                             reducePosition.reduce(target_size=target_size, price_diff=close_pd))
-                        await reduce
                         reducePosition.exitFlag = False
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
-                elif not add.done():
+                elif 'add_task' in dir() and not add_task.done():
                     if timestamp > time_to_accelerate:
                         addPosition.exitFlag = True
-                        while not add.done():
+                        while not add_task.done():
                             await asyncio.sleep(1)
 
                         liquidation_price = await self.liquidation_price()
@@ -327,14 +331,17 @@ class Monitor(OKExAPI):
                         else:
                             fprint(lang.fetch_ticker_first)
                             break
-                        add = asyncio.create_task(
+                        add_task = asyncio.create_task(
                             addPosition.add(target_size=target_size, leverage=leverage, price_diff=open_pd))
-                        await add
                         addPosition.exitFlag = False
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                 else:
                     liquidation_price = await self.liquidation_price()
-                    thread_started = False
+                    if 'add_task' in dir():
+                        del add_task
+                    if 'reduce_task' in dir():
+                        del reduce_task
+                    task_started = False
             timestamp = datetime.utcnow()
             delta = timestamp.__sub__(begin).total_seconds()
             if delta < 10:

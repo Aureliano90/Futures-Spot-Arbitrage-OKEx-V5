@@ -264,8 +264,8 @@ swap_text = _('Swap: ')
 received_funding = _('{} Receive funding fee {:.3f}')
 # "{}收到资金费{:.3f}"
 
-back_track_funding = _('{} Backtrack funding fee records {}')
-# "{}补录资金费{}条"
+back_track_funding = _('Backtrack {} funding fee records {}')
+# "补录{}资金费{}条"
 
 reach_max_retry = _('Reach max retry.')
 # "达到最大重试次数。"

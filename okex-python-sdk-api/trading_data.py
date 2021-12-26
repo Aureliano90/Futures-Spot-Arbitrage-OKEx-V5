@@ -57,10 +57,10 @@ def average_true_range(candles: list, days=7):
     if days * 6 > 1440:
         days = 240
     if days * 6 <= len(candles) + 1:
-        nrange = days * 6
+        num_candles = days * 6
     else:
-        nrange = len(candles) - 1
-    for n in range(nrange):
+        num_candles = len(candles) - 1
+    for n in range(num_candles):
         tr.append(true_range(candles[n], candles[n + 1]))
     return statistics.mean(tr)
 
@@ -194,14 +194,9 @@ class Stat:
         # end = time.monotonic()
         # print("get_candles takes %f s" % (end - begin))
 
-        for n in gather_result:
-            instId = n['instId']
-            instrument = instId[:instId.find('-')]
-            atr = average_true_range(n['candles'], days)
-            for m in funding_rate_list:
-                if m['instrument'] == instrument:
-                    m['profitability'] = int(m['funding_rate'] / sqrt(atr) * 10000)
-                    break
+        for n in range(len(funding_rate_list)):
+            atr = average_true_range(gather_result[n]['candles'], days)
+            funding_rate_list[n]['profitability'] = int(funding_rate_list[n]['funding_rate'] / sqrt(atr) * 10000)
         funding_rate_list.sort(key=lambda x: x['profitability'], reverse=True)
         funding_rate_list = funding_rate_list[:10]
         fprint(coin_funding_value)
@@ -220,35 +215,9 @@ class Stat:
         timestamp = timestamp.__sub__(timedelta(hours=4))
         # print(timestamp)
 
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'avg': {
-                        '$avg': '$open_pd'
-                    },
-                    'std': {
-                        '$stdDevSamp': '$open_pd'
-                    },
-                    'max': {
-                        '$max': '$open_pd'
-                    },
-                    'min': {
-                        '$min': '$open_pd'
-                    },
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
+                    {'$group': {'_id': '$instrument', 'avg': {'$avg': '$open_pd'}, 'std': {'$stdDevSamp': '$open_pd'},
+                                'max': {'$max': '$open_pd'}, 'min': {'$min': '$open_pd'}, 'count': {'$sum': 1}}}]
         result = {}
         for x in Record.mycol.aggregate(pipeline):
             result = x
@@ -265,102 +234,30 @@ class Stat:
         p3sigma = avg + 3 * std
         m3sigma = avg - 3 * std
 
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'open_pd': {
-                        '$lt': p1sigma,
-                        '$gt': m1sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'open_pd': {'$lt': p1sigma, '$gt': m1sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count1 = result['count']
         frequency1 = count1 / total
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'open_pd': {
-                        '$lt': p15sigma,
-                        '$gt': m15sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'open_pd': {'$lt': p15sigma, '$gt': m15sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count15 = result['count']
         frequency15 = count15 / total
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'open_pd': {
-                        '$lt': p2sigma,
-                        '$gt': m2sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'open_pd': {'$lt': p2sigma, '$gt': m2sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count2 = result['count']
         frequency2 = count2 / total
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'open_pd': {
-                        '$lt': p3sigma,
-                        '$gt': m3sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'open_pd': {'$lt': p3sigma, '$gt': m3sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count3 = result['count']
@@ -380,35 +277,9 @@ class Stat:
         timestamp = timestamp.__sub__(timedelta(hours=4))
         # print(timestamp)
 
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'avg': {
-                        '$avg': '$close_pd'
-                    },
-                    'std': {
-                        '$stdDevSamp': '$close_pd'
-                    },
-                    'max': {
-                        '$max': '$close_pd'
-                    },
-                    'min': {
-                        '$min': '$close_pd'
-                    },
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
+                    {'$group': {'_id': '$instrument', 'avg': {'$avg': '$close_pd'}, 'std': {'$stdDevSamp': '$close_pd'},
+                                'max': {'$max': '$close_pd'}, 'min': {'$min': '$close_pd'}, 'count': {'$sum': 1}}}]
         result = {}
         for x in Record.mycol.aggregate(pipeline):
             result = x
@@ -425,102 +296,30 @@ class Stat:
         p3sigma = avg + 3 * std
         m3sigma = avg - 3 * std
 
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'close_pd': {
-                        '$lt': p1sigma,
-                        '$gt': m1sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'close_pd': {'$lt': p1sigma, '$gt': m1sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count1 = result['count']
         frequency1 = count1 / total
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'close_pd': {
-                        '$lt': p15sigma,
-                        '$gt': m15sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'close_pd': {'$lt': p15sigma, '$gt': m15sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count15 = result['count']
         frequency15 = count15 / total
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'close_pd': {
-                        '$lt': p2sigma,
-                        '$gt': m2sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'close_pd': {'$lt': p2sigma, '$gt': m2sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count2 = result['count']
         frequency2 = count2 / total
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    },
-                    'close_pd': {
-                        '$lt': p3sigma,
-                        '$gt': m3sigma
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
+                                'close_pd': {'$lt': p3sigma, '$gt': m3sigma}}},
+                    {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
         for x in Record.mycol.aggregate(pipeline):
             result = x
         count3 = result['count']
@@ -541,16 +340,7 @@ class Stat:
         timestamp = timestamp.__sub__(timedelta(hours=hours))
         # print(timestamp)
 
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}}]
         timelist: List[datetime] = []
         open_pd: List[float] = []
         close_pd: List[float] = []
@@ -575,32 +365,9 @@ class Stat:
         # print(timestamp)
 
         Record = record.Record('Ticker')
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'avg': {
-                        '$avg': '$open_pd'
-                    },
-                    'std': {
-                        '$stdDevSamp': '$open_pd'
-                    },
-                    'max': {
-                        '$max': '$open_pd'
-                    },
-                    'min': {
-                        '$min': '$open_pd'
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
+                    {'$group': {'_id': '$instrument', 'avg': {'$avg': '$open_pd'}, 'std': {'$stdDevSamp': '$open_pd'},
+                                'max': {'$max': '$open_pd'}, 'min': {'$min': '$open_pd'}}}]
         for x in Record.mycol.aggregate(pipeline):
             return x
 
@@ -617,32 +384,9 @@ class Stat:
         # print(timestamp)
 
         Record = record.Record('Ticker')
-        pipeline = [
-            {
-                '$match': {
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': timestamp
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'avg': {
-                        '$avg': '$close_pd'
-                    },
-                    'std': {
-                        '$stdDevSamp': '$close_pd'
-                    },
-                    'max': {
-                        '$max': '$close_pd'
-                    },
-                    'min': {
-                        '$min': '$close_pd'
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
+                    {'$group': {'_id': '$instrument', 'avg': {'$avg': '$close_pd'}, 'std': {'$stdDevSamp': '$close_pd'},
+                                'max': {'$max': '$close_pd'}, 'min': {'$min': '$close_pd'}}}]
         for x in Record.mycol.aggregate(pipeline):
             return x
 
@@ -653,20 +397,8 @@ class Stat:
         :rtype: datetime
         """
         Record = record.Record('Ledger')
-        pipeline = [{
-            '$match': {
-                'account': account,
-                'instrument': self.coin,
-                'title': "开仓"
-            }
-        }, {
-            '$sort': {
-                '_id': -1
-            }
-        }, {
-            '$limit': 1
-        }
-        ]
+        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': "开仓"}},
+                    {'$sort': {'_id': -1}}, {'$limit': 1}]
         open_time = 0
         for x in Record.mycol.aggregate(pipeline):
             # 开仓时间
@@ -688,28 +420,12 @@ class Stat:
             open_time = self.open_time(account)
         else:
             open_time = datetime.utcnow().__sub__(timedelta(days=days))
-        pipeline = [
-            {
-                '$match': {
-                    'account': account,
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': open_time
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'sum': {
-                        '$sum': '$funding'
-                    }
-                }
-            }
-        ]
+        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'timestamp': {'$gt': open_time}}},
+                    {'$group': {'_id': '$instrument', 'sum': {'$sum': '$funding'}}}]
         for x in Record.mycol.aggregate(pipeline):
             # 累计资金费
             return x['sum']
-        return 0
+        return 0.
 
     def history_cost(self, account, days=0):
         """最近累计成本
@@ -723,32 +439,12 @@ class Stat:
             open_time = self.open_time(account)
         else:
             open_time = datetime.utcnow().__sub__(timedelta(days=days))
-        pipeline = [
-            {
-                '$match': {
-                    'account': account,
-                    'instrument': self.coin,
-                    'timestamp': {
-                        '$gt': open_time
-                    }
-                }
-            }, {
-                '$group': {
-                    '_id': '$instrument',
-                    'spot_notional': {
-                        '$sum': '$spot_notional'
-                    },
-                    'swap_notional': {
-                        '$sum': '$swap_notional'
-                    },
-                    'fee': {
-                        '$sum': '$fee'
-                    }
-                }}
-        ]
+        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'timestamp': {'$gt': open_time}}},
+                    {'$group': {'_id': '$instrument', 'spot_notional': {'$sum': '$spot_notional'},
+                                'swap_notional': {'$sum': '$swap_notional'}, 'fee': {'$sum': '$fee'}}}]
         for x in Record.mycol.aggregate(pipeline):
             return x['spot_notional'] + x['swap_notional'] + x['fee']
-        return 0
+        return 0.
 
     def plot(self, hours=4):
         """画出最近期现差价散点图

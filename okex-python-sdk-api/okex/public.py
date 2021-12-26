@@ -89,5 +89,5 @@ class PublicAPI(Client):
             return (await self.async_request_with_params(GET, GET_TICKER, params))['data'][0]
         except Exception as e:
             await asyncio.sleep(60)
-            print("get_ticker exception: ", e)
+            # print("get_ticker exception: ", e)
             return (await self.async_request_with_params(GET, GET_TICKER, params))['data'][0]

@@ -16,9 +16,7 @@ class AddPosition(OKExAPI):
         """判断合约现货是否对冲
         """
         contract_val = float(self.swap_info['ctVal'])
-        long, short = gather(self.spot_position(), self.swap_position())
-        long = long.result()
-        short = short.result()
+        long, short = await gather(self.spot_position(), self.swap_position())
         if abs(long - short) < contract_val:
             return True
         else:
