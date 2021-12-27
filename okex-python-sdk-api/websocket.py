@@ -468,6 +468,8 @@ channels = [{"channel": "tickers", "instId": "BTC-USDT"}, {"channel": "tickers",
 # channels = [{"channel": "orders-algo", "instType": "FUTURES", "uly": "BTC-USD", "instId": "BTC-USD-201225"}]
 #高级策略委托订单频道 Cancel Advance Algos
 # channels = [{"channel": "algo-advance", "instType": "SPOT","instId": "BTC-USD-201225","algoId":"12345678"}]
+# 爆仓风险预警推送频道
+# channels = [{"channel": "liquidation-warning", "instType": "SWAP","instType": "","uly":"","instId":""}]
 
 '''
 交易 trade
@@ -496,22 +498,25 @@ channels = [{"channel": "tickers", "instId": "BTC-USDT"}, {"channel": "tickers",
 #     ]}
 
 
-async def printyield(func, *args):
-    async for item in func(*args):
+# 输出频道推送
+async def print_yield(async_generator, *args):
+    # async_generator为异步生成器，当频道推送时迭代
+    async for item in async_generator(*args):
         print(item)
+        # 其他相应操作如判断、储存
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     # 公共频道 不需要登录（行情，持仓总量，K线，标记价格，深度，资金费率等）subscribe public channel
-    loop.run_until_complete(printyield(subscribe_without_login, url, channels, True))
+    loop.run_until_complete(print_yield(subscribe_without_login, url, channels, True))
 
     # 私有频道 需要登录（账户，持仓，订单等）subscribe private channel
-    loop.run_until_complete(printyield(subscribe, url, api_key, passphrase, secret_key, channels, True))
+    loop.run_until_complete(print_yield(subscribe, url, api_key, passphrase, secret_key, channels, True))
 
     # 交易（下单，撤单，改单等）trade
     trade_param = {}
-    loop.run_until_complete(printyield(trade, url, api_key, passphrase, secret_key, trade_param, True))
+    loop.run_until_complete(print_yield(trade, url, api_key, passphrase, secret_key, trade_param, True))
 
     loop.close()
