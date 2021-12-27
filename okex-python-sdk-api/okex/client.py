@@ -23,10 +23,7 @@ class Client(object):
         # print("Client del started")
         self.client.close()
         loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(self.aclient.aclose())
-        else:
-            loop.run_until_complete(self.aclient.aclose())
+        loop.create_task(self.aclient.aclose())
         # print("Client del finished")
 
     def update_limits(self, limits: httpx.Limits = None):

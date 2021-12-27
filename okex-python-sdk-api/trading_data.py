@@ -101,8 +101,8 @@ class Stat:
                 # end = time.monotonic()
                 # print(f'Stat init takes {end-begin} s')
             except Exception as e:
-                print(f'Stat({self.coin}) init error')
-                print(e)
+                fprint(f'Stat({self.coin}) init error')
+                fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
         else:
@@ -127,8 +127,8 @@ class Stat:
                 # end = time.monotonic()
                 # print('Stat__await__ takes {:f} s'.format(end-begin))
             except Exception as e:
-                print(f'Stat__async__init__({self.coin}) error')
-                print(e)
+                fprint(f'Stat__async__init__({self.coin}) error')
+                fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
         else:
@@ -151,8 +151,8 @@ class Stat:
                 # end = time.monotonic()
                 # print(f'Stat__async__init__ takes {end - begin} s')
             except Exception as e:
-                print(f'Stat__async__init__({self.coin}) error')
-                print(e)
+                fprint(f'Stat__async__init__({self.coin}) error')
+                fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
         else:

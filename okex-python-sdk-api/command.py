@@ -43,7 +43,7 @@ async def print_apy(coin: str, accountid: int):
 
 
 # 收益统计
-async def profit_all(accountid=2):
+async def profit_all(accountid: int):
     coinlist = await get_coinlist(accountid)
     for coin in coinlist:
         mon, Stat = await gather(monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin))
@@ -56,7 +56,7 @@ async def profit_all(accountid=2):
 
 
 # 补录资金费
-async def back_track_all(accountid=2):
+async def back_track_all(accountid: int):
     coinlist = await get_coinlist(accountid)
     sem = asyncio.Semaphore(5)
     task_list = []
@@ -67,7 +67,7 @@ async def back_track_all(accountid=2):
 
 
 # 平仓
-async def close_all(accountid=2):
+async def close_all(accountid: int):
     fundingRate = funding_rate.FundingRate()
     processes = []
     coinlist = await get_coinlist(accountid)
@@ -90,19 +90,10 @@ async def close_all(accountid=2):
 
 
 # 当前持仓币种
-async def get_coinlist(accountid=2):
+async def get_coinlist(accountid: int):
     Record = record.Record('Ledger')
-    pipeline = [
-        {
-            '$match': {
-                'account': accountid
-            }
-        }, {
-            '$group': {
-                '_id': '$instrument'
-            }
-        }
-    ]
+    pipeline = [{'$match': {'account': accountid}},
+                {'$group': {'_id': '$instrument'}}]
     temp = []
     for x in Record.mycol.aggregate(pipeline):
         temp.append(x['_id'])
@@ -113,13 +104,13 @@ async def get_coinlist(accountid=2):
         task_list.append(mon.position_exist(n))
     gather_result = await gather(*task_list)
     result = []
-    for n in gather_result:
-        if n[1]:
-            result.append(n[0][:n[0].find('-')])
+    for n in range(len(swap_list)):
+        if gather_result[n]:
+            result.append(swap_list[n][:swap_list[n].find('-')])
     return result
 
 
-def get_command(accountid=2):
+def get_command(accountid: int):
     command = ''
     while command != 'q':
         command = input(main_menu)

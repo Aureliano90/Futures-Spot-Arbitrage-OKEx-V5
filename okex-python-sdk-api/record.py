@@ -18,16 +18,9 @@ class Record:
         :param match: 匹配条件
         :rtype: dict
         """
-        pipeline = [{
-            '$match': match
-        }, {
-            '$sort': {
-                '_id': -1
-            }
-        }, {
-            '$limit': 1
-        }
-        ]
+        pipeline = [{'$match': match},
+                    {'$sort': {'_id': -1}},
+                    {'$limit': 1}]
         for x in self.mycol.aggregate(pipeline):
             return x
 
@@ -72,14 +65,12 @@ async def record():
                         historical_funding_rate = await publicAPI.get_historical_funding_rate(instId=m, limit='1')
                         for n in historical_funding_rate:
                             timestamp = funding_rate.utcfrommillisecs(n['fundingTime'])
-                            mydict = {'instrument': m[:m.find('-')], 'timestamp': timestamp, 'funding': float(n['realizedRate'])}
+                            mydict = {'instrument': m[:m.find('-')], 'timestamp': timestamp,
+                                      'funding': float(n['realizedRate'])}
                             funding_rate_list.append(mydict)
                     funding.mycol.insert_many(funding_rate_list)
 
-                    myquery = {
-                        'timestamp': {
-                            '$lt': timestamp.__sub__(timedelta(hours=48))
-                        }}
+                    myquery = {'timestamp': {'$lt': timestamp.__sub__(timedelta(hours=48))}}
                     ticker.mycol.delete_many(myquery)
 
         spot_ticker, swap_ticker = await asyncio.gather(publicAPI.get_tickers('SPOT'), publicAPI.get_tickers('SWAP'))

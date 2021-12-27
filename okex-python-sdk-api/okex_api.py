@@ -8,9 +8,7 @@ from log import fprint
 import lang
 import asyncio
 from asyncio import create_task, gather
-
-SLEEP = 0.2
-CONFIRMATION = 3
+from websocket import subscribe_without_login
 
 
 def round_to(number, fraction):
@@ -40,10 +38,12 @@ class OKExAPI:
             self.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
             self.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
             self.publicAPI = public.PublicAPI(test=True)
+            self.public_url = "wss://ws.okex.com:8443/ws/v5/public?brokerId=9999"
         else:
             self.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
             self.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
             self.publicAPI = public.PublicAPI()
+            self.public_url = "wss://ws.okex.com:8443/ws/v5/public"
 
         self.coin = coin
         if coin:
@@ -75,8 +75,8 @@ class OKExAPI:
                 # end = time.monotonic()
                 # print(f'OKExAPI init takes {end-begin} s')
             except Exception as e:
-                print(f'OKExAPI({self.coin}) init error')
-                print(e)
+                fprint(f'OKExAPI({self.coin}) init error')
+                fprint(e)
                 self.exist = False
                 fprint(lang.nonexistent_crypto.format(self.coin))
         else:
@@ -101,8 +101,8 @@ class OKExAPI:
                 # end = time.monotonic()
                 # print('OKExAPI__await__ takes {:f} s'.format(end-begin))
             except Exception as e:
-                print(f'OKExAPI__await__({self.coin}) error')
-                print(e)
+                fprint(f'OKExAPI__await__({self.coin}) error')
+                fprint(e)
                 self.exist = False
                 fprint(lang.nonexistent_crypto.format(self.coin))
         else:

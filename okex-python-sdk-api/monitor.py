@@ -159,6 +159,7 @@ class Monitor(OKExAPI):
         swap_trade_fee = float(swap_trade_fee['taker'])
         trade_fee = swap_trade_fee + spot_trade_fee
 
+        updated = False
         task_started = False
         time_to_accelerate = None
         accelerated = False
@@ -166,54 +167,57 @@ class Monitor(OKExAPI):
         reducing = False
         retry = 0
 
-        while True:
-            timestamp = datetime.utcnow()
-            begin = timestamp
-            swap_ticker = await self.publicAPI.get_specific_ticker(self.swap_ID)
+        channels = [{"channel": "tickers", "instId": self.swap_ID}]
+
+        async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
+            swap_ticker = ticker['data'][0]
+            timestamp = funding_rate.utcfrommillisecs(swap_ticker['ts'])
             last = float(swap_ticker['last'])
 
             # 每小时更新一次资金费，强平价
-            if timestamp.minute == 1:
-                if timestamp.second < 10:
-                    (current_rate, next_rate), liquidation_price = await gather(fundingRate.current_next(self.swap_ID),
-                                                                                self.liquidation_price())
-                    if liquidation_price == 0:
-                        exit()
+            if not updated and timestamp.minute == 0:
+                (current_rate, next_rate), liquidation_price = await gather(fundingRate.current_next(self.swap_ID),
+                                                                            self.liquidation_price())
+                if liquidation_price == 0:
+                    exit()
 
-                    recent = Stat.recent_open_stat()
-                    if recent:
-                        open_pd = recent['avg'] + recent['std']
-                    else:
-                        fprint(lang.fetch_ticker_first)
-                        break
-                    recent = Stat.recent_close_stat()
-                    close_pd = recent['avg'] - recent['std']
+                recent = Stat.recent_open_stat()
+                if recent:
+                    open_pd = recent['avg'] + recent['std']
+                else:
+                    fprint(lang.fetch_ticker_first)
+                    break
+                recent = Stat.recent_close_stat()
+                close_pd = recent['avg'] - recent['std']
 
-                    cost = open_pd - close_pd + 2 * trade_fee
-                    if (timestamp.hour + 4) % 8 == 0 and current_rate + next_rate < cost:
-                        fprint(lang.coin_current_next)
-                        fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
-                        fprint(lang.cost_to_close.format(cost))
-                        fprint(lang.closing.format(self.coin))
-                        await reducePosition.close(price_diff=close_pd)
-                        break
+                cost = open_pd - close_pd + 2 * trade_fee
+                if (timestamp.hour + 4) % 8 == 0 and current_rate + next_rate < cost:
+                    fprint(lang.coin_current_next)
+                    fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
+                    fprint(lang.cost_to_close.format(cost))
+                    fprint(lang.closing.format(self.coin))
+                    await reducePosition.close(price_diff=close_pd)
+                    break
 
-                    if timestamp.hour % 8 == 0:
-                        await self.record_funding()
-                        fprint(lang.coin_current_next)
-                        fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
+                if timestamp.hour % 8 == 0:
+                    await self.record_funding()
+                    fprint(lang.coin_current_next)
+                    fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
+                updated = True
+            elif updated and timestamp.minute == 1:
+                updated = False
 
             # 线程未创建
             if not task_started:
                 # 接近强平价，现货减仓
                 if liquidation_price < last * (1 + 1 / (leverage + 1)):
                     # 等待上一操作完成
-                    if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
-                        timestamp = datetime.utcnow()
-                        delta = timestamp.__sub__(begin).total_seconds()
-                        if delta < 10:
-                            await asyncio.sleep(10 - delta)
-                        continue
+                    # if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
+                    #     timestamp = datetime.utcnow()
+                    #     delta = timestamp.__sub__(begin).total_seconds()
+                    #     if delta < 10:
+                    #         await asyncio.sleep(10 - delta)
+                    #     continue
                     if not await addPosition.is_hedged():
                         fprint(self.coin, lang.hedge_fail)
                         exit()
@@ -241,12 +245,12 @@ class Monitor(OKExAPI):
                 # 保证金过多，现货加仓
                 if liquidation_price > last * (1 + 1 / (leverage - 1)):
                     # 等待上一操作完成
-                    if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
-                        timestamp = datetime.utcnow()
-                        delta = timestamp.__sub__(begin).total_seconds()
-                        if delta < 10:
-                            await asyncio.sleep(10 - delta)
-                        continue
+                    # if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
+                    #     timestamp = datetime.utcnow()
+                    #     delta = timestamp.__sub__(begin).total_seconds()
+                    #     if delta < 10:
+                    #         await asyncio.sleep(10 - delta)
+                    #     continue
                     if not addPosition.is_hedged():
                         fprint(self.coin, lang.hedge_fail)
                         exit()
@@ -349,7 +353,3 @@ class Monitor(OKExAPI):
                     if reducing:
                         reducing = False
                     task_started = False
-            timestamp = datetime.utcnow()
-            delta = timestamp.__sub__(begin).total_seconds()
-            if delta < 10:
-                await asyncio.sleep(10 - delta)

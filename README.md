@@ -6,7 +6,7 @@ according to [V5 API documentation](https://www.okex.com/docs-v5/en).
 
 Added English support. Annotations in Chinese. 
 
-Implemented asyncio.
+Implemented asyncio and websocket.
 
 ## Features
 * Command line menu
@@ -29,8 +29,6 @@ Implemented asyncio.
   However it is profitable to proactively close a portion of the portfolio when the futures premium surges and reopen later 
   when it subdues.
 * If the program is interrupted when opening or closing positions, it will not resume. Could be improved.
-* The current program uses REST API to fetch tickers which has significant delays. WebSocket API should give more 
-  responsive tickers.
 
 ## Installation
 Install [MongoDB](https://www.mongodb.com/try/download/community).
