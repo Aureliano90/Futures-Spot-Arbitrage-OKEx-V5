@@ -162,7 +162,10 @@ class OKExAPI:
         """
         if not swap_ID:
             swap_ID = self.swap_ID
-        swap_info = await self.publicAPI.get_specific_instrument('SWAP', swap_ID)
+        try:
+            swap_info = await self.publicAPI.get_specific_instrument('SWAP', swap_ID)
+        except OkexException:
+            return 0.
         contract_val = float(swap_info['ctVal'])
         holding = await self.swap_holding(swap_ID)
         if holding and holding['pos']:

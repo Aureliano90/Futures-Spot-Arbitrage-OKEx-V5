@@ -4,17 +4,17 @@ import open_position
 import close_position
 import monitor
 import trading_data
-import command
+import menu
 import asyncio
 
 
 if __name__ == '__main__':
     print(datetime.now())
-    command.get_command(accountid=3)
-    # command.monitor_all(2)
-    # command.profit_all(2)
-    # command.close_all(2)
-    # command.back_track_all(2)
+    menu.main_menu(accountid=3)
+    # menu.monitor_all(2)
+    # menu.profit_all(2)
+    # menu.close_all(2)
+    # menu.back_track_all(2)
     exit()
     # asyncio.get_event_loop().run_until_complete(funding_rate.FundingRate().back_tracking())
     # add = open_position.AddPosition('BTC', accountid=3)
