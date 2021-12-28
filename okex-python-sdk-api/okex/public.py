@@ -1,6 +1,7 @@
 from typing import List
 from .client import Client
 from .consts import *
+from .exceptions import *
 import asyncio
 
 
@@ -37,7 +38,10 @@ class PublicAPI(Client):
         params = {'instType': instType, 'instId': instId}
         if uly:
             params['uly'] = uly
-        return (await self.async_request_with_params(GET, GET_INSTRUMENTS, params))['data'][0]
+        result = await self.async_request_with_params(GET, GET_INSTRUMENTS, params)
+        if result['code'] == '51001':
+            raise OkexRequestException(result['msg'])
+        return result['data'][0]
 
     async def get_funding_time(self, instId: str) -> dict:
         """获取当前资金费率\n

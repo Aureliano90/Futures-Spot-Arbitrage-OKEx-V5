@@ -51,7 +51,8 @@ class ReducePosition(OKExAPI):
             mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'reduce', 'size': target_position}
             OP.insert(mydict)
 
-            filled_sum = 0.
+            spot_filled_sum = 0.
+            swap_filled_sum = 0.
             usdt_release = 0.
             fee_total = 0.
             spot_notional = 0.
@@ -229,7 +230,8 @@ class ReducePosition(OKExAPI):
                                 if spot_order_state == 'filled' and swap_order_state == 'filled':
                                     spot_filled = float(spot_order_info['accFillSz'])
                                     swap_filled = float(swap_order_info['accFillSz']) * contract_val
-                                    filled_sum += swap_filled
+                                    spot_filled_sum += spot_filled
+                                    swap_filled_sum += swap_filled
                                     spot_price = float(spot_order_info['avgPx'])
                                     usdt_release += spot_filled * spot_price + float(spot_order_info['fee'])
                                     fee_total += float(spot_order_info['fee'])
@@ -247,7 +249,7 @@ class ReducePosition(OKExAPI):
                                                   'size': target_position_prev}
                                         OP.mycol.find_one_and_update(mydict, {'$set': {'size': target_position}})
                                     else:
-                                        fprint(lang.hedge_fail)
+                                        fprint(lang.hedge_fail.format(self.coin, spot_filled, swap_filled))
                                         self.exitFlag = True
                                         break
 
@@ -275,7 +277,7 @@ class ReducePosition(OKExAPI):
 
             mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'reduce'}
             OP.delete(mydict)
-            fprint(lang.reduced_amount, filled_sum, self.coin)
+            fprint(lang.reduced_amount, swap_filled_sum, self.coin)
             if usdt_release != 0:
                 fprint(lang.spot_recoup, usdt_release, "USDT")
                 await self.add_margin(usdt_release)
@@ -298,7 +300,8 @@ class ReducePosition(OKExAPI):
         size_increment = float(self.spot_info['lotSz'])
         contract_val = float(self.swap_info['ctVal'])
 
-        filled_sum = 0.
+        spot_filled_sum = 0.
+        swap_filled_sum = 0.
         usdt_release = 0.
         fee_total = 0.
         spot_notional = 0.
@@ -505,7 +508,8 @@ class ReducePosition(OKExAPI):
                                 swap_balance = await self.swap_balance()
                                 spot_filled = float(spot_order_info['accFillSz'])
                                 swap_filled = float(swap_order_info['accFillSz']) * contract_val
-                                filled_sum += swap_filled
+                                spot_filled_sum += spot_filled
+                                swap_filled_sum += swap_filled
                                 spot_price = float(spot_order_info['avgPx'])
                                 # 现货成交量加保证金变动
                                 usdt_release += spot_filled * spot_price + float(
@@ -525,7 +529,7 @@ class ReducePosition(OKExAPI):
                                               'size': target_position_prev}
                                     OP.mycol.find_one_and_update(mydict, {'$set': {'size': target_position}})
                                 else:
-                                    fprint(lang.hedge_fail)
+                                    fprint(lang.hedge_fail.format(self.coin, spot_filled, swap_filled))
                                     self.exitFlag = True
                                     break
 
@@ -555,7 +559,7 @@ class ReducePosition(OKExAPI):
 
         mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'close'}
         OP.delete(mydict)
-        fprint(lang.closed_amount.format(filled_sum, self.coin))
+        fprint(lang.closed_amount.format(swap_filled_sum, self.coin))
         if usdt_release != 0:
             fprint(lang.spot_recoup, usdt_release, "USDT")
         return usdt_release

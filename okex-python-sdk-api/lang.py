@@ -18,11 +18,11 @@ input_USDT = _('Input USDT\n')
 input_crypto = _('Input crypto\n')
 # "输入币种\n"
 
-hedge_success = _('Hedging successful.')
+hedge_success = _('Successfully hedged')
 # "成功对冲"
 
-hedge_fail = _('Hedging failed. Inspect manually.')
-# "对冲失败，需手动检查"
+hedge_fail = _('{:d} hedging failed.\n Spot: {:f}\n Swap: {:f}')
+# "{:d}对冲失败。\n 现货：{:f}\n 合约：{:f}"
 
 no_position = _('Position does not exist.')
 # "没有仓位"
@@ -45,7 +45,7 @@ how_many_days = _('How many days?\n')
 how_many_hours = _('How many hours?\n')
 # "统计最近几小时？\n"
 
-main_menu = _("""
+main_menu_text = _("""
 1   Monitor existing positions
 2   Manipulate given crypto
 3   Funding rates
@@ -62,24 +62,26 @@ q   Quit
 # q   退出
 # """
 
-coin_menu = _("""
+crypto_menu_text = _("""
 1   Open or add
 2   Reduce
-3   Close
-4   PnL
-5   Premium/discount statistics
+3   Monitor
+4   Close
+5   PnL
+6   Premium/discount statistics
 b   Back
 """)
 # """
 # 1   加仓
 # 2   减仓
-# 3   平仓
-# 4   收益统计
-# 5   期现差价统计
+# 3   监控
+# 4   平仓
+# 5   收益统计
+# 6   期现差价统计
 # b   返回
 # """
 
-funding_menu = _("""
+funding_menu_text = _("""
 1   Top 10 for arbitrage
 2   Portfolio current funding rates
 3   Current funding rates for all
@@ -96,14 +98,16 @@ b   Back
 # b   返回
 # """
 
-account_menu = _("""
+account_menu_text = _("""
 1   Backtrack funding fees
 2   Portfolio PnL
+3   Delete record
 b   Back
 """)
 # """
 # 1   补录资金费
 # 2   持仓币种收益统计
+# 3   删除记录
 # b   返回
 # """
 
@@ -212,6 +216,12 @@ remaining = _('. Remaining ')
 
 position_exist = _('{:f} {:s} position exists.')
 # "已有{:f} {:s}仓位。"
+
+delete_anyway = _('Enter y to delete')
+# "输入y删除记录"
+
+deleted = _('Deleted {:d} records.')
+# "已删除{:d}条。"
 
 amount_to_reduce = _('amounts to reduce:')
 # '减仓数量:'

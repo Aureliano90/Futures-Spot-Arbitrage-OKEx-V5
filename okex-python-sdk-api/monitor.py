@@ -219,7 +219,8 @@ class Monitor(OKExAPI):
                     #         await asyncio.sleep(10 - delta)
                     #     continue
                     if not await addPosition.is_hedged():
-                        fprint(self.coin, lang.hedge_fail)
+                        spot, swap = await gather(self.spot_position(), self.swap_position())
+                        fprint(lang.hedge_fail.format(self.coin, spot, swap))
                         exit()
                     fprint(lang.approaching_liquidation)
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
@@ -252,7 +253,8 @@ class Monitor(OKExAPI):
                     #         await asyncio.sleep(10 - delta)
                     #     continue
                     if not addPosition.is_hedged():
-                        fprint(self.coin, lang.hedge_fail)
+                        spot, swap = await gather(self.spot_position(), self.swap_position())
+                        fprint(lang.hedge_fail.format(self.coin, spot, swap))
                         exit()
                     fprint(lang.too_much_margin)
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,

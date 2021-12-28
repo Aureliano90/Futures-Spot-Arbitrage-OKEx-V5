@@ -71,10 +71,11 @@ class AddPosition(OKExAPI):
         # 现货手续费率
         trade_fee = float(trade_fee['taker'])
 
-        filled_sum = 0
-        fee_total = 0
-        spot_notional = 0
-        swap_notional = 0
+        spot_filled_sum = 0.
+        swap_filled_sum = 0.
+        fee_total = 0.
+        spot_notional = 0.
+        swap_notional = 0.
         time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
         if target_position < contract_val:
@@ -259,7 +260,8 @@ class AddPosition(OKExAPI):
                             if spot_order_state == 'filled' and swap_order_state == 'filled':
                                 spot_filled = float(spot_order_info['accFillSz'])
                                 swap_filled = float(swap_order_info['accFillSz']) * contract_val
-                                filled_sum += swap_filled
+                                spot_filled_sum += spot_filled
+                                swap_filled_sum += swap_filled
                                 spot_price = float(spot_order_info['avgPx'])
                                 fee_total += float(spot_order_info['fee']) * spot_price
                                 spot_notional -= spot_filled * spot_price
@@ -276,7 +278,7 @@ class AddPosition(OKExAPI):
                                               'size': target_position_prev}
                                     OP.mycol.find_one_and_update(mydict, {'$set': {'size': target_position}})
                                 else:
-                                    fprint(lang.hedge_fail)
+                                    fprint(lang.hedge_fail.format(self.coin, spot_filled, swap_filled))
                                     self.exitFlag = True
                                     break
                             else:
@@ -307,12 +309,12 @@ class AddPosition(OKExAPI):
 
         mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'add'}
         OP.delete(mydict)
-        fprint(lang.added_amount, filled_sum, self.coin)
+        fprint(lang.added_amount, swap_filled_sum, self.coin)
         if await self.is_hedged():
-            fprint(self.coin, lang.hedge_success)
+            fprint(lang.hedge_success, swap_filled_sum, self.coin)
         else:
-            fprint(self.coin, lang.hedge_fail)
-        return filled_sum
+            fprint(lang.hedge_fail.format(self.coin, spot_filled_sum, swap_filled_sum))
+        return swap_filled_sum
 
     async def open(self, usdt_size=0.0, target_size=0.0, leverage=2, price_diff=0.002, accelerate_after=0):
         """建仓期现组合
