@@ -258,7 +258,8 @@ class AddPosition(OKExAPI):
 
                             # 下单成功
                             if spot_order_state == 'filled' and swap_order_state == 'filled':
-                                spot_filled = float(spot_order_info['accFillSz'])
+                                # 手续费扣币
+                                spot_filled = float(spot_order_info['accFillSz']) + float(spot_order_info['fee'])
                                 swap_filled = float(swap_order_info['accFillSz']) * contract_val
                                 spot_filled_sum += spot_filled
                                 swap_filled_sum += swap_filled
