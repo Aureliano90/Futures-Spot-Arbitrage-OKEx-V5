@@ -97,7 +97,7 @@ async def get_coinlist(accountid: int):
     temp = []
     for x in Record.mycol.aggregate(pipeline):
         temp.append(x['_id'])
-    print(temp)
+    # print(temp)
     mon = await monitor.Monitor(accountid=accountid)
     task_list = []
     swap_list = [n + '-USDT-SWAP' for n in temp]
@@ -148,6 +148,7 @@ def crypto_menu(accountid: int):
             command = input(crypto_menu_text)
             break
         else:
+            Monitor.__del__()
             continue
 
     while command != 'b':
@@ -189,6 +190,7 @@ def crypto_menu(accountid: int):
         elif command == '3':
             process = multiprocessing.Process(target=monitor_one, args=(coin, accountid))
             process.start()
+            process.join(0.1)
         elif command == '4':
             ReducePosition = close_position.ReducePosition(coin=coin, accountid=accountid)
             hours = 2

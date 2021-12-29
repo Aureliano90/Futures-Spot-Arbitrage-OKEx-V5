@@ -71,8 +71,8 @@ class Stat:
 
     def __init__(self, coin: str = None):
         # print('Stat init started')
-        self.publicAPI = public.PublicAPI()
         self.assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
+        self.publicAPI = public.PublicAPI()
 
         self.coin = coin
         if coin:
@@ -161,8 +161,8 @@ class Stat:
 
     def __del__(self):
         # print("Stat del started")
-        del self.assetAPI
-        del self.publicAPI
+        self.assetAPI.__del__()
+        self.publicAPI.__del__()
         # print("Stat del finished")
 
     async def get_candles(self, sem, instId, bar='4H') -> dict:

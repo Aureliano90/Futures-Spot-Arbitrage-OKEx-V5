@@ -252,7 +252,7 @@ class Monitor(OKExAPI):
                     #     if delta < 10:
                     #         await asyncio.sleep(10 - delta)
                     #     continue
-                    if not addPosition.is_hedged():
+                    if not await addPosition.is_hedged():
                         spot, swap = await gather(self.spot_position(), self.swap_position())
                         fprint(lang.hedge_fail.format(self.coin, spot, swap))
                         exit()

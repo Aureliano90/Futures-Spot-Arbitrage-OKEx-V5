@@ -7,6 +7,11 @@ class TradeAPI(Client):
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
         Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
 
+    def __del__(self):
+        # print("TradeAPI del started")
+        super().__del__()
+        # print("TradeAPI del finished")
+
     async def take_spot_order(self, instId, side, order_type, size, price='', client_oid='') -> dict:
         """币币下单：POST /api/v5/trade/order\n
         body{"instId":"BTC-USDT","tdMode":"cash","ccy":"USDT","clOrdId":"b15","side":"buy","ordType":"limit","px":"2.15","sz":"2"}

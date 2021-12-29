@@ -21,7 +21,7 @@ class FundingRate:
 
     def __del__(self):
         # print("FundingRate del started")
-        del self.publicAPI
+        self.publicAPI.__del__()
         # print("FundingRate del finished")
 
     async def get_instruments_ID(self):

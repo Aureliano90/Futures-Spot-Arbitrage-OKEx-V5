@@ -8,9 +8,9 @@ lang_zh_CN = gettext.translation(APP_NAME, LOCALE_DIR, ["zh_CN"])
 lang_en = gettext.translation(APP_NAME, LOCALE_DIR, ["en"])
 
 # 中文输出
-# lang_zh_CN.install()
+lang_zh_CN.install()
 # English support
-lang_en.install()
+# lang_en.install()
 
 input_USDT = _('Input USDT\n')
 # "输入USDT数量\n"

@@ -8,6 +8,11 @@ class AccountAPI(Client):
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
         Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
 
+    def __del__(self):
+        # print("AccountAPI del started")
+        super().__del__()
+        # print("AccountAPI del finished")
+
     async def get_account_config(self) -> dict:
         """查看当前账户的配置信息\n
         GET /api/v5/account/config

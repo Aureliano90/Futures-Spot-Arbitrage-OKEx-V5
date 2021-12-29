@@ -109,6 +109,11 @@ class OKExAPI:
             self.exist = False
         return self
 
+    def __del__(self):
+        self.accountAPI.__del__()
+        self.tradeAPI.__del__()
+        self.publicAPI.__del__()
+
     async def check_account_level(self):
         """检查账户模式，需开通合约交易
         """
