@@ -32,14 +32,16 @@ class AddPosition(OKExAPI):
         setting = create_task(self.accountAPI.get_leverage(self.swap_ID, 'isolated'))
         await gather(setting, self.check_position_mode())
         setting = setting.result()
-        while setting['mgnMode'] != 'isolated' or int(float(setting['lever'])) != leverage:
+        if setting['mgnMode'] != 'isolated' or int(float(setting['lever'])) != leverage:
             # 设定某个合约的杠杆
             fprint(lang.current_leverage, setting['lever'])
             fprint(lang.set_leverage, leverage)
             await self.accountAPI.set_leverage(instId=self.swap_ID, lever='{:d}'.format(leverage), mgnMode='isolated')
             setting = await self.accountAPI.get_leverage(self.swap_ID, 'isolated')
             # print(setting)
-        fprint(lang.finished_leverage)
+            fprint(lang.finished_leverage)
+        if setting['mgnMode'] != 'isolated' or int(float(setting['lever'])) != leverage:
+            fprint(lang.failed_leverage)
 
     async def add(self, usdt_size=0.0, target_size=0.0, leverage=2, price_diff=0.002, accelerate_after=0):
         """加仓期现组合

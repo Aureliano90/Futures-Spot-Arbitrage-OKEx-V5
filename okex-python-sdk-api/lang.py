@@ -187,6 +187,9 @@ set_leverage = _('Set leverage:')
 finished_leverage = _("Finished setting leverage.")
 # "设置杠杆完毕。"
 
+failed_leverage = _("Failed to set leverage.")
+# "设置杠杆失败。"
+
 futures_market_down = _('Swap market is down')
 # "合约系统出错"
 
@@ -312,3 +315,6 @@ reduced_margin = _('Reduced margin')
 
 fetch_ticker_first = _('Fetch ticker first.')
 # "先记录行情。"
+
+record_ticker = _('Recording ticker')
+# "记录行情中"

@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2021-12-27 22:51-0600\n"
-"PO-Revision-Date: 2021-12-27 22:51-0600\n"
+"POT-Creation-Date: 2021-12-29 23:21-0600\n"
+"PO-Revision-Date: 2021-12-29 23:22-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
@@ -208,169 +208,177 @@ msgid "Finished setting leverage."
 msgstr ""
 
 #: lang.py:190
-msgid "Swap market is down"
+msgid "Failed to set leverage."
 msgstr ""
 
 #: lang.py:193
-msgid "Spot order failed"
+msgid "Swap market is down"
 msgstr ""
 
 #: lang.py:196
-msgid "Swap order failed"
+msgid "Spot order failed"
 msgstr ""
 
 #: lang.py:199
-msgid "Swap order retracted:"
+msgid "Swap order failed"
 msgstr ""
 
 #: lang.py:202
-msgid "Spot order retracted:"
+msgid "Swap order retracted:"
 msgstr ""
 
 #: lang.py:205
-msgid "Swap order state:"
+msgid "Spot order retracted:"
 msgstr ""
 
 #: lang.py:208
-msgid "Spot order state:"
+msgid "Swap order state:"
 msgstr ""
 
 #: lang.py:211
-msgid "Await status update"
+msgid "Spot order state:"
 msgstr ""
 
 #: lang.py:214
-msgid ". Remaining "
+msgid "Await status update"
 msgstr ""
 
 #: lang.py:217
-msgid "{:f} {:s} position exists."
+msgid ". Remaining "
 msgstr ""
 
 #: lang.py:220
-msgid "Enter y to delete"
+msgid "{:f} {:s} position exists."
 msgstr ""
 
 #: lang.py:223
-msgid "Deleted {:d} records."
+msgid "Enter y to delete"
 msgstr ""
 
 #: lang.py:226
-msgid "amounts to reduce:"
+msgid "Deleted {:d} records."
 msgstr ""
 
 #: lang.py:229
-msgid "Reduced"
+msgid "amounts to reduce:"
 msgstr ""
 
 #: lang.py:232
-msgid "Spot recouped"
+msgid "Reduced"
 msgstr ""
 
 #: lang.py:235
-msgid "amounts to close:"
+msgid "Spot recouped"
 msgstr ""
 
 #: lang.py:238
-msgid "{:s} has been closed."
+msgid "amounts to close:"
 msgstr ""
 
 #: lang.py:241
-msgid "{:f} {:s} has been closed."
+msgid "{:s} has been closed."
 msgstr ""
 
 #: lang.py:244
-msgid "Start monitoring"
+msgid "{:f} {:s} has been closed."
 msgstr ""
 
 #: lang.py:247
-msgid "Cost to close: {:.3%}"
+msgid "Start monitoring"
 msgstr ""
 
 #: lang.py:250
-msgid "Closing {:s}"
+msgid "Cost to close: {:.3%}"
 msgstr ""
 
 #: lang.py:253
-msgid "Approaching liquidation. Reduce spot."
+msgid "Closing {:s}"
 msgstr ""
 
 #: lang.py:256
-msgid "Too much margin. Add spot."
+msgid "Approaching liquidation. Reduce spot."
 msgstr ""
 
 #: lang.py:259
-msgid "Transferred "
+msgid "Too much margin. Add spot."
 msgstr ""
 
 #: lang.py:262
-msgid "to spot account"
+msgid "Transferred "
 msgstr ""
 
 #: lang.py:265
-msgid "to swap account"
+msgid "to spot account"
 msgstr ""
 
 #: lang.py:268
-msgid "Spot: "
+msgid "to swap account"
 msgstr ""
 
 #: lang.py:271
-msgid "Swap: "
+msgid "Spot: "
 msgstr ""
 
 #: lang.py:274
-msgid "{} Receive funding fee {:.3f}"
+msgid "Swap: "
 msgstr ""
 
 #: lang.py:277
-msgid "Backtrack {} funding fee records {}"
+msgid "{} Receive funding fee {:.3f}"
 msgstr ""
 
 #: lang.py:280
-msgid "Reach max retry."
+msgid "Backtrack {} funding fee records {}"
 msgstr ""
 
 #: lang.py:283
-msgid "{} has more than one swap position."
+msgid "Reach max retry."
 msgstr ""
 
 #: lang.py:286
-msgid "Upgrade account mode to margin mode."
+msgid "{} has more than one swap position."
 msgstr ""
 
 #: lang.py:289
-msgid "Position mode is {}."
+msgid "Upgrade account mode to margin mode."
 msgstr ""
 
 #: lang.py:292
-msgid "Changed to net_mode."
+msgid "Position mode is {}."
 msgstr ""
 
 #: lang.py:295
-msgid "Failed to set net_mode."
+msgid "Changed to net_mode."
 msgstr ""
 
 #: lang.py:298
-msgid "Target position"
+msgid "Failed to set net_mode."
 msgstr ""
 
 #: lang.py:301
-msgid "less than contract value"
+msgid "Target position"
 msgstr ""
 
 #: lang.py:304
-msgid "Abort."
+msgid "less than contract value"
 msgstr ""
 
 #: lang.py:307
-msgid "Added margin"
+msgid "Abort."
 msgstr ""
 
 #: lang.py:310
-msgid "Reduced margin"
+msgid "Added margin"
 msgstr ""
 
 #: lang.py:313
+msgid "Reduced margin"
+msgstr ""
+
+#: lang.py:316
 msgid "Fetch ticker first."
+msgstr ""
+
+#: lang.py:319
+msgid "Recording ticker"
 msgstr ""

@@ -156,6 +156,38 @@ class AccountAPI(Client):
             params['limit'] = limit
         return (await self.async_request_with_params(GET, GET_LEDGER, params))['data']
 
+    async def get_archive_ledger(self, instType, ccy, mgnMode='', ctType='', type='', subType='', after='', before='', limit=''):
+        """账单流水查询\n
+        GET /api/v5/account/bills-archive
+
+        :param instType: 产品类型 SPOT：币币 MARGIN：币币杠杆 SWAP：永续合约 FUTURES：交割合约 OPTION：期权
+        :param ccy: 币种
+        :param mgnMode: 仓位类型 isolated：逐仓 cross：全仓
+        :param ctType: linear： 正向合约 inverse： 反向合约
+        :param type: 账单类型 1：划转 2：交易 3：交割 4：强制换币 5：强平 6：保证金划转 7：扣息 8：资金费 9：自动减仓 10：穿仓代偿
+        :param subType: 账单子类型
+        :param after: 请求此id之前
+        :param before: 请求此id之后
+        :param limit: 分页返回的结果集数量，最大为100，不填默认返回100条
+        :rtype: List[dict]
+        """
+        params = {'instType': instType, 'ccy': ccy}
+        if mgnMode:
+            params['mgnMode'] = mgnMode
+        if ctType:
+            params['ctType'] = ctType
+        if type:
+            params['type'] = type
+        if subType:
+            params['subType'] = subType
+        if after:
+            params['after'] = after
+        if before:
+            params['before'] = before
+        if limit:
+            params['limit'] = limit
+        return (await self.async_request_with_params(GET, GET_ARCHIVE_LEDGER, params))['data']
+
     async def adjust_margin(self, instId, posSide, type, amt):
         """增加或者减少逐仓保证金\n
         POST /api/v5/account/position/margin-balance

@@ -18,6 +18,7 @@ class Monitor(OKExAPI):
 
     def __init__(self, coin=None, accountid=3):
         OKExAPI.__init__(self, coin, accountid)
+        self.sem = None
 
     async def liquidation_price(self):
         """获取强平价
@@ -77,12 +78,13 @@ class Monitor(OKExAPI):
             # Results in DB
             for n in results:
                 db_ledger.append(n)
-            temp = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
+            temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8')
             await asyncio.sleep(1)
             api_ledger = temp
             inserted = 0
             while len(temp) == 100:
-                temp = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8', after=temp[99]['billId'])
+                temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8',
+                                                                after=temp[99]['billId'])
                 await asyncio.sleep(1)
                 api_ledger.extend(temp)
             # API results
@@ -101,12 +103,19 @@ class Monitor(OKExAPI):
                         inserted += 1
             fprint(lang.back_track_funding.format(self.coin, inserted))
 
+    def set_semaphore(self, sem):
+        """控制并发连接
+        """
+        self.sem = sem
+
     async def record_funding(self):
         """记录最近一次资金费
         """
-        Ledger = record.Record('Ledger')
-        ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
-        realized_rate = 0
+        with self.sem:
+            Ledger = record.Record('Ledger')
+            ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
+            await asyncio.sleep(1)
+        realized_rate = 0.
         for item in ledger:
             if item['instId'] == self.swap_ID:
                 realized_rate = float(item['pnl'])

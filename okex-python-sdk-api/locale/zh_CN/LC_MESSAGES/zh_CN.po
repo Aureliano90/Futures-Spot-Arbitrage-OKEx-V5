@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2021-12-27 22:51-0600\n"
-"PO-Revision-Date: 2021-12-27 22:51-0600\n"
+"POT-Creation-Date: 2021-12-29 23:22-0600\n"
+"PO-Revision-Date: 2021-12-29 23:22-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -245,172 +245,180 @@ msgid "Finished setting leverage."
 msgstr "设置杠杆完毕。"
 
 #: lang.py:190
+msgid "Failed to set leverage."
+msgstr "设置杠杆失败。"
+
+#: lang.py:193
 msgid "Swap market is down"
 msgstr "合约系统出错"
 
-#: lang.py:193
+#: lang.py:196
 msgid "Spot order failed"
 msgstr "现货下单失败"
 
-#: lang.py:196
+#: lang.py:199
 msgid "Swap order failed"
 msgstr "合约下单失败"
 
-#: lang.py:199
+#: lang.py:202
 msgid "Swap order retracted:"
 msgstr "合约撤单:"
 
-#: lang.py:202
+#: lang.py:205
 msgid "Spot order retracted:"
 msgstr "现货撤单:"
 
-#: lang.py:205
+#: lang.py:208
 msgid "Swap order state:"
 msgstr "合约订单状态:"
 
-#: lang.py:208
+#: lang.py:211
 msgid "Spot order state:"
 msgstr "现货订单状态:"
 
-#: lang.py:211
+#: lang.py:214
 msgid "Await status update"
 msgstr "等待状态更新"
 
-#: lang.py:214
+#: lang.py:217
 msgid ". Remaining "
 msgstr "，剩余"
 
-#: lang.py:217
+#: lang.py:220
 msgid "{:f} {:s} position exists."
 msgstr "已有{:f} {:s}仓位。"
 
-#: lang.py:220
+#: lang.py:223
 msgid "Enter y to delete"
 msgstr "输入y删除记录"
 
-#: lang.py:223
+#: lang.py:226
 msgid "Deleted {:d} records."
 msgstr "已删除{:d}条。"
 
-#: lang.py:226
+#: lang.py:229
 msgid "amounts to reduce:"
 msgstr "减仓数量:"
 
-#: lang.py:229
+#: lang.py:232
 msgid "Reduced"
 msgstr "已减仓"
 
-#: lang.py:232
+#: lang.py:235
 msgid "Spot recouped"
 msgstr "现货回收"
 
-#: lang.py:235
+#: lang.py:238
 msgid "amounts to close:"
 msgstr "平仓数量:"
 
-#: lang.py:238
+#: lang.py:241
 msgid "{:s} has been closed."
 msgstr "{:s}已平仓。"
 
-#: lang.py:241
+#: lang.py:244
 msgid "{:f} {:s} has been closed."
 msgstr "已平仓{:f} {:s}。"
 
-#: lang.py:244
+#: lang.py:247
 msgid "Start monitoring"
 msgstr "开始监控"
 
-#: lang.py:247
+#: lang.py:250
 msgid "Cost to close: {:.3%}"
 msgstr "平仓成本{:.3%}"
 
-#: lang.py:250
+#: lang.py:253
 msgid "Closing {:s}"
 msgstr "正在平仓{:s}"
 
-#: lang.py:253
+#: lang.py:256
 msgid "Approaching liquidation. Reduce spot."
 msgstr "接近强平价，现货减仓"
 
-#: lang.py:256
+#: lang.py:259
 msgid "Too much margin. Add spot."
 msgstr "保证金过多，现货加仓"
 
-#: lang.py:259
+#: lang.py:262
 msgid "Transferred "
 msgstr "划转"
 
-#: lang.py:262
+#: lang.py:265
 msgid "to spot account"
 msgstr "到现货账户"
 
-#: lang.py:265
+#: lang.py:268
 msgid "to swap account"
 msgstr "到合约账户"
 
-#: lang.py:268
+#: lang.py:271
 msgid "Spot: "
 msgstr "现货:"
 
-#: lang.py:271
+#: lang.py:274
 msgid "Swap: "
 msgstr "期货:"
 
-#: lang.py:274
+#: lang.py:277
 msgid "{} Receive funding fee {:.3f}"
 msgstr "{}收到资金费{:.3f}"
 
-#: lang.py:277
+#: lang.py:280
 msgid "Backtrack {} funding fee records {}"
 msgstr "补录{}资金费{}条"
 
-#: lang.py:280
+#: lang.py:283
 msgid "Reach max retry."
 msgstr "达到最大重试次数。"
 
-#: lang.py:283
+#: lang.py:286
 msgid "{} has more than one swap position."
 msgstr "{}合约仓位不止一个。"
 
-#: lang.py:286
+#: lang.py:289
 msgid "Upgrade account mode to margin mode."
 msgstr "升级账户模式为保证金模式。"
 
-#: lang.py:289
+#: lang.py:292
 msgid "Position mode is {}."
 msgstr "持仓方式为{}。"
 
-#: lang.py:292
+#: lang.py:295
 msgid "Changed to net_mode."
 msgstr "设置为单向持仓。"
 
-#: lang.py:295
+#: lang.py:298
 msgid "Failed to set net_mode."
 msgstr "设置单向持仓失败。"
 
-#: lang.py:298
+#: lang.py:301
 msgid "Target position"
 msgstr "目标数量"
 
-#: lang.py:301
+#: lang.py:304
 msgid "less than contract value"
 msgstr "小于合约面值"
 
-#: lang.py:304
+#: lang.py:307
 msgid "Abort."
 msgstr "中止。"
 
-#: lang.py:307
+#: lang.py:310
 msgid "Added margin"
 msgstr "增加保证金"
 
-#: lang.py:310
+#: lang.py:313
 msgid "Reduced margin"
 msgstr "减少保证金"
 
-#: lang.py:313
+#: lang.py:316
 msgid "Fetch ticker first."
 msgstr "先记录行情。"
+
+#: lang.py:319
+msgid "Recording ticker"
+msgstr "记录行情中"
 
 #~ msgid "Hedging successful."
 #~ msgstr "成功对冲。"

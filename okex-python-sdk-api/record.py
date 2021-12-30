@@ -3,6 +3,7 @@ import pymongo
 from datetime import datetime, timedelta
 import funding_rate
 import asyncio
+import lang
 
 
 class Record:
@@ -45,7 +46,7 @@ def record_ticker():
 
 
 async def record():
-    print('Recording ticker')
+    print(lang.record_ticker)
     ticker = Record('Ticker')
     funding = Record('Funding')
     fundingRate = funding_rate.FundingRate()

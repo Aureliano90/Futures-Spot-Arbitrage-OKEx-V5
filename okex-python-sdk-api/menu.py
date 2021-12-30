@@ -15,19 +15,21 @@ from asyncio import gather
 # 监控
 async def monitor_all(accountid: int):
     processes = []
+    sem = multiprocessing.Semaphore(5)
     coinlist = await get_coinlist(accountid)
     for n in coinlist:
         await print_apy(n, accountid)
         # 不能直接传Monitor对象
-        process = multiprocessing.Process(target=monitor_one, args=(n, accountid))
+        process = multiprocessing.Process(target=monitor_one, args=(n, accountid, sem))
         process.start()
         processes.append(process)
     for n in processes:
         n.join()
 
 
-def monitor_one(coin: str, accountid: int):
+def monitor_one(coin: str, accountid: int, sem):
     mon = monitor.Monitor(coin=coin, accountid=accountid)
+    mon.set_semaphore(sem)
     asyncio.get_event_loop().run_until_complete(mon.watch())
 
 

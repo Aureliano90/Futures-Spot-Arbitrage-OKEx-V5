@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 import funding_rate
 import open_position
@@ -6,6 +7,7 @@ import monitor
 import trading_data
 import menu
 import asyncio
+import multiprocessing
 
 
 if __name__ == '__main__':
