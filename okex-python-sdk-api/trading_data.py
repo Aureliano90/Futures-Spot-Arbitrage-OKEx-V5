@@ -174,11 +174,11 @@ class Stat:
         """
         async with sem:
             candles = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='300')
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             temp = candles
             while len(temp) == 300:
                 temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit='300')
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
                 candles.extend(temp)
             return {'instId': instId, 'candles': candles}
 
@@ -187,7 +187,8 @@ class Stat:
         """
         # begin = time.monotonic()
         task_list = []
-        sem = asyncio.Semaphore(10)
+        # /api/v5/market/candles 限速： 20次/2s
+        sem = asyncio.Semaphore(20)
         for n in funding_rate_list:
             task_list.append(self.get_candles(sem, n['instrument'] + '-USDT'))
         gather_result = await gather(*task_list)
@@ -201,7 +202,8 @@ class Stat:
         funding_rate_list = funding_rate_list[:10]
         fprint(coin_funding_value)
         for n in funding_rate_list:
-            fprint('{:9s}{:7.3%}{:6d}'.format(n['instrument'], n['funding_rate'], n['profitability']))
+            fprint('{:9s}{:7.3%}{:8.2%}{:8d}'.format(n['instrument'], n['funding_rate'], n['funding_rate'] * 3 * 365,
+                                                   n['profitability']))
         return funding_rate_list
 
     def open_dist(self):
@@ -407,6 +409,24 @@ class Stat:
             return open_time
         else:
             return datetime(2021, 4, 1)
+
+    def close_time(self, account):
+        """返回开仓时间
+
+        :param account: 账号id
+        :rtype: datetime
+        """
+        Record = record.Record('Ledger')
+        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': "平仓"}},
+                    {'$sort': {'_id': -1}}, {'$limit': 1}]
+        close_time = 0
+        for x in Record.mycol.aggregate(pipeline):
+            # 平仓时间
+            close_time = x['timestamp']
+        if close_time:
+            return close_time
+        else:
+            return datetime.utcnow()
 
     def history_funding(self, account, days=0):
         """最近累计资金费

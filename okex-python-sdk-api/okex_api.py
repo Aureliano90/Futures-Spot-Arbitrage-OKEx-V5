@@ -3,6 +3,7 @@ import okex.public as public
 import okex.trade as trade
 from okex.exceptions import OkexException, OkexAPIException
 import key
+import record
 import time
 from log import fprint
 import lang
@@ -28,6 +29,8 @@ class OKExAPI:
 
     def __init__(self, coin: str = None, accountid=3):
         # print('OKExAPI init started')
+        self.asem = None
+        self.psem = None
         self.accountid = accountid
         apikey = key.Key(accountid)
         api_key = apikey.api_key
@@ -114,6 +117,16 @@ class OKExAPI:
         self.tradeAPI.__del__()
         self.publicAPI.__del__()
 
+    def set_asemaphore(self, sem):
+        """控制并发连接
+        """
+        self.asem = sem
+
+    def set_psemaphore(self, sem):
+        """控制并发连接
+        """
+        self.psem = sem
+
     async def check_account_level(self):
         """检查账户模式，需开通合约交易
         """
@@ -154,13 +167,20 @@ class OKExAPI:
     async def swap_holding(self, swap_ID=None):
         """获取合约持仓
         """
-        if not swap_ID:
-            swap_ID = self.swap_ID
-        result: list = await self.accountAPI.get_specific_position(swap_ID)
-        for n in result:
-            if n['mgnMode'] == 'isolated':
-                return n
-        return None
+        # /api/v5/account/positions 限速：10次/2s
+        if self.asem:
+            sem = self.asem
+        else:
+            sem = asyncio.Semaphore(10)
+        async with sem:
+            if not swap_ID:
+                swap_ID = self.swap_ID
+            result: list = await self.accountAPI.get_specific_position(swap_ID)
+            await asyncio.sleep(2)
+            for n in result:
+                if n['mgnMode'] == 'isolated':
+                    return n
+            return None
 
     async def swap_position(self, swap_ID=None):
         """获取合约仓位
@@ -189,7 +209,21 @@ class OKExAPI:
 
     async def get_lever(self):
         setting = await self.accountAPI.get_leverage(self.swap_ID, 'isolated')
-        return int(float(setting['lever']))
+        return float(setting['lever'])
+
+    async def update_portfolio(self):
+        holding = await self.swap_holding()
+        margin = float(holding['margin'])
+        upl = float(holding['upl'])
+        last = float(holding['last'])
+        position = - float(holding['pos']) * float(self.swap_info['ctVal'])
+        size = position * last + margin + upl
+        portfolio: dict = record.Record('Portfolio').mycol.find_one(
+            {'account': self.accountid, 'instrument': self.coin})
+        portfolio['size'] = size
+        record.Record('Portfolio').mycol.find_one_and_replace({'account': self.accountid, 'instrument': self.coin},
+                                                              portfolio)
+        return portfolio
 
     async def add_margin(self, transfer_amount):
         """增加保证金

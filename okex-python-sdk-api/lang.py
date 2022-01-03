@@ -15,6 +15,9 @@ lang_zh_CN.install()
 input_USDT = _('Input USDT\n')
 # "输入USDT数量\n"
 
+input_leverage = _('Input leverage\n')
+# "输入杠杆大小\n"
+
 input_crypto = _('Input crypto\n')
 # "输入币种\n"
 
@@ -35,6 +38,11 @@ apy_message = _('{:6s} Today\'s APY: {:.2%}, 7 day APY: {:.2%}, overall APY: {:.
 
 open_time_pnl = _('Position opened at {}. Overall PnL: {:.2f} USDT')
 # "开仓时间：{}，累计收益：{:.2f} USDT"
+
+open_close_pnl = _('{} position opened at {}, closed at {}.\n'
+                   'PnL: {:.2f} USDT, APR: {:.2%}')
+# "{}开仓时间：{}，平仓时间：{}。\n
+# 收益：{:.2f} USDT，APR：{:.2%}"
 
 wrong_command = _('Wrong command')
 # "错误指令"
@@ -66,18 +74,20 @@ crypto_menu_text = _("""
 1   Open or add
 2   Reduce
 3   Monitor
-4   Close
-5   PnL
-6   Premium/discount statistics
+4   Adjust leverage
+5   Close
+6   PnL
+7   Premium/discount statistics
 b   Back
 """)
 # """
 # 1   加仓
 # 2   减仓
 # 3   监控
-# 4   平仓
-# 5   收益统计
-# 6   期现差价统计
+# 4   调整杠杆
+# 5   平仓
+# 6   收益统计
+# 7   期现差价统计
 # b   返回
 # """
 
@@ -101,13 +111,15 @@ b   Back
 account_menu_text = _("""
 1   Backtrack funding fees
 2   Portfolio PnL
-3   Delete record
+3   History PnL
+4   Delete record
 b   Back
 """)
 # """
 # 1   补录资金费
-# 2   持仓币种收益统计
-# 3   删除记录
+# 2   持仓收益
+# 3   历史收益
+# 4   删除记录
 # b   返回
 # """
 
@@ -127,8 +139,8 @@ funding_30day = _('Crypto  30 day funding')
 coin_7_30 = _('Crypto     7 day  30 day\n')
 # "币种     7天资金费 30天资金费\n"
 
-coin_funding_value = _('Crypto   Funding Profitability')
-# '币种       资金费   投资价值'
+coin_funding_value = _('Crypto   Funding     APR Profitability')
+# '币种        资金费     APR   投资价值'
 
 pd_open = _('Premium/discount at open')
 # '开仓期现差价'
@@ -178,17 +190,20 @@ insufficient_spot = _('Insufficient spot')
 insufficient_swap = _('Insufficient swap')
 # '合约仓位不足'
 
-current_leverage = _('Current leverage:')
-# "当前杠杆:"
+current_leverage = _('Current notional leverage:')
+# "当前名义杠杆："
 
-set_leverage = _('Set leverage:')
-# "设置杠杆:"
+set_leverage = _('Setting notional leverage:')
+# "设置名义杠杆："
 
 finished_leverage = _("Finished setting leverage.")
 # "设置杠杆完毕。"
 
 failed_leverage = _("Failed to set leverage.")
 # "设置杠杆失败。"
+
+adjust_leverage= _('Adjust actual leverage:')
+# "调整实际杠杆："
 
 futures_market_down = _('Swap market is down')
 # "合约系统出错"
@@ -198,6 +213,9 @@ spot_order_failed = _('Spot order failed')
 
 swap_order_failed = _('Swap order failed')
 # "合约下单失败"
+
+both_order_failed = _('Both orders failed')
+# "均下单失败"
 
 swap_order_retract = _('Swap order retracted:')
 # "合约撤单:"
@@ -244,8 +262,8 @@ has_closed = _('{:s} has been closed.')
 closed_amount = _('{:f} {:s} has been closed.')
 # "已平仓{:f} {:s}。"
 
-start_monitoring = _('Start monitoring')
-# "开始监控"
+start_monitoring = _('Start monitoring {}\nPosition: {:.2f} USDT Leverage: {}')
+# "开始监控{}\n仓位：{:.2f} USDT 杠杆：{}"
 
 cost_to_close = _('Cost to close: {:.3%}')
 # "平仓成本{:.3%}"
@@ -318,3 +336,7 @@ fetch_ticker_first = _('Fetch ticker first.')
 
 record_ticker = _('Recording ticker')
 # "记录行情中"
+
+no_margin_reduce = _('Margin cannot be reduced.')
+# "无法减少保证金。"
+

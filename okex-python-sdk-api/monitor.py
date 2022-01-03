@@ -4,9 +4,9 @@ import open_position
 import close_position
 import trading_data
 from datetime import datetime, timedelta
-import record
 from log import fprint
 import asyncio
+import multiprocessing
 
 
 # 监控一个币种，如果当期资金费+预测资金费小于重新开仓成本（开仓期现差价-平仓期现差价-手续费），进行平仓。
@@ -18,7 +18,6 @@ class Monitor(OKExAPI):
 
     def __init__(self, coin=None, accountid=3):
         OKExAPI.__init__(self, coin, accountid)
-        self.sem = None
 
     async def liquidation_price(self):
         """获取强平价
@@ -79,13 +78,13 @@ class Monitor(OKExAPI):
             for n in results:
                 db_ledger.append(n)
             temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8')
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             api_ledger = temp
             inserted = 0
             while len(temp) == 100:
                 temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8',
                                                                 after=temp[99]['billId'])
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
                 api_ledger.extend(temp)
             # API results
             for item in api_ledger:
@@ -103,15 +102,15 @@ class Monitor(OKExAPI):
                         inserted += 1
             fprint(lang.back_track_funding.format(self.coin, inserted))
 
-    def set_semaphore(self, sem):
-        """控制并发连接
-        """
-        self.sem = sem
-
     async def record_funding(self):
         """记录最近一次资金费
         """
-        with self.sem:
+        # /api/v5/account/bills 限速：5次/s
+        if self.psem:
+            sem = self.psem
+        else:
+            sem = multiprocessing.Semaphore(1)
+        with sem:
             Ledger = record.Record('Ledger')
             ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
             await asyncio.sleep(1)
@@ -144,7 +143,6 @@ class Monitor(OKExAPI):
     async def watch(self):
         """监控仓位，自动加仓、减仓
         """
-        fprint(lang.start_monitoring, self.coin)
         if not await self.position_exist():
             exit()
 
@@ -158,11 +156,18 @@ class Monitor(OKExAPI):
         Ledger = record.Record('Ledger')
         OP = record.Record('OP')
 
+        portfolio: dict = record.Record('Portfolio').mycol.find_one(
+            {'account': self.accountid, 'instrument': self.coin})
+        leverage = portfolio['leverage']
+        if 'size' not in portfolio.keys():
+            portfolio = await self.update_portfolio()
+        size = portfolio['size']
+        fprint(lang.start_monitoring.format(self.coin, size, leverage))
+
         # 计算手续费
-        spot_trade_fee, swap_trade_fee, leverage, liquidation_price = await gather(
+        spot_trade_fee, swap_trade_fee, liquidation_price = await gather(
             self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID),
             self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID),
-            self.get_lever(),
             self.liquidation_price())
         spot_trade_fee = float(spot_trade_fee['taker'])
         swap_trade_fee = float(swap_trade_fee['taker'])
@@ -235,16 +240,17 @@ class Monitor(OKExAPI):
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
                               'title': "自动减仓"}
                     Ledger.mycol.insert_one(mydict)
-                    swap_position = await self.swap_position()
-                    target_size = swap_position / (leverage + 1) ** 2
 
-                    # 期现差价控制在1.5个标准差
+                    # 期现差价控制在2个标准差
                     recent = Stat.recent_close_stat()
                     if recent:
-                        close_pd = recent['avg'] - 1.5 * recent['std']
+                        close_pd = recent['avg'] - 2 * recent['std']
                     else:
                         fprint(lang.fetch_ticker_first)
                         break
+
+                    swap_position = await self.swap_position()
+                    target_size = swap_position / (leverage + 1) ** 2
 
                     reduce_task = asyncio.create_task(
                         reducePosition.reduce(target_size=target_size, price_diff=close_pd))
@@ -269,8 +275,6 @@ class Monitor(OKExAPI):
                     mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
                               'title': "自动加仓"}
                     Ledger.mycol.insert_one(mydict)
-                    swap_position = await self.swap_position()
-                    target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
 
                     # 期现差价控制在2个标准差
                     recent = Stat.recent_open_stat()
@@ -280,17 +284,17 @@ class Monitor(OKExAPI):
                         fprint(lang.fetch_ticker_first)
                         break
 
-                    if await self.reduce_margin(target_size * last):
-                        add_task = asyncio.create_task(
-                            addPosition.add(target_size=target_size, leverage=leverage, price_diff=open_pd))
+                    # swap_position = await self.swap_position()
+                    # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
+                    usdt_size = await addPosition.adjust_swap_lever(leverage)
+                    if usdt_size:
+                        add_task = asyncio.create_task(addPosition.add(usdt_size=usdt_size, price_diff=open_pd))
                         task_started = True
                         adding = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                     else:
-                        retry += 1
-                        if retry == 3:
-                            print(lang.reach_max_retry)
-                            exit()
+                        fprint(lang.no_margin_reduce)
+                        exit()
             # 线程已运行
             else:
                 # 如果减仓时间过长，加速减仓
@@ -302,15 +306,16 @@ class Monitor(OKExAPI):
                         while not reduce_task.done():
                             await asyncio.sleep(1)
 
-                        liquidation_price = await self.liquidation_price()
-                        swap_position = await self.swap_position()
-                        target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         recent = Stat.recent_close_stat(1)
                         if recent:
                             close_pd = recent['avg'] - 1.5 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
                             break
+
+                        liquidation_price = await self.liquidation_price()
+                        swap_position = await self.swap_position()
+                        target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         reduce_task = asyncio.create_task(
                             reducePosition.reduce(target_size=target_size, price_diff=close_pd))
                         reducePosition.exitFlag = False
@@ -323,15 +328,16 @@ class Monitor(OKExAPI):
                         while not reduce_task.done():
                             await asyncio.sleep(1)
 
-                        liquidation_price = await self.liquidation_price()
-                        swap_position = await self.swap_position()
-                        target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         recent = Stat.recent_close_stat(2)
                         if recent:
                             close_pd = recent['avg'] - 2 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
                             break
+
+                        liquidation_price = await self.liquidation_price()
+                        swap_position = await self.swap_position()
+                        target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         reduce_task = asyncio.create_task(
                             reducePosition.reduce(target_size=target_size, price_diff=close_pd))
                         reducePosition.exitFlag = False
@@ -343,20 +349,22 @@ class Monitor(OKExAPI):
                         while not add_task.done():
                             await asyncio.sleep(1)
 
-                        liquidation_price = await self.liquidation_price()
-                        swap_position = await self.swap_position()
-                        target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
                         recent = Stat.recent_open_stat(2)
                         if recent:
                             open_pd = recent['avg'] + 2 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
                             break
-                        add_task = asyncio.create_task(
-                            addPosition.add(target_size=target_size, leverage=leverage, price_diff=open_pd))
-                        addPosition.exitFlag = False
-                        adding = True
-                        time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
+
+                        # liquidation_price = await self.liquidation_price()
+                        # swap_position = await self.swap_position()
+                        # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
+                        usdt_size = usdt_size - add_task.result()
+                        if usdt_size > 0:
+                            add_task = asyncio.create_task(addPosition.add(usdt_size=usdt_size, price_diff=open_pd))
+                            addPosition.exitFlag = False
+                            adding = True
+                            time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                 else:
                     liquidation_price = await self.liquidation_price()
                     if adding:
