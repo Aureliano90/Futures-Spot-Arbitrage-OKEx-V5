@@ -68,6 +68,8 @@ def average_true_range(candles: list, days=7):
 class Stat:
     """交易数据统计功能类
     """
+    def __str__(self):
+        return 'Stat'
 
     def __str__(self):
         return 'Stat'
