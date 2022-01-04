@@ -1,4 +1,3 @@
-from datetime import timezone
 import funding_rate
 import monitor
 import open_position
@@ -6,7 +5,7 @@ import close_position
 import trading_data
 import record
 import multiprocessing
-from log import fprint
+from utils import *
 from lang import *
 import asyncio
 from asyncio import gather
@@ -140,7 +139,7 @@ async def get_coinlist(accountid: int):
     # print(temp)
     mon = await monitor.Monitor(accountid=accountid)
     # /api/v5/account/positions 限速：10次/2s
-    mon.set_asemaphore(asyncio.Semaphore(10))
+    mon.set_asemaphore(asyncio.Semaphore(5))
     task_list = []
     swap_list = [n + '-USDT-SWAP' for n in coinlist]
     for n in swap_list:

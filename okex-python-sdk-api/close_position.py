@@ -1,7 +1,5 @@
 from okex_api import *
-from datetime import datetime, timedelta
 import trading_data
-from log import fprint
 
 
 class ReducePosition(OKExAPI):
@@ -9,7 +7,7 @@ class ReducePosition(OKExAPI):
     """
 
     def __init__(self, coin, accountid=3):
-        OKExAPI.__init__(self, coin, accountid)
+        super().__init__(coin=coin, accountid=accountid)
 
     def hedge(self):
         """减仓以达到完全对冲
@@ -30,12 +28,12 @@ class ReducePosition(OKExAPI):
         contract_val = float(self.swap_info['ctVal'])
 
         spot_position, holding = await gather(self.spot_position(), self.swap_holding())
-        swap_position = - float(holding['pos']) * contract_val
+        swap_position = - holding['pos'] * contract_val
         if holding and swap_position:
-            swap_balance = float(holding['margin'])
-            leverage = float(holding['lever'])
-            upl = float(holding['upl'])
-            last = float(holding['last'])
+            swap_balance = holding['margin']
+            leverage = holding['lever']
+            upl = holding['upl']
+            last = holding['last']
             liq_last = (swap_position * last + swap_balance + upl) / swap_position
         else:
             fprint(lang.nonexistent_position.format(self.swap_ID))
@@ -239,8 +237,8 @@ class ReducePosition(OKExAPI):
                                 if spot_order_state == 'filled' and swap_order_state == 'filled':
                                     prev_swap_balance = swap_balance
                                     holding = await self.swap_holding(self.swap_ID)
-                                    swap_balance = float(holding['margin'])
-                                    open_price = float(holding['avgPx'])
+                                    swap_balance = holding['margin']
+                                    open_price = holding['avgPx']
                                     spot_filled = float(spot_order_info['accFillSz'])
                                     swap_filled = float(swap_order_info['accFillSz']) * contract_val
                                     spot_filled_sum += spot_filled
@@ -533,8 +531,8 @@ class ReducePosition(OKExAPI):
                             if spot_order_state == 'filled' and swap_order_state == 'filled':
                                 prev_swap_balance = swap_balance
                                 holding = await self.swap_holding(self.swap_ID)
-                                swap_balance = float(holding['margin'])
-                                open_price = float(holding['avgPx'])
+                                swap_balance = holding['margin']
+                                open_price = holding['avgPx']
                                 spot_filled = float(spot_order_info['accFillSz'])
                                 swap_filled = float(swap_order_info['accFillSz']) * contract_val
                                 spot_filled_sum += spot_filled

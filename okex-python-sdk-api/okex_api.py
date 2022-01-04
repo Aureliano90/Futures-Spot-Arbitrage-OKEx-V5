@@ -1,34 +1,25 @@
+import asyncio
+from asyncio import create_task, gather
 import okex.account as account
 import okex.public as public
 import okex.trade as trade
 from okex.exceptions import OkexException, OkexAPIException
 import key
-import record
-import time
-from log import fprint
 import lang
-import asyncio
-from asyncio import create_task, gather
+import record
+from utils import *
 from websocket import subscribe_without_login
 
 
-def round_to(number, fraction):
-    """返回fraction的倍数
-    """
-    # 小数点后位数
-    ndigits = len('{:f}'.format(fraction - int(fraction))) - 2
-    if ndigits > 0:
-        return round(int(number / fraction) * fraction, ndigits)
-    else:
-        return round(int(number / fraction) * fraction)
-
-
+# @init_debug
 class OKExAPI:
     """基本OKEx功能类
     """
 
+    def __str__(self):
+        return 'OKExAPI'
+
     def __init__(self, coin: str = None, accountid=3):
-        # print('OKExAPI init started')
         self.asem = None
         self.psem = None
         self.accountid = accountid
@@ -52,6 +43,7 @@ class OKExAPI:
         if coin:
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
+            self.holding = None
 
             self.exitFlag = False
             self.exist = True
@@ -59,7 +51,6 @@ class OKExAPI:
             # 公共-获取现货信息
             # 公共-获取合约信息
             try:
-                # begin = time.monotonic()
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     # 在async上下文内呼叫构造函数，不能再run
@@ -74,9 +65,6 @@ class OKExAPI:
                     loop.run_until_complete(gather(self.spot_info, self.swap_info))
                     self.spot_info = self.spot_info.result()
                     self.swap_info = self.swap_info.result()
-                # print(f'OKExAPI({self.coin}) init finished')
-                # end = time.monotonic()
-                # print(f'OKExAPI init takes {end-begin} s')
             except Exception as e:
                 fprint(f'OKExAPI({self.coin}) init error')
                 fprint(e)
@@ -93,16 +81,11 @@ class OKExAPI:
         """
         if self.coin:
             try:
-                # print('OKExAPI__await__ started')
-                # begin = time.monotonic()
                 self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
                 self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
                 yield from gather(self.spot_info, self.swap_info)
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
-                # print('OKExAPI__await__ finished')
-                # end = time.monotonic()
-                # print('OKExAPI__await__ takes {:f} s'.format(end-begin))
             except Exception as e:
                 fprint(f'OKExAPI__await__({self.coin}) error')
                 fprint(e)
@@ -171,15 +154,18 @@ class OKExAPI:
         if self.asem:
             sem = self.asem
         else:
-            sem = asyncio.Semaphore(10)
+            sem = asyncio.Semaphore(5)
         async with sem:
             if not swap_ID:
                 swap_ID = self.swap_ID
             result: list = await self.accountAPI.get_specific_position(swap_ID)
-            await asyncio.sleep(2)
-            for n in result:
-                if n['mgnMode'] == 'isolated':
-                    return n
+            if self.asem:
+                await asyncio.sleep(1)
+            for holding in result:
+                if holding['mgnMode'] == 'isolated':
+                    keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
+                    self.holding = dict([(n, float(holding[n])) if holding[n] else (n, 0.) for n in keys])
+                    return self.holding
             return None
 
     async def swap_position(self, swap_ID=None):
@@ -187,14 +173,16 @@ class OKExAPI:
         """
         if not swap_ID:
             swap_ID = self.swap_ID
-        try:
-            swap_info = await self.publicAPI.get_specific_instrument('SWAP', swap_ID)
-        except OkexException:
-            return 0.
+            swap_info = self.swap_info
+        else:
+            try:
+                swap_info = await self.publicAPI.get_specific_instrument('SWAP', swap_ID)
+            except OkexException:
+                return 0.
         contract_val = float(swap_info['ctVal'])
         holding = await self.swap_holding(swap_ID)
-        if holding and holding['pos']:
-            return - float(holding['pos']) * contract_val
+        if holding:
+            return - holding['pos'] * contract_val
         else:
             return 0.
 
@@ -202,8 +190,17 @@ class OKExAPI:
         """获取占用保证金
         """
         holding = await self.swap_holding(self.swap_ID)
-        if holding and holding['margin']:
-            return float(holding['margin'])
+        if holding:
+            return holding['margin']
+        else:
+            return 0.
+
+    async def liquidation_price(self):
+        """获取强平价
+        """
+        holding = await self.swap_holding()
+        if holding:
+            return holding['liqPx']
         else:
             return 0.
 
@@ -213,10 +210,10 @@ class OKExAPI:
 
     async def update_portfolio(self):
         holding = await self.swap_holding()
-        margin = float(holding['margin'])
-        upl = float(holding['upl'])
-        last = float(holding['last'])
-        position = - float(holding['pos']) * float(self.swap_info['ctVal'])
+        margin = holding['margin']
+        upl = holding['upl']
+        last = holding['last']
+        position = - holding['pos'] * float(self.swap_info['ctVal'])
         size = position * last + margin + upl
         portfolio: dict = record.Record('Portfolio').mycol.find_one(
             {'account': self.accountid, 'instrument': self.coin})

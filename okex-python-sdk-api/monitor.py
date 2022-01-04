@@ -3,8 +3,7 @@ import funding_rate
 import open_position
 import close_position
 import trading_data
-from datetime import datetime, timedelta
-from log import fprint
+from utils import *
 import asyncio
 import multiprocessing
 
@@ -17,16 +16,7 @@ class Monitor(OKExAPI):
     """
 
     def __init__(self, coin=None, accountid=3):
-        OKExAPI.__init__(self, coin, accountid)
-
-    async def liquidation_price(self):
-        """获取强平价
-        """
-        holding = await self.swap_holding()
-        if holding and holding['liqPx']:
-            return float(holding['liqPx'])
-        else:
-            return 0.
+        super().__init__(coin=coin, accountid=accountid)
 
     async def apr(self, days=0):
         """最近年利率
@@ -35,23 +25,25 @@ class Monitor(OKExAPI):
         :rtype: float
         """
         Stat = trading_data.Stat(self.coin)
-        swap_margin, spot_position, ticker = await gather(self.swap_balance(), self.spot_position(),
-                                                          self.publicAPI.get_specific_ticker(self.spot_ID))
-        last = float(ticker['last'])
-        holding = swap_margin + last * spot_position
+        holding = await self.swap_holding()
+        margin = holding['margin']
+        upl = holding['upl']
+        last = holding['last']
+        position = - holding['pos'] * float(self.swap_info['ctVal'])
+        size = position * last + margin + upl
         timestamp = datetime.utcnow()
 
-        if holding > 10:
+        if size > 10:
             if days == 0:
                 open_time = Stat.open_time(self.accountid)
                 delta = timestamp.__sub__(open_time).total_seconds()
                 funding = Stat.history_funding(self.accountid)
                 cost = Stat.history_cost(self.accountid)
-                apr = (funding + cost) / holding / delta * 86400 * 365
+                apr = (funding + cost) / size / delta * 86400 * 365
             else:
                 funding = Stat.history_funding(self.accountid, days)
                 cost = Stat.history_cost(self.accountid, days)
-                apr = (funding + cost) / holding / days * 365
+                apr = (funding + cost) / size / days * 365
         else:
             apr = 0.
         return apr
@@ -113,7 +105,8 @@ class Monitor(OKExAPI):
         with sem:
             Ledger = record.Record('Ledger')
             ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
-            await asyncio.sleep(1)
+            if self.psem:
+                await asyncio.sleep(1)
         realized_rate = 0.
         for item in ledger:
             if item['instId'] == self.swap_ID:
@@ -159,7 +152,7 @@ class Monitor(OKExAPI):
         portfolio: dict = record.Record('Portfolio').mycol.find_one(
             {'account': self.accountid, 'instrument': self.coin})
         leverage = portfolio['leverage']
-        if 'size' not in portfolio.keys():
+        if 'size' not in portfolio:
             portfolio = await self.update_portfolio()
         size = portfolio['size']
         fprint(lang.start_monitoring.format(self.coin, size, leverage))
@@ -179,13 +172,12 @@ class Monitor(OKExAPI):
         accelerated = False
         adding = False
         reducing = False
-        retry = 0
 
         channels = [{"channel": "tickers", "instId": self.swap_ID}]
 
         async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
             swap_ticker = ticker['data'][0]
-            timestamp = funding_rate.utcfrommillisecs(swap_ticker['ts'])
+            timestamp = utcfrommillisecs(swap_ticker['ts'])
             last = float(swap_ticker['last'])
 
             # 每小时更新一次资金费，强平价
