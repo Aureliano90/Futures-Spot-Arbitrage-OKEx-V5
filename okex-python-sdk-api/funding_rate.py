@@ -1,17 +1,11 @@
-import time
-from datetime import datetime
 from typing import List
 import okex.public as public
 import statistics
 import record
 import trading_data
-from log import fprint
+from utils import *
 from lang import *
 import asyncio
-
-
-def utcfrommillisecs(millisecs: str):
-    return datetime.utcfromtimestamp(int(millisecs) / 1000)
 
 
 class FundingRate:

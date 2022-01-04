@@ -7,7 +7,7 @@ import time
 import zlib
 import requests
 import websockets
-from log import fprint
+from utils import *
 
 
 def get_timestamp():
@@ -466,7 +466,7 @@ channels = [{"channel": "tickers", "instId": "BTC-USDT"}, {"channel": "tickers",
 # channels = [{"channel": "orders", "instType": "FUTURES", "uly": "BTC-USD", "instId": "BTC-USD-201225"}]
 # 策略委托订单频道 Algo Orders Channel
 # channels = [{"channel": "orders-algo", "instType": "FUTURES", "uly": "BTC-USD", "instId": "BTC-USD-201225"}]
-#高级策略委托订单频道 Cancel Advance Algos
+# 高级策略委托订单频道 Cancel Advance Algos
 # channels = [{"channel": "algo-advance", "instType": "SPOT","instId": "BTC-USD-201225","algoId":"12345678"}]
 # 爆仓风险预警推送频道
 # channels = [{"channel": "liquidation-warning", "instType": "SWAP","instType": "","uly":"","instId":""}]
@@ -474,6 +474,7 @@ channels = [{"channel": "tickers", "instId": "BTC-USDT"}, {"channel": "tickers",
 '''
 交易 trade
 '''
+
 
 # 下单 Place Order
 # trade_param = {"id": "1512", "op": "order", "args": [{"side": "buy", "instId": "BTC-USDT", "tdMode": "isolated", "ordType": "limit", "px": "19777", "sz": "1"}]}

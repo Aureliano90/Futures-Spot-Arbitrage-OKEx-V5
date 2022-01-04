@@ -1,15 +1,16 @@
 from okex_api import *
-from datetime import datetime, timedelta
 import trading_data
-from log import fprint
 
 
 class AddPosition(OKExAPI):
     """建仓、加仓功能类
     """
 
+    def __str__(self):
+        return 'AddPosition'
+
     def __init__(self, coin, accountid=3):
-        OKExAPI.__init__(self, coin, accountid)
+        super().__init__(coin=coin, accountid=accountid)
 
     async def is_hedged(self):
         """判断合约现货是否对冲
@@ -46,13 +47,13 @@ class AddPosition(OKExAPI):
         return True
 
     async def adjust_swap_lever(self, leverage: float):
-        holding, position, prev_lever = await gather(self.swap_holding(), self.swap_position(), self.get_lever())
-        position = abs(position)
+        holding, prev_lever = await gather(self.swap_holding(), self.get_lever())
+        position = abs(holding['pos'] * float(self.swap_info['ctVal']))
         if holding and position:
             fprint(lang.adjust_leverage, leverage)
-            avgPx = float(holding['avgPx'])
-            last = float(holding['last'])
-            upl = float(holding['upl'])
+            avgPx = holding['avgPx']
+            last = holding['last']
+            upl = holding['upl']
             max_lever = float(self.swap_info['lever'])
 
             if last >= avgPx:

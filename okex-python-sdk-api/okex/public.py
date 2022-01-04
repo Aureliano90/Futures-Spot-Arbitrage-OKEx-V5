@@ -80,7 +80,13 @@ class PublicAPI(Client):
         params = {'instType': instType}
         if uly:
             params['uly'] = uly
-        return (await self.async_request_with_params(GET, GET_TICKERS, params))['data']
+        try:
+            return (await self.async_request_with_params(GET, GET_TICKERS, params))['data']
+        except Exception as e:
+            await asyncio.sleep(60)
+            # print("get_ticker exception: ", e)
+            return (await self.async_request_with_params(GET, GET_TICKERS, params))['data']
+
 
     async def get_specific_ticker(self, instId: str) -> dict:
         """获取单个产品行情信息\n

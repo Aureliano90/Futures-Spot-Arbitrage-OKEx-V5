@@ -1,4 +1,3 @@
-from datetime import timezone
 import funding_rate
 import monitor
 import open_position
@@ -6,7 +5,7 @@ import close_position
 import trading_data
 import record
 import multiprocessing
-from log import fprint
+from utils import *
 from lang import *
 import asyncio
 from asyncio import gather
@@ -17,9 +16,11 @@ async def monitor_all(accountid: int):
     processes = []
     # /api/v5/account/bills 限速：5次/s
     sem = multiprocessing.Semaphore(5)
+    # /api/v5/account/positions 限速：10次/2s
+    asem = asyncio.Semaphore(5)
     coinlist = await get_coinlist(accountid)
     for n in coinlist:
-        await print_apy(n, accountid)
+        await print_apy(n, accountid, asem)
         # 不能直接传Monitor对象
         process = multiprocessing.Process(target=monitor_one, args=(n, accountid, sem))
         process.start()
@@ -35,8 +36,9 @@ def monitor_one(coin: str, accountid: int, sem=None):
     asyncio.get_event_loop().run_until_complete(mon.watch())
 
 
-async def print_apy(coin: str, accountid: int):
+async def print_apy(coin: str, accountid: int, asem):
     mon = await monitor.Monitor(coin=coin, accountid=accountid)
+    mon.set_asemaphore(asem)
     fundingRate = funding_rate.FundingRate()
     current_rate, next_rate = await fundingRate.current_next(mon.swap_ID)
     fprint(coin_current_next)
@@ -49,8 +51,11 @@ async def print_apy(coin: str, accountid: int):
 # 收益统计
 async def profit_all(accountid: int):
     coinlist = await get_coinlist(accountid)
+    # /api/v5/account/positions 限速：10次/2s
+    asem = asyncio.Semaphore(5)
     for coin in coinlist:
         mon, Stat = await gather(monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin))
+        mon.set_asemaphore(asem)
         gather_result = await gather(mon.apr(1), mon.apr(7), mon.apr())
         fprint(apy_message.format(coin, *gather_result))
         funding = Stat.history_funding(accountid)
@@ -140,7 +145,7 @@ async def get_coinlist(accountid: int):
     # print(temp)
     mon = await monitor.Monitor(accountid=accountid)
     # /api/v5/account/positions 限速：10次/2s
-    mon.set_asemaphore(asyncio.Semaphore(10))
+    mon.set_asemaphore(asyncio.Semaphore(5))
     task_list = []
     swap_list = [n + '-USDT-SWAP' for n in coinlist]
     for n in swap_list:

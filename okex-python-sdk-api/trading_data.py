@@ -2,11 +2,10 @@ from math import sqrt
 from typing import List
 import okex.asset as asset
 import okex.public as public
-from datetime import datetime, timedelta, timezone
 import statistics
 import record
 import matplotlib.pyplot as plt
-from log import fprint
+from utils import *
 from lang import *
 import asyncio
 from asyncio import create_task, gather
@@ -65,12 +64,15 @@ def average_true_range(candles: list, days=7):
     return statistics.mean(tr)
 
 
+# @init_debug
 class Stat:
     """交易数据统计功能类
     """
 
+    def __str__(self):
+        return 'Stat'
+
     def __init__(self, coin: str = None):
-        # print('Stat init started')
         self.assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
         self.publicAPI = public.PublicAPI()
 
@@ -82,7 +84,6 @@ class Stat:
             self.exist = True
 
             try:
-                # begin = time.monotonic()
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     # 在async上下文内呼叫构造函数，不能再run
@@ -97,11 +98,8 @@ class Stat:
                     loop.run_until_complete(gather(self.spot_info, self.swap_info))
                     self.spot_info = self.spot_info.result()
                     self.swap_info = self.swap_info.result()
-                # print(f'Stat({self.coin}) init finished')
-                # end = time.monotonic()
-                # print(f'Stat init takes {end-begin} s')
             except Exception as e:
-                fprint(f'Stat({self.coin}) init error')
+                fprint(f'{self.__str__()}({self.coin}) init error')
                 fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
@@ -116,18 +114,13 @@ class Stat:
         """
         if self.coin:
             try:
-                # print('Stat__await__ started')
-                # begin = time.monotonic()
                 self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
                 self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
                 yield from gather(self.spot_info, self.swap_info)
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
-                # print('Stat__await__ finished')
-                # end = time.monotonic()
-                # print('Stat__await__ takes {:f} s'.format(end-begin))
             except Exception as e:
-                fprint(f'Stat__async__init__({self.coin}) error')
+                fprint(f'{self.__str__()}__await__({self.coin}) error')
                 fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
@@ -139,19 +132,14 @@ class Stat:
     async def __async__init__(self):
         if self.coin:
             try:
-                # print('Stat__async__init__ started')
-                # begin = time.monotonic()
                 self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
                 self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
                 await self.spot_info
                 await self.swap_info
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
-                # print(f'Stat__async__init__({self.coin}) finished')
-                # end = time.monotonic()
-                # print(f'Stat__async__init__ takes {end - begin} s')
             except Exception as e:
-                fprint(f'Stat__async__init__({self.coin}) error')
+                fprint(f'{self.__str__()}__async__init__({self.coin}) error')
                 fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
@@ -203,7 +191,7 @@ class Stat:
         fprint(coin_funding_value)
         for n in funding_rate_list:
             fprint('{:9s}{:7.3%}{:8.2%}{:8d}'.format(n['instrument'], n['funding_rate'], n['funding_rate'] * 3 * 365,
-                                                   n['profitability']))
+                                                     n['profitability']))
         return funding_rate_list
 
     def open_dist(self):
