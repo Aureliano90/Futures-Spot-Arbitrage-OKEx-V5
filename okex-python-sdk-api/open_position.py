@@ -6,7 +6,8 @@ class AddPosition(OKExAPI):
     """建仓、加仓功能类
     """
 
-    def __str__(self):
+    @property
+    def __name__(self):
         return 'AddPosition'
 
     def __init__(self, coin, accountid=3):

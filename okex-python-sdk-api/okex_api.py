@@ -1,4 +1,3 @@
-import asyncio
 from asyncio import create_task, gather
 import okex.account as account
 import okex.public as public
@@ -12,11 +11,12 @@ from websocket import subscribe_without_login
 
 
 # @init_debug
-class OKExAPI:
+class OKExAPI(object):
     """基本OKEx功能类
     """
 
-    def __str__(self):
+    @property
+    def __name__(self):
         return 'OKExAPI'
 
     def __init__(self, coin: str = None, accountid=3):
@@ -66,7 +66,7 @@ class OKExAPI:
                     self.spot_info = self.spot_info.result()
                     self.swap_info = self.swap_info.result()
             except Exception as e:
-                fprint(f'{self.__str__()}({self.coin}) init error')
+                fprint(f'{self.__name__}({self.coin}) init error')
                 fprint(e)
                 self.exist = False
                 fprint(lang.nonexistent_crypto.format(self.coin))
@@ -87,7 +87,7 @@ class OKExAPI:
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
             except Exception as e:
-                fprint(f'{self.__str__()}__await__({self.coin}) error')
+                fprint(f'{self.__name__}__await__({self.coin}) error')
                 fprint(e)
                 self.exist = False
                 fprint(lang.nonexistent_crypto.format(self.coin))
@@ -233,7 +233,7 @@ class OKExAPI:
             return False
         try:
             if await self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='add', amt=transfer_amount):
-                fprint(lang.added_margin, transfer_amount, "USDT")
+                fprint(lang.added_margin.format(transfer_amount))
                 return True
             else:
                 return False
@@ -256,7 +256,7 @@ class OKExAPI:
         try:
             if await self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='reduce',
                                                    amt=transfer_amount):
-                fprint(lang.reduced_margin, transfer_amount, "USDT")
+                fprint(lang.reduced_margin.format(transfer_amount))
                 return True
             else:
                 return False

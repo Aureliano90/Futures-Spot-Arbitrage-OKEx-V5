@@ -7,11 +7,12 @@ import monitor
 import trading_data
 import menu
 import asyncio
+import typing
 
 
 if __name__ == '__main__':
     print(datetime.now())
-    menu.main_menu(accountid=2)
+    menu.main_menu(accountid=3)
     # menu.monitor_all(2)
     # menu.profit_all(2)
     # menu.close_all(2)

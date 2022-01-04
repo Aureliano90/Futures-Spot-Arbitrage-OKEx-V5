@@ -7,7 +7,6 @@ import record
 import matplotlib.pyplot as plt
 from utils import *
 from lang import *
-import asyncio
 from asyncio import create_task, gather
 
 
@@ -68,7 +67,9 @@ def average_true_range(candles: list, days=7):
 class Stat:
     """交易数据统计功能类
     """
-    def __str__(self):
+
+    @property
+    def __name__(self):
         return 'Stat'
 
     def __init__(self, coin: str = None):
@@ -98,7 +99,7 @@ class Stat:
                     self.spot_info = self.spot_info.result()
                     self.swap_info = self.swap_info.result()
             except Exception as e:
-                fprint(f'{self.__str__()}({self.coin}) init error')
+                fprint(f'{self.__name__}({self.coin}) init error')
                 fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
@@ -119,7 +120,7 @@ class Stat:
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
             except Exception as e:
-                fprint(f'{self.__str__()}__await__({self.coin}) error')
+                fprint(f'{self.__name__}__await__({self.coin}) error')
                 fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
@@ -138,7 +139,7 @@ class Stat:
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
             except Exception as e:
-                fprint(f'{self.__str__()}__async__init__({self.coin}) error')
+                fprint(f'{self.__name__}__async__init__({self.coin}) error')
                 fprint(e)
                 self.exist = False
                 fprint(nonexistent_crypto.format(self.coin))
@@ -147,12 +148,10 @@ class Stat:
         return self
 
     def __del__(self):
-        # print("Stat del started")
         self.assetAPI.__del__()
         self.publicAPI.__del__()
-        # print("Stat del finished")
 
-    async def get_candles(self, sem, instId, bar='4H') -> dict:
+    async def get_candles(self, sem, instId, days, bar='4H') -> dict:
         """获取4小时K线
 
         :param sem: Semaphore
@@ -160,13 +159,24 @@ class Stat:
         :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H]
         """
         async with sem:
-            candles = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='300')
-            await asyncio.sleep(2)
-            temp = candles
-            while len(temp) == 300:
-                temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit='300')
+            limit = days * 6 + 1
+            candles, temp = [], []
+            while limit > 0:
+                if limit <= 300:
+                    if len(temp) == 300:
+                        # 最后一次
+                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit=limit)
+                    else:
+                        # 第一次
+                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, limit=limit)
+                else:
+                    if len(temp) == 300:
+                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit='300')
+                    else:
+                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='300')
                 await asyncio.sleep(2)
                 candles.extend(temp)
+                limit -= 300
             return {'instId': instId, 'candles': candles}
 
     async def profitability(self, funding_rate_list, days=7) -> List[dict]:
@@ -177,10 +187,10 @@ class Stat:
         # /api/v5/market/candles 限速： 20次/2s
         sem = asyncio.Semaphore(20)
         for n in funding_rate_list:
-            task_list.append(self.get_candles(sem, n['instrument'] + '-USDT'))
+            task_list.append(self.get_candles(sem, n['instrument'] + '-USDT', days))
         gather_result = await gather(*task_list)
         # end = time.monotonic()
-        # print("get_candles takes %f s" % (end - begin))
+        # print(f"get_candles takes {end - begin} s")
 
         for n in range(len(funding_rate_list)):
             atr = average_true_range(gather_result[n]['candles'], days)
@@ -189,8 +199,8 @@ class Stat:
         funding_rate_list = funding_rate_list[:10]
         fprint(coin_funding_value)
         for n in funding_rate_list:
-            fprint('{:9s}{:7.3%}{:8.2%}{:8d}'.format(n['instrument'], n['funding_rate'], n['funding_rate'] * 3 * 365,
-                                                     n['profitability']))
+            fprint(f"{n['instrument']:9s}{n['funding_rate']:7.3%}"
+                   f"{n['funding_rate'] * 3 * 365:8.2%}{n['profitability']:8d}")
         return funding_rate_list
 
     def open_dist(self):
@@ -251,9 +261,8 @@ class Stat:
             result = x
         count3 = result['count']
         frequency3 = count3 / total
-        print("开仓", self.coin, '{:.2%}'.format(p2sigma))
-        print('{:.2%}'.format(frequency1), '{:.2%}'.format(frequency15), '{:.2%}'.format(frequency2),
-              '{:.2%}'.format(frequency3))
+        print(f'开仓 {self.coin} {p2sigma:.2%}')
+        print(f'{frequency1:.2%} {frequency15:.2%} {frequency2:.2%} {frequency3:.2%}')
 
     def close_dist(self):
         """平仓期现差价正态分布统计
@@ -313,9 +322,8 @@ class Stat:
             result = x
         count3 = result['count']
         frequency3 = count3 / total
-        print("平仓", self.coin, '{:.2%}'.format(m2sigma))
-        print('{:.2%}'.format(frequency1), '{:.2%}'.format(frequency15), '{:.2%}'.format(frequency2),
-              '{:.2%}'.format(frequency3))
+        print(f'平仓 {self.coin} {m2sigma:.2%}')
+        print(f'{frequency1:.2%} {frequency15:.2%} {frequency2:.2%} {frequency3:.2%}')
 
     def recent_ticker(self, hours=4):
         """返回近期期现差价列表

@@ -140,7 +140,7 @@ coin_7_30 = _('Crypto     7 day  30 day\n')
 # "币种     7天资金费 30天资金费\n"
 
 coin_funding_value = _('Crypto   Funding     APR Profitability')
-# '币种        资金费     APR   投资价值'
+# '币种        资金费     APR  投资价值'
 
 pd_open = _('Premium/discount at open')
 # '开仓期现差价'
@@ -244,17 +244,17 @@ delete_anyway = _('Enter y to delete')
 deleted = _('Deleted {:d} records.')
 # "已删除{:d}条。"
 
-amount_to_reduce = _('amounts to reduce:')
-# '减仓数量:'
+amount_to_reduce = _('{} position to reduce: {}')
+# '{}减仓数量：{}'
 
-reduced_amount = _('Reduced')
-# '已减仓'
+reduced_amount = _('Reduced {:f} {:s}')
+# '已减仓{:f} {:s}'
 
-spot_recoup = _('Spot recouped')
-# "现货回收"
+spot_recoup = _('Spot recouped {:f} USDT')
+# "现货回收{:f} USDT"
 
-amount_to_close = _('amounts to close:')
-# '平仓数量:'
+amount_to_close = _('{} position to close: {}')
+# '{}平仓数量：{}'
 
 has_closed = _('{:s} has been closed.')
 # "{:s}已平仓。"
@@ -287,12 +287,12 @@ to_swap_account = _('to swap account')
 # "到合约账户"
 
 spot_text = _('Spot: ')
-# "现货:"
+# "现货："
 
 swap_text = _('Swap: ')
-# "期货:"
+# "期货："
 
-received_funding = _('{} Receive funding fee {:.3f}')
+received_funding = _('{} received funding fee {:.3f}')
 # "{}收到资金费{:.3f}"
 
 back_track_funding = _('Backtrack {} funding fee records {}')
@@ -325,11 +325,11 @@ less_than_ctval = _('less than contract value')
 abort_text = _('Abort.')
 # "中止。"
 
-added_margin = _('Added margin')
-# "增加保证金"
+added_margin = _('Added margin {} USDT')
+# "增加保证金{} USDT"
 
-reduced_margin = _('Reduced margin')
-# "减少保证金"
+reduced_margin = _('Reduced margin {} USDT')
+# "减少保证金{} USDT"
 
 fetch_ticker_first = _('Fetch ticker first.')
 # "先记录行情。"

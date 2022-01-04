@@ -6,7 +6,8 @@ class ReducePosition(OKExAPI):
     """平仓、减仓功能类
     """
 
-    def __str__(self):
+    @property
+    def __name__(self):
         return 'ReducePosition'
 
     def __init__(self, coin, accountid=3):
@@ -54,7 +55,7 @@ class ReducePosition(OKExAPI):
         if target_position > spot_position or target_position > swap_position:
             await self.close(price_diff, accelerate_after)
         else:
-            fprint(self.coin, lang.amount_to_reduce, target_position)
+            fprint(lang.amount_to_reduce.format(self.coin, target_position))
             OP = record.Record('OP')
             mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'reduce', 'size': target_position}
             OP.insert(mydict)
@@ -302,9 +303,9 @@ class ReducePosition(OKExAPI):
             mydict = {'account': self.accountid, 'instrument': self.coin, 'op': 'reduce'}
             OP.delete(mydict)
             await self.update_portfolio()
-            fprint(lang.reduced_amount, swap_filled_sum, self.coin)
+            fprint(lang.reduced_amount.format(swap_filled_sum, self.coin))
             if usdt_release != 0:
-                fprint(lang.spot_recoup, usdt_release, "USDT")
+                fprint(lang.spot_recoup.format(usdt_release))
                 await self.add_margin(usdt_release)
             return usdt_release
 
@@ -319,7 +320,7 @@ class ReducePosition(OKExAPI):
         spot_position, swap_position, swap_balance = await gather(self.spot_position(), self.swap_position(),
                                                                   self.swap_balance())
         target_position = min(spot_position, swap_position)
-        fprint(self.coin, lang.amount_to_close, target_position)
+        fprint(lang.amount_to_close.format(self.coin, target_position))
 
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
@@ -601,5 +602,5 @@ class ReducePosition(OKExAPI):
         record.Record('Portfolio').mycol.delete_one({'account': self.accountid, 'instrument': self.coin})
         fprint(lang.closed_amount.format(swap_filled_sum, self.coin))
         if usdt_release != 0:
-            fprint(lang.spot_recoup, usdt_release, "USDT")
+            fprint(lang.spot_recoup.format(usdt_release))
         return usdt_release

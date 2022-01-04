@@ -4,7 +4,6 @@ import open_position
 import close_position
 import trading_data
 from utils import *
-import asyncio
 import multiprocessing
 
 

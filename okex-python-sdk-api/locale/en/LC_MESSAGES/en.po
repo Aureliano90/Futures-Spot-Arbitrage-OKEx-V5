@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-01-03 05:12-0600\n"
-"PO-Revision-Date: 2022-01-03 05:13-0600\n"
+"POT-Creation-Date: 2022-01-04 08:26-0600\n"
+"PO-Revision-Date: 2022-01-04 08:27-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
@@ -280,19 +280,19 @@ msgid "Deleted {:d} records."
 msgstr ""
 
 #: lang.py:247
-msgid "amounts to reduce:"
+msgid "{} position to reduce: {}"
 msgstr ""
 
 #: lang.py:250
-msgid "Reduced"
+msgid "Reduced {:f} {:s}"
 msgstr ""
 
 #: lang.py:253
-msgid "Spot recouped"
+msgid "Spot recouped {:f} USDT"
 msgstr ""
 
 #: lang.py:256
-msgid "amounts to close:"
+msgid "{} position to close: {}"
 msgstr ""
 
 #: lang.py:259
@@ -346,7 +346,7 @@ msgid "Swap: "
 msgstr ""
 
 #: lang.py:295
-msgid "{} Receive funding fee {:.3f}"
+msgid "{} received funding fee {:.3f}"
 msgstr ""
 
 #: lang.py:298
@@ -390,11 +390,11 @@ msgid "Abort."
 msgstr ""
 
 #: lang.py:328
-msgid "Added margin"
+msgid "Added margin {} USDT"
 msgstr ""
 
 #: lang.py:331
-msgid "Reduced margin"
+msgid "Reduced margin {} USDT"
 msgstr ""
 
 #: lang.py:334

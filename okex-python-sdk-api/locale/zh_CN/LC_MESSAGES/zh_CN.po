@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-01-03 05:13-0600\n"
-"PO-Revision-Date: 2022-01-03 05:20-0600\n"
+"POT-Creation-Date: 2022-01-04 08:25-0600\n"
+"PO-Revision-Date: 2022-01-04 08:26-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -321,20 +321,20 @@ msgid "Deleted {:d} records."
 msgstr "已删除{:d}条。"
 
 #: lang.py:247
-msgid "amounts to reduce:"
-msgstr "减仓数量:"
+msgid "{} position to reduce: {}"
+msgstr "{}减仓数量：{}"
 
 #: lang.py:250
-msgid "Reduced"
-msgstr "已减仓"
+msgid "Reduced {:f} {:s}"
+msgstr "已减仓{:f} {:s}"
 
 #: lang.py:253
-msgid "Spot recouped"
-msgstr "现货回收"
+msgid "Spot recouped {:f} USDT"
+msgstr "现货回收{:f} USDT"
 
 #: lang.py:256
-msgid "amounts to close:"
-msgstr "平仓数量:"
+msgid "{} position to close: {}"
+msgstr "{}平仓数量：{}"
 
 #: lang.py:259
 msgid "{:s} has been closed."
@@ -389,7 +389,7 @@ msgid "Swap: "
 msgstr "期货:"
 
 #: lang.py:295
-msgid "{} Receive funding fee {:.3f}"
+msgid "{} received funding fee {:.3f}"
 msgstr "{}收到资金费{:.3f}"
 
 #: lang.py:298
@@ -433,12 +433,12 @@ msgid "Abort."
 msgstr "中止。"
 
 #: lang.py:328
-msgid "Added margin"
-msgstr "增加保证金"
+msgid "Added margin {} USDT"
+msgstr "增加保证金{} USDT"
 
 #: lang.py:331
-msgid "Reduced margin"
-msgstr "减少保证金"
+msgid "Reduced margin {} USDT"
+msgstr "减少保证金{} USDT"
 
 #: lang.py:334
 msgid "Fetch ticker first."
@@ -451,6 +451,15 @@ msgstr "记录行情中"
 #: lang.py:340
 msgid "Margin cannot be reduced."
 msgstr "无法减少保证金。"
+
+#~ msgid "amounts to reduce:"
+#~ msgstr "减仓数量:"
+
+#~ msgid "Reduced"
+#~ msgstr "已减仓"
+
+#~ msgid "amounts to close:"
+#~ msgstr "平仓数量:"
 
 #~ msgid "Start monitoring"
 #~ msgstr "开始监控"
