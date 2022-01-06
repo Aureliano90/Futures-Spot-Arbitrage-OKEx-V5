@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-01-04 08:26-0600\n"
-"PO-Revision-Date: 2022-01-04 08:27-0600\n"
+"POT-Creation-Date: 2022-01-06 09:17-0600\n"
+"PO-Revision-Date: 2022-01-06 09:17-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
@@ -61,18 +61,22 @@ msgid ""
 msgstr ""
 
 #: lang.py:47
-msgid "Wrong command"
+msgid "{} cumulative PnL: {:.2f} USDT"
 msgstr ""
 
 #: lang.py:50
-msgid "How many days?\n"
+msgid "Wrong command"
 msgstr ""
 
 #: lang.py:53
-msgid "How many hours?\n"
+msgid "How many days?\n"
 msgstr ""
 
 #: lang.py:56
+msgid "How many hours?\n"
+msgstr ""
+
+#: lang.py:59
 msgid ""
 "\n"
 "1   Monitor existing positions\n"
@@ -83,7 +87,7 @@ msgid ""
 "q   Quit\n"
 msgstr ""
 
-#: lang.py:73
+#: lang.py:76
 msgid ""
 "\n"
 "1   Open or add\n"
@@ -96,315 +100,316 @@ msgid ""
 "b   Back\n"
 msgstr ""
 
-#: lang.py:94
+#: lang.py:97
 msgid ""
 "\n"
 "1   Top 10 for arbitrage\n"
 "2   Portfolio current funding rates\n"
 "3   Current funding rates for all\n"
-"4   Last 7 days funding rates for all\n"
+"4   Last x days funding rates for all\n"
 "5   Last 30 days funding rates for all\n"
 "b   Back\n"
 msgstr ""
 
-#: lang.py:111
+#: lang.py:114
 msgid ""
 "\n"
 "1   Backtrack funding fees\n"
 "2   Portfolio PnL\n"
 "3   History PnL\n"
-"4   Delete record\n"
+"4   Cumulative PnL\n"
+"5   Delete record\n"
 "b   Back\n"
 msgstr ""
 
-#: lang.py:126
+#: lang.py:131
 msgid "Crypto    Current  Predicted"
 msgstr ""
 
-#: lang.py:129
+#: lang.py:134
 msgid ""
 "{:6s} Funding Rate: {:7.3%}, Avg premium at close: {:7.3%}, Std: {:7.3%}, "
 "Min: {:7.3%}, Minus 2 std: {:7.3%}"
 msgstr ""
 
-#: lang.py:133
-msgid "Crypto  7 day funding"
+#: lang.py:138
+msgid "Crypto   funding"
 msgstr ""
 
-#: lang.py:136
+#: lang.py:141
 msgid "Crypto  30 day funding"
 msgstr ""
 
-#: lang.py:139
+#: lang.py:144
 msgid "Crypto     7 day  30 day\n"
 msgstr ""
 
-#: lang.py:142
+#: lang.py:147
 msgid "Crypto   Funding     APR Profitability"
 msgstr ""
 
-#: lang.py:145
+#: lang.py:150
 msgid "Premium/discount at open"
 msgstr ""
 
-#: lang.py:148
+#: lang.py:153
 msgid "Premium/discount at close"
 msgstr ""
 
-#: lang.py:151
+#: lang.py:156
 msgid "Two standard deviation"
 msgstr ""
 
-#: lang.py:154
+#: lang.py:159
 msgid "Time"
 msgstr ""
 
-#: lang.py:157
+#: lang.py:162
 msgid "Premium"
 msgstr ""
 
-#: lang.py:160
+#: lang.py:165
 msgid "{:s} premium in {:d} hours"
 msgstr ""
 
-#: lang.py:163
+#: lang.py:168
 msgid "Crypto {:s} does not exist."
 msgstr ""
 
-#: lang.py:166
+#: lang.py:171
 msgid "Position {:s} does not exist."
 msgstr ""
 
-#: lang.py:169
+#: lang.py:174
 msgid "Account does not exist."
 msgstr ""
 
-#: lang.py:172
+#: lang.py:177
 msgid "Transfer failed"
 msgstr ""
 
-#: lang.py:175
+#: lang.py:180
 msgid "amounts to add:"
 msgstr ""
 
-#: lang.py:178
+#: lang.py:183
 msgid "Added "
 msgstr ""
 
-#: lang.py:181
+#: lang.py:186
 msgid "Insufficient USDT"
 msgstr ""
 
-#: lang.py:184
+#: lang.py:189
 msgid "Insufficient margin"
 msgstr ""
 
-#: lang.py:187
+#: lang.py:192
 msgid "Insufficient spot"
 msgstr ""
 
-#: lang.py:190
+#: lang.py:195
 msgid "Insufficient swap"
 msgstr ""
 
-#: lang.py:193
+#: lang.py:198
 msgid "Current notional leverage:"
 msgstr ""
 
-#: lang.py:196
+#: lang.py:201
 msgid "Setting notional leverage:"
 msgstr ""
 
-#: lang.py:199
+#: lang.py:204
 msgid "Finished setting leverage."
 msgstr ""
 
-#: lang.py:202
+#: lang.py:207
 msgid "Failed to set leverage."
 msgstr ""
 
-#: lang.py:205
+#: lang.py:210
 msgid "Adjust actual leverage:"
 msgstr ""
 
-#: lang.py:208
+#: lang.py:213
 msgid "Swap market is down"
 msgstr ""
 
-#: lang.py:211
+#: lang.py:216
 msgid "Spot order failed"
 msgstr ""
 
-#: lang.py:214
+#: lang.py:219
 msgid "Swap order failed"
 msgstr ""
 
-#: lang.py:217
+#: lang.py:222
 msgid "Both orders failed"
 msgstr ""
 
-#: lang.py:220
+#: lang.py:225
 msgid "Swap order retracted:"
 msgstr ""
 
-#: lang.py:223
+#: lang.py:228
 msgid "Spot order retracted:"
 msgstr ""
 
-#: lang.py:226
+#: lang.py:231
 msgid "Swap order state:"
 msgstr ""
 
-#: lang.py:229
+#: lang.py:234
 msgid "Spot order state:"
 msgstr ""
 
-#: lang.py:232
+#: lang.py:237
 msgid "Await status update"
 msgstr ""
 
-#: lang.py:235
+#: lang.py:240
 msgid ". Remaining "
 msgstr ""
 
-#: lang.py:238
+#: lang.py:243
 msgid "{:f} {:s} position exists."
 msgstr ""
 
-#: lang.py:241
+#: lang.py:246
 msgid "Enter y to delete"
 msgstr ""
 
-#: lang.py:244
+#: lang.py:249
 msgid "Deleted {:d} records."
 msgstr ""
 
-#: lang.py:247
+#: lang.py:252
 msgid "{} position to reduce: {}"
 msgstr ""
 
-#: lang.py:250
+#: lang.py:255
 msgid "Reduced {:f} {:s}"
 msgstr ""
 
-#: lang.py:253
+#: lang.py:258
 msgid "Spot recouped {:f} USDT"
 msgstr ""
 
-#: lang.py:256
+#: lang.py:261
 msgid "{} position to close: {}"
 msgstr ""
 
-#: lang.py:259
+#: lang.py:264
 msgid "{:s} has been closed."
 msgstr ""
 
-#: lang.py:262
+#: lang.py:267
 msgid "{:f} {:s} has been closed."
 msgstr ""
 
-#: lang.py:265
+#: lang.py:270
 msgid ""
 "Start monitoring {}\n"
 "Position: {:.2f} USDT Leverage: {}"
 msgstr ""
 
-#: lang.py:268
+#: lang.py:273
 msgid "Cost to close: {:.3%}"
 msgstr ""
 
-#: lang.py:271
+#: lang.py:276
 msgid "Closing {:s}"
 msgstr ""
 
-#: lang.py:274
+#: lang.py:279
 msgid "Approaching liquidation. Reduce spot."
 msgstr ""
 
-#: lang.py:277
+#: lang.py:282
 msgid "Too much margin. Add spot."
 msgstr ""
 
-#: lang.py:280
+#: lang.py:285
 msgid "Transferred "
 msgstr ""
 
-#: lang.py:283
+#: lang.py:288
 msgid "to spot account"
 msgstr ""
 
-#: lang.py:286
+#: lang.py:291
 msgid "to swap account"
 msgstr ""
 
-#: lang.py:289
+#: lang.py:294
 msgid "Spot: "
 msgstr ""
 
-#: lang.py:292
+#: lang.py:297
 msgid "Swap: "
 msgstr ""
 
-#: lang.py:295
+#: lang.py:300
 msgid "{} received funding fee {:.3f}"
 msgstr ""
 
-#: lang.py:298
+#: lang.py:303
 msgid "Backtrack {} funding fee records {}"
 msgstr ""
 
-#: lang.py:301
+#: lang.py:306
 msgid "Reach max retry."
 msgstr ""
 
-#: lang.py:304
+#: lang.py:309
 msgid "{} has more than one swap position."
 msgstr ""
 
-#: lang.py:307
+#: lang.py:312
 msgid "Upgrade account mode to margin mode."
 msgstr ""
 
-#: lang.py:310
+#: lang.py:315
 msgid "Position mode is {}."
 msgstr ""
 
-#: lang.py:313
+#: lang.py:318
 msgid "Changed to net_mode."
 msgstr ""
 
-#: lang.py:316
+#: lang.py:321
 msgid "Failed to set net_mode."
 msgstr ""
 
-#: lang.py:319
+#: lang.py:324
 msgid "Target position"
 msgstr ""
 
-#: lang.py:322
+#: lang.py:327
 msgid "less than contract value"
 msgstr ""
 
-#: lang.py:325
+#: lang.py:330
 msgid "Abort."
 msgstr ""
 
-#: lang.py:328
+#: lang.py:333
 msgid "Added margin {} USDT"
 msgstr ""
 
-#: lang.py:331
+#: lang.py:336
 msgid "Reduced margin {} USDT"
 msgstr ""
 
-#: lang.py:334
+#: lang.py:339
 msgid "Fetch ticker first."
 msgstr ""
 
-#: lang.py:337
+#: lang.py:342
 msgid "Recording ticker"
 msgstr ""
 
-#: lang.py:340
+#: lang.py:345
 msgid "Margin cannot be reduced."
 msgstr ""

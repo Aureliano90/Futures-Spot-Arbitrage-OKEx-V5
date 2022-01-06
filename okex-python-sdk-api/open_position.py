@@ -10,7 +10,7 @@ class AddPosition(OKExAPI):
     def __name__(self):
         return 'AddPosition'
 
-    def __init__(self, coin, accountid=3):
+    def __init__(self, coin=None, accountid=3):
         super().__init__(coin=coin, accountid=accountid)
 
     async def is_hedged(self):
@@ -24,21 +24,24 @@ class AddPosition(OKExAPI):
             fprint(self.coin, lang.spot_text, long, lang.swap_text, short)
             return False
 
-    def hedge(self):
+    async def hedge(self):
         """加仓以达到完全对冲
         """
 
     async def set_swap_lever(self, leverage: float):
-        # 获取某个合约的用户配置
-        leverage = float('{:.2f}'.format(leverage))
+        """设置名义杠杆
+
+        :param leverage: 杠杆
+        :return: 成败
+        """
         setting = create_task(self.accountAPI.get_leverage(self.swap_ID, 'isolated'))
         await gather(setting, self.check_position_mode())
         setting = setting.result()
-        if float(setting['lever']) != leverage:
+        if float(setting['lever']) != (leverage := float(f'{leverage:.2f}')):
             # 设定某个合约的杠杆
             fprint(lang.current_leverage, setting['lever'])
             fprint(lang.set_leverage, leverage)
-            await self.accountAPI.set_leverage(instId=self.swap_ID, lever='{:.2f}'.format(leverage), mgnMode='isolated')
+            await self.accountAPI.set_leverage(instId=self.swap_ID, lever=f'{leverage:.2f}', mgnMode='isolated')
             setting = await self.accountAPI.get_leverage(self.swap_ID, 'isolated')
             # print(setting)
             fprint(lang.finished_leverage)
@@ -47,52 +50,75 @@ class AddPosition(OKExAPI):
             return False
         return True
 
+    @call_coroutine
     async def adjust_swap_lever(self, leverage: float):
-        holding, prev_lever = await gather(self.swap_holding(), self.get_lever())
+        """调整实际杠杆
+
+        :param leverage: 杠杆
+        :return: 减少保证金
+        """
+        holding = await self.swap_holding()
         position = abs(holding['pos'] * float(self.swap_info['ctVal']))
         if holding and position:
             fprint(lang.adjust_leverage, leverage)
             avgPx = holding['avgPx']
             last = holding['last']
-            upl = holding['upl']
             max_lever = float(self.swap_info['lever'])
 
             if last >= avgPx:
                 # net_margin = margin + upl = (liq - last) * position
-                # upl < 0, margin = occ_margin - upl = avgPx / leverage * position - upl
-                # = position * (avgPx / leverage + last - avgPx)
-                # > (liq - avgPx) * position = (liq - last) * position - upl
-                # liq = last + avgPx / leverage
+                # margin = min_margin + extra
+                # min_margin = occ_margin - upl
+                # occ_margin = (min_liq - last) * position = avgPx / notional_lever * position
+                # min_liq = last + avgPx / notional_lever = last * (1 + 1 / leverage)
+                # upl < 0, upl = (avgPx - last) * position
+                # min_margin = occ_margin - upl
+                # = (avgPx / notional_lever - avgPx + last) * position
+                # = (min_liq - avgPx) * position
                 occ_margin = last / leverage * position
-                # occ_margin = avgPx / leverage * position
                 notional_lever = avgPx * position / occ_margin
             else:
-                # upl > 0, margin + upl > (liq - last) * position = (liq - avgPx) * position + upl
-                # >= occ_margin + upl = avgPx / leverage * position + upl
-                # liq >= avgPx + avgPx / leverage
-                # if liq < avgPx, occ_margin < 0
-                occ_margin = last / leverage * position - upl
-                # occ_margin = avgPx / leverage * position
+                # net_margin = margin + upl = (liq - last) * position
+                # = (liq - avgPx) * position + upl
+                # margin = min_margin + extra
+                # occ_margin = avgPx / notional_lever * position = (min_liq - avgPx) * position
+                # = (min_liq - last + last - avgPx) * position
+                # = (min_liq - last) * position - upl
+                # min_liq = avgPx + avgPx / notional_lever = last * (1 + 1 / leverage)
+                # if min_liq < avgPx, occ_margin < 0
+                # upl > 0, upl = (avgPx - last) * position
+                # min_margin = occ_margin
+                # = (min_liq - avgPx) * position
+                occ_margin = (last / leverage + last - avgPx) * position
                 notional_lever = avgPx * position / occ_margin
                 if notional_lever < 0 or notional_lever > max_lever:
                     notional_lever = max_lever
 
-            notional_lever = float('{:.2f}'.format(notional_lever))
+            notional_lever = float(f'{notional_lever:.2f}')
             if await self.set_swap_lever(notional_lever):
                 record.Record('Portfolio').mycol.find_one_and_update(
                     {'account': self.accountid, 'instrument': self.coin},
                     {'$set': {'leverage': leverage}}, upsert=True)
-                # 有多余保证金
-                if prev_lever < notional_lever:
-                    max_withdraw = int(avgPx * position * (1 / prev_lever - 1 / notional_lever))
-                    if await self.reduce_margin(max_withdraw):
-                        return max_withdraw
-                    else:
-                        max_withdraw -= 1
-                        await self.reduce_margin(max_withdraw)
-                        return max_withdraw
+
+            holding = await self.swap_holding()
+            margin = holding['margin']
+            last = holding['last']
+            notional_lever = holding['lever']
+            if last >= avgPx:
+                min_liq = last + avgPx / notional_lever
+            else:
+                min_liq = avgPx + avgPx / notional_lever
+            extra = int(margin - (min_liq - avgPx) * position)
+
+            # 有多余保证金
+            if extra > 0:
+                if not await self.reduce_margin(extra):
+                    extra -= 1
+                    return extra
+                return extra
             return 0
 
+    @call_coroutine
     async def add(self, usdt_size=0.0, target_size=0.0, leverage=0, price_diff=0.002, accelerate_after=0):
         """加仓期现组合
 
@@ -140,7 +166,7 @@ class AddPosition(OKExAPI):
         OP.insert(mydict)
 
         channels = [{"channel": "tickers", "instId": self.spot_ID}, {"channel": "tickers", "instId": self.swap_ID}]
-        spot_ticker, swap_ticker = None, None
+        spot_ticker = swap_ticker = None
 
         # 如果仍未建仓完毕
         while target_position >= contract_val and not self.exitFlag:
@@ -149,8 +175,7 @@ class AddPosition(OKExAPI):
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
                     Stat = await trading_data.Stat(self.coin)
-                    recent = Stat.recent_open_stat(accelerate_after)
-                    if recent:
+                    if recent := Stat.recent_open_stat(accelerate_after):
                         price_diff = recent['avg'] + 2 * recent['std']
                     else:
                         fprint(lang.fetch_ticker_first)
@@ -196,9 +221,9 @@ class AddPosition(OKExAPI):
 
                         # 考虑现货手续费，分别计算现货数量与合约张数
                         contract_size = round(order_size / contract_val)
-                        contract_size = '{:d}'.format(contract_size)
+                        contract_size = f'{contract_size:d}'
                         spot_size = round_to(order_size / (1 + trade_fee), size_increment)
-                        spot_size = '{:f}'.format(spot_size)
+                        spot_size = f'{spot_size:f}'
                         # print(order_size, contract_size, spot_size)
 
                         # 下单
@@ -256,10 +281,9 @@ class AddPosition(OKExAPI):
                                         fprint(lang.swap_order_retract, swap_order_state)
                                         try:
                                             # 市价开空合约
-                                            swap_order = await self.tradeAPI.take_swap_order(instId=self.swap_ID,
-                                                                                             side='sell',
-                                                                                             size=contract_size,
-                                                                                             order_type='market')
+                                            kwargs = dict(instId=self.swap_ID, side='sell', size=contract_size,
+                                                          order_type='market')
+                                            swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
                                             self.exitFlag = True
@@ -276,11 +300,9 @@ class AddPosition(OKExAPI):
                                         # limit_price = str(round_to(limit_price, tick_size))
                                         try:
                                             # 市价做多现货
-                                            spot_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID,
-                                                                                             side='buy',
-                                                                                             size=spot_size,
-                                                                                             tgtCcy='base_ccy',
-                                                                                             order_type='market')
+                                            kwargs = dict(instId=self.spot_ID, side='buy', size=spot_size,
+                                                          tgtCcy='base_ccy', order_type='market')
+                                            spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
                                             self.exitFlag = True
@@ -379,6 +401,7 @@ class AddPosition(OKExAPI):
         usdt_size = - spot_notional - fee_total + swap_notional / leverage
         return usdt_size
 
+    @call_coroutine
     async def open(self, usdt_size=0.0, target_size=0.0, leverage=2, price_diff=0.002, accelerate_after=0):
         """建仓期现组合
 
@@ -387,7 +410,7 @@ class AddPosition(OKExAPI):
         :param leverage: 杠杆
         :param price_diff: 期现差价
         :param accelerate_after: 几小时后加速
-        :return: 建仓数量
+        :return: 建仓金额
         :rtype: float
         """
         Ledger = record.Record('Ledger')

@@ -26,19 +26,17 @@ class Monitor(OKExAPI):
         :param days: 最近几天，默认开仓算起
         :rtype: float
         """
-        Stat = trading_data.Stat(self.coin)
-        holding = await self.swap_holding()
+        Stat, holding = await gather(trading_data.Stat(self.coin), self.swap_holding())
         margin = holding['margin']
         upl = holding['upl']
         last = holding['last']
         position = - holding['pos'] * float(self.swap_info['ctVal'])
         size = position * last + margin + upl
-        timestamp = datetime.utcnow()
 
         if size > 10:
             if days == 0:
                 open_time = Stat.open_time(self.accountid)
-                delta = timestamp.__sub__(open_time).total_seconds()
+                delta = datetime.utcnow().__sub__(open_time).total_seconds()
                 funding = Stat.history_funding(self.accountid)
                 cost = Stat.history_cost(self.accountid)
                 apr = (funding + cost) / size / delta * 86400 * 365
@@ -50,30 +48,16 @@ class Monitor(OKExAPI):
             apr = 0.
         return apr
 
-    async def apy(self, days=0):
-        """最近年化
-
-        :param days: 最近几天，默认开仓算起
-        :rtype: float
-        """
-        import math
-        apr = await self.apr(days)
-        return math.exp(apr) - 1
-
     async def back_tracking(self, sem):
-        """补录最近七天资金费
+        """补录最近三个月资金费
         """
         async with sem:
             Ledger = record.Record('Ledger')
             pipeline = [{'$match': {'account': self.accountid, 'instrument': self.coin, 'title': "资金费"}}]
-            results = Ledger.mycol.aggregate(pipeline)
-            db_ledger = []
             # Results in DB
-            for n in results:
-                db_ledger.append(n)
-            temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8')
+            db_ledger = [n for n in Ledger.mycol.aggregate(pipeline)]
+            api_ledger = temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8')
             await asyncio.sleep(2)
-            api_ledger = temp
             inserted = 0
             while len(temp) == 100:
                 temp = await self.accountAPI.get_archive_ledger(instType='SWAP', ccy='USDT', type='8',
@@ -89,8 +73,9 @@ class Monitor(OKExAPI):
                               'title': "资金费", 'funding': realized_rate}
                     # 查重
                     for n in db_ledger:
-                        if n['timestamp'] == timestamp:
-                            break
+                        if n['funding'] == realized_rate:
+                            if n['timestamp'] == timestamp:
+                                break
                     else:
                         Ledger.mycol.insert_one(mydict)
                         inserted += 1
@@ -100,10 +85,7 @@ class Monitor(OKExAPI):
         """记录最近一次资金费
         """
         # /api/v5/account/bills 限速：5次/s
-        if self.psem:
-            sem = self.psem
-        else:
-            sem = multiprocessing.Semaphore(1)
+        sem = self.psem if self.psem else multiprocessing.Semaphore(1)
         with sem:
             Ledger = record.Record('Ledger')
             ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
@@ -120,6 +102,7 @@ class Monitor(OKExAPI):
                 break
         fprint(lang.received_funding.format(self.coin, realized_rate))
 
+    @call_coroutine
     async def position_exist(self, swap_ID=None):
         """判断是否有仓位
         """
@@ -135,6 +118,7 @@ class Monitor(OKExAPI):
                 return False
         return True
 
+    @call_coroutine
     async def watch(self):
         """监控仓位，自动加仓、减仓
         """
@@ -175,33 +159,29 @@ class Monitor(OKExAPI):
         adding = False
         reducing = False
 
-        channels = [{"channel": "tickers", "instId": self.swap_ID}]
-
-        async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
-            swap_ticker = ticker['data'][0]
-            timestamp = utcfrommillisecs(swap_ticker['ts'])
+        while True:
+            begin = timestamp = datetime.utcnow()
+            swap_ticker = await self.publicAPI.get_specific_ticker(self.swap_ID)
             last = float(swap_ticker['last'])
 
             # 每小时更新一次资金费，强平价
-            if not updated and timestamp.minute == 0:
+            if not updated and timestamp.minute == 1:
                 (current_rate, next_rate), liquidation_price = await gather(fundingRate.current_next(self.swap_ID),
                                                                             self.liquidation_price())
                 if liquidation_price == 0:
                     exit()
 
-                recent = Stat.recent_open_stat()
-                if recent:
+                if recent := Stat.recent_open_stat():
                     open_pd = recent['avg'] + recent['std']
                 else:
                     fprint(lang.fetch_ticker_first)
                     break
                 recent = Stat.recent_close_stat()
                 close_pd = recent['avg'] - recent['std']
-
                 cost = open_pd - close_pd + 2 * trade_fee
                 if (timestamp.hour + 4) % 8 == 0 and current_rate + next_rate < cost:
                     fprint(lang.coin_current_next)
-                    fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
+                    fprint(f'{self.coin:6s}{current_rate:9.3%}{next_rate:11.3%}')
                     fprint(lang.cost_to_close.format(cost))
                     fprint(lang.closing.format(self.coin))
                     await reducePosition.close(price_diff=close_pd)
@@ -210,9 +190,9 @@ class Monitor(OKExAPI):
                 if timestamp.hour % 8 == 0:
                     await self.record_funding()
                     fprint(lang.coin_current_next)
-                    fprint('{:6s}{:9.3%}{:11.3%}'.format(self.coin, current_rate, next_rate))
+                    fprint(f'{self.coin:6s}{current_rate:9.3%}{next_rate:11.3%}')
                 updated = True
-            elif updated and timestamp.minute == 1:
+            elif updated and timestamp.minute == 2:
                 updated = False
 
             # 线程未创建
@@ -236,8 +216,7 @@ class Monitor(OKExAPI):
                     Ledger.mycol.insert_one(mydict)
 
                     # 期现差价控制在2个标准差
-                    recent = Stat.recent_close_stat()
-                    if recent:
+                    if recent := Stat.recent_close_stat():
                         close_pd = recent['avg'] - 2 * recent['std']
                     else:
                         fprint(lang.fetch_ticker_first)
@@ -271,8 +250,7 @@ class Monitor(OKExAPI):
                     Ledger.mycol.insert_one(mydict)
 
                     # 期现差价控制在2个标准差
-                    recent = Stat.recent_open_stat()
-                    if recent:
+                    if recent := Stat.recent_open_stat():
                         open_pd = recent['avg'] + 2 * recent['std']
                     else:
                         fprint(lang.fetch_ticker_first)
@@ -300,8 +278,7 @@ class Monitor(OKExAPI):
                         while not reduce_task.done():
                             await asyncio.sleep(1)
 
-                        recent = Stat.recent_close_stat(1)
-                        if recent:
+                        if recent := Stat.recent_close_stat(1):
                             close_pd = recent['avg'] - 1.5 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
@@ -322,8 +299,7 @@ class Monitor(OKExAPI):
                         while not reduce_task.done():
                             await asyncio.sleep(1)
 
-                        recent = Stat.recent_close_stat(2)
-                        if recent:
+                        if recent := Stat.recent_close_stat(2):
                             close_pd = recent['avg'] - 2 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
@@ -343,8 +319,7 @@ class Monitor(OKExAPI):
                         while not add_task.done():
                             await asyncio.sleep(1)
 
-                        recent = Stat.recent_open_stat(2)
-                        if recent:
+                        if recent := Stat.recent_open_stat(2):
                             open_pd = recent['avg'] + 2 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
@@ -353,16 +328,15 @@ class Monitor(OKExAPI):
                         # liquidation_price = await self.liquidation_price()
                         # swap_position = await self.swap_position()
                         # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
-                        usdt_size = usdt_size - add_task.result()
-                        if usdt_size > 0:
+                        if (usdt_size := usdt_size - add_task.result()) > 0:
                             add_task = asyncio.create_task(addPosition.add(usdt_size=usdt_size, price_diff=open_pd))
                             addPosition.exitFlag = False
                             adding = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                 else:
                     liquidation_price = await self.liquidation_price()
-                    if adding:
-                        adding = False
-                    if reducing:
-                        reducing = False
-                    task_started = False
+                    adding = reducing = task_started = False
+            timestamp = datetime.utcnow()
+            delta = timestamp.__sub__(begin).total_seconds()
+            if delta < 10:
+                await asyncio.sleep(10 - delta)

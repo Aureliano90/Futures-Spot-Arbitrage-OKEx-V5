@@ -44,6 +44,9 @@ open_close_pnl = _('{} position opened at {}, closed at {}.\n'
 # "{}开仓时间：{}，平仓时间：{}。\n
 # 收益：{:.2f} USDT，APR：{:.2%}"
 
+cumulative_pnl = _('{} cumulative PnL: {:.2f} USDT')
+# "{}累计收益：{:.2f} USDT"
+
 wrong_command = _('Wrong command')
 # "错误指令"
 
@@ -95,7 +98,7 @@ funding_menu_text = _("""
 1   Top 10 for arbitrage
 2   Portfolio current funding rates
 3   Current funding rates for all
-4   Last 7 days funding rates for all
+4   Last x days funding rates for all
 5   Last 30 days funding rates for all
 b   Back
 """)
@@ -103,7 +106,7 @@ b   Back
 # 1   显示收益最高十个币种
 # 2   显示持仓币种当前资金费
 # 3   显示全币种当前资金费
-# 4   显示全币种最近7天资金费
+# 4   显示全币种最近x天资金费
 # 5   显示全币种最近30天资金费
 # b   返回
 # """
@@ -112,14 +115,16 @@ account_menu_text = _("""
 1   Backtrack funding fees
 2   Portfolio PnL
 3   History PnL
-4   Delete record
+4   Cumulative PnL
+5   Delete record
 b   Back
 """)
 # """
 # 1   补录资金费
 # 2   持仓收益
 # 3   历史收益
-# 4   删除记录
+# 4   累计收益
+# 5   删除记录
 # b   返回
 # """
 
@@ -130,8 +135,8 @@ funding_close = _('{:6s} Funding Rate: {:7.3%}, Avg premium at close: {:7.3%}, S
                   ' Min: {:7.3%}, Minus 2 std: {:7.3%}')
 # "{:6s} 资金费：{:7.3%}，平仓价差：{:7.3%}，标准差：{:7.3%}，最小值：{:7.3%}，减2个标准差：{:7.3%}"
 
-funding_7day = _('Crypto  7 day funding')
-# "币种     7天资金费"
+funding_day = _('Crypto   funding')
+# "币种        资金费"
 
 funding_30day = _('Crypto  30 day funding')
 # "币种     30天资金费"

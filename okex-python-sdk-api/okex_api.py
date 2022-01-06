@@ -1,4 +1,3 @@
-from asyncio import create_task, gather
 import okex.account as account
 import okex.public as public
 import okex.trade as trade
@@ -7,10 +6,12 @@ import key
 import lang
 import record
 from utils import *
+from asyncio import create_task, gather
 from websocket import subscribe_without_login
 
 
-# @init_debug
+@call_coroutine
+# @debug_timer
 class OKExAPI(object):
     """基本OKEx功能类
     """
@@ -44,32 +45,8 @@ class OKExAPI(object):
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
             self.holding = None
-
             self.exitFlag = False
             self.exist = True
-
-            # 公共-获取现货信息
-            # 公共-获取合约信息
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # 在async上下文内呼叫构造函数，不能再run
-                    # print('Event loop is running. Call with await.')
-                    pass
-                else:
-                    # 在async上下文外呼叫构造函数
-                    self.spot_info = loop.create_task(
-                        self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
-                    self.swap_info = loop.create_task(
-                        self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
-                    loop.run_until_complete(gather(self.spot_info, self.swap_info))
-                    self.spot_info = self.spot_info.result()
-                    self.swap_info = self.swap_info.result()
-            except Exception as e:
-                fprint(f'{self.__name__}({self.coin}) init error')
-                fprint(e)
-                self.exist = False
-                fprint(lang.nonexistent_crypto.format(self.coin))
         else:
             self.exist = False
 
@@ -77,7 +54,7 @@ class OKExAPI(object):
         """异步构造函数\n
         await OKExAPI()先召唤__init__()，然后是awaitable __await__()。
 
-        :return:OKExAPI
+        :return: OKExAPI
         """
         if self.coin:
             try:
@@ -142,28 +119,23 @@ class OKExAPI(object):
         if not coin:
             coin = self.coin
         data: list = (await self.accountAPI.get_coin_account(coin))['details']
-        if data:
-            return float(data[0]['availEq'])
-        else:
-            return 0.
+        return float(data[0]['availEq']) if data else 0.
 
+    @call_coroutine
     async def swap_holding(self, swap_ID=None):
         """获取合约持仓
         """
         # /api/v5/account/positions 限速：10次/2s
-        if self.asem:
-            sem = self.asem
-        else:
-            sem = asyncio.Semaphore(5)
+        sem = self.asem if self.asem else asyncio.Semaphore(5)
         async with sem:
             if not swap_ID:
                 swap_ID = self.swap_ID
             result: list = await self.accountAPI.get_specific_position(swap_ID)
             if self.asem:
                 await asyncio.sleep(1)
+            keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
             for holding in result:
                 if holding['mgnMode'] == 'isolated':
-                    keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
                     self.holding = dict([(n, float(holding[n])) if holding[n] else (n, 0.) for n in keys])
                     return self.holding
             return None
@@ -181,28 +153,19 @@ class OKExAPI(object):
                 return 0.
         contract_val = float(swap_info['ctVal'])
         holding = await self.swap_holding(swap_ID)
-        if holding:
-            return - holding['pos'] * contract_val
-        else:
-            return 0.
+        return - holding['pos'] * contract_val if holding else 0.
 
     async def swap_balance(self):
         """获取占用保证金
         """
         holding = await self.swap_holding(self.swap_ID)
-        if holding:
-            return holding['margin']
-        else:
-            return 0.
+        return holding['margin'] if holding else 0.
 
     async def liquidation_price(self):
         """获取强平价
         """
         holding = await self.swap_holding()
-        if holding:
-            return holding['liqPx']
-        else:
-            return 0.
+        return holding['liqPx'] if holding else 0.
 
     async def get_lever(self):
         setting = await self.accountAPI.get_leverage(self.swap_ID, 'isolated')

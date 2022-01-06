@@ -10,13 +10,14 @@ class ReducePosition(OKExAPI):
     def __name__(self):
         return 'ReducePosition'
 
-    def __init__(self, coin, accountid=3):
+    def __init__(self, coin=None, accountid=3):
         super().__init__(coin=coin, accountid=accountid)
 
-    def hedge(self):
+    async def hedge(self):
         """减仓以达到完全对冲
         """
 
+    @call_coroutine
     async def reduce(self, usdt_size=0.0, target_size=0.0, price_diff=0.002, accelerate_after=0):
         """减仓期现组合
 
@@ -24,7 +25,7 @@ class ReducePosition(OKExAPI):
         :param target_size: 币本位目标仓位
         :param price_diff: 期现差价
         :param accelerate_after: 几小时后加速
-        :return: 卖现货所得USDT
+        :return: 释放USDT
         :rtype: float
         """
         min_size = float(self.spot_info['minSz'])
@@ -35,16 +36,17 @@ class ReducePosition(OKExAPI):
         swap_position = - holding['pos'] * contract_val
         if holding and swap_position:
             swap_balance = holding['margin']
-            leverage = holding['lever']
             upl = holding['upl']
             last = holding['last']
-            liq_last = (swap_position * last + swap_balance + upl) / swap_position
+            open_price = holding['avgPx']
+            # net_margin = swap_balance + upl
+            liq_last = (swap_balance + upl) / swap_position
         else:
             fprint(lang.nonexistent_position.format(self.swap_ID))
             return 0.
         if usdt_size:
-            # usdt_size = target_position * last + (liq - last) / leverage * target_position
-            target_position = usdt_size / (last + liq_last / leverage)
+            # usdt_size = target_position * last + (liq - last) * target_position
+            target_position = usdt_size / (last + liq_last)
         else:
             target_position = target_size
 
@@ -69,7 +71,7 @@ class ReducePosition(OKExAPI):
             time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
             channels = [{"channel": "tickers", "instId": self.spot_ID}, {"channel": "tickers", "instId": self.swap_ID}]
-            spot_ticker, swap_ticker = None, None
+            spot_ticker = swap_ticker = None
 
             # 如果仍未减仓完毕
             while target_position >= contract_val and not self.exitFlag:
@@ -78,8 +80,7 @@ class ReducePosition(OKExAPI):
                     # 判断是否加速
                     if accelerate_after and datetime.utcnow() > time_to_accelerate:
                         Stat = await trading_data.Stat(self.coin)
-                        recent = Stat.recent_close_stat(accelerate_after)
-                        if recent:
+                        if recent := Stat.recent_close_stat(accelerate_after):
                             price_diff = recent['avg'] - 2 * recent['std']
                         else:
                             fprint(lang.fetch_ticker_first)
@@ -122,9 +123,9 @@ class ReducePosition(OKExAPI):
                             order_size = round_to(order_size, contract_val)
                             # print(order_size)
                             contract_size = round(order_size / contract_val)
-                            contract_size = '{:d}'.format(contract_size)
+                            contract_size = f'{contract_size:d}'
                             spot_size = round_to(order_size, size_increment)
-                            spot_size = '{:f}'.format(spot_size)
+                            spot_size = f'{spot_size:f}'
                             # print(contract_size, spot_size, min_size)
 
                             # 下单
@@ -142,17 +143,15 @@ class ReducePosition(OKExAPI):
                                     pass
                                 else:
                                     if spot_order is OkexAPIException:
-                                        swap_order_info = await self.tradeAPI.get_order_info(instId=self.swap_ID,
-                                                                                             order_id=swap_order[
-                                                                                                 'ordId'])
+                                        kwargs = dict(instId=self.swap_ID, order_id=swap_order['ordId'])
+                                        swap_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                         fprint(swap_order_info)
                                         fprint(spot_order)
                                     elif swap_order is OkexAPIException:
                                         if swap_order.message == "System error" or swap_order.code == "51022":
                                             fprint(lang.futures_market_down)
-                                        spot_order_info = await self.tradeAPI.get_order_info(instId=self.spot_ID,
-                                                                                             order_id=spot_order[
-                                                                                                 'ordId'])
+                                        kwargs = dict(instId=self.spot_ID, order_id=spot_order['ordId'])
+                                        spot_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                         fprint(spot_order_info)
                                         fprint(swap_order)
                                     self.exitFlag = True
@@ -184,11 +183,9 @@ class ReducePosition(OKExAPI):
                                             fprint(lang.swap_order_retract, swap_order_state)
                                             try:
                                                 # 市价平空合约
-                                                swap_order = await self.tradeAPI.take_swap_order(instId=self.swap_ID,
-                                                                                                 side='buy',
-                                                                                                 size=contract_size,
-                                                                                                 order_type='market',
-                                                                                                 reduceOnly=True)
+                                                kwargs = dict(instId=self.swap_ID, side='buy', size=contract_size,
+                                                              order_type='market', reduceOnly=True)
+                                                swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                                             except Exception as e:
                                                 fprint(e)
                                                 self.exitFlag = True
@@ -201,10 +198,9 @@ class ReducePosition(OKExAPI):
                                             fprint(lang.spot_order_retract, spot_order_state)
                                             try:
                                                 # 市价卖出现货
-                                                spot_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID,
-                                                                                                 side='sell',
-                                                                                                 size=spot_size,
-                                                                                                 order_type='market')
+                                                kwargs = dict(instId=self.spot_ID, side='sell', size=spot_size,
+                                                              order_type='market')
+                                                spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                                             except Exception as e:
                                                 fprint(e)
                                                 self.exitFlag = True
@@ -242,7 +238,6 @@ class ReducePosition(OKExAPI):
                                     prev_swap_balance = swap_balance
                                     holding = await self.swap_holding(self.swap_ID)
                                     swap_balance = holding['margin']
-                                    open_price = holding['avgPx']
                                     spot_filled = float(spot_order_info['accFillSz'])
                                     swap_filled = float(swap_order_info['accFillSz']) * contract_val
                                     spot_filled_sum += spot_filled
@@ -309,22 +304,30 @@ class ReducePosition(OKExAPI):
                 await self.add_margin(usdt_release)
             return usdt_release
 
+    @call_coroutine
     async def close(self, price_diff=0.002, accelerate_after=0):
         """平仓期现组合
 
         :param price_diff: 期现差价
         :param accelerate_after: 几小时后加速
-        :return: 平仓所得USDT
+        :return: 释放USDT
         :rtype: float
         """
-        spot_position, swap_position, swap_balance = await gather(self.spot_position(), self.swap_position(),
-                                                                  self.swap_balance())
-        target_position = min(spot_position, swap_position)
-        fprint(lang.amount_to_close.format(self.coin, target_position))
-
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
         contract_val = float(self.swap_info['ctVal'])
+
+        spot_position, holding = await gather(self.spot_position(), self.swap_holding())
+        swap_position = - holding['pos'] * contract_val
+        if holding and swap_position:
+            swap_balance = holding['margin']
+            open_price = holding['avgPx']
+        else:
+            fprint(lang.nonexistent_position.format(self.swap_ID))
+            return 0.
+
+        target_position = min(spot_position, swap_position)
+        fprint(lang.amount_to_close.format(self.coin, target_position))
 
         spot_filled_sum = 0.
         swap_filled_sum = 0.
@@ -353,8 +356,7 @@ class ReducePosition(OKExAPI):
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
                     Stat = await trading_data.Stat(self.coin)
-                    recent = Stat.recent_close_stat(accelerate_after)
-                    if recent:
+                    if recent := Stat.recent_close_stat(accelerate_after):
                         price_diff = recent['avg'] - 2 * recent['std']
                     else:
                         fprint(lang.fetch_ticker_first)
@@ -423,8 +425,8 @@ class ReducePosition(OKExAPI):
                                     spot_size = spot_position  # 2->2.1
                                 else:
                                     continue
-                        contract_size = '{:d}'.format(contract_size)
-                        spot_size = '{:f}'.format(spot_size)
+                        contract_size = f'{contract_size:d}'
+                        spot_size = f'{spot_size:f}'
 
                         # 下单
                         if order_size > 0:
@@ -480,11 +482,9 @@ class ReducePosition(OKExAPI):
                                         fprint(lang.swap_order_retract, swap_order_state)
                                         try:
                                             # 市价平空合约
-                                            swap_order = await self.tradeAPI.take_swap_order(instId=self.swap_ID,
-                                                                                             side='buy',
-                                                                                             size=contract_size,
-                                                                                             order_type='market',
-                                                                                             reduceOnly=True)
+                                            kwargs = dict(instId=self.swap_ID, side='buy', size=contract_size,
+                                                          order_type='market', reduceOnly=True)
+                                            swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                                         except Exception as e:
                                             fprint(e)
                                             self.exitFlag = True
@@ -497,10 +497,9 @@ class ReducePosition(OKExAPI):
                                         fprint(lang.spot_order_retract, spot_order_state)
                                         try:
                                             # 市价卖出现货
-                                            spot_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID,
-                                                                                             side='sell',
-                                                                                             size=spot_size,
-                                                                                             order_type='market')
+                                            kwargs = dict(instId=self.spot_ID, side='sell', size=spot_size,
+                                                          order_type='market')
+                                            spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                                         except Exception as e:
                                             fprint(e)
                                             self.exitFlag = True
@@ -536,7 +535,7 @@ class ReducePosition(OKExAPI):
                                 prev_swap_balance = swap_balance
                                 holding = await self.swap_holding(self.swap_ID)
                                 swap_balance = holding['margin']
-                                open_price = holding['avgPx']
+                                swap_position = - holding['pos'] * contract_val
                                 spot_filled = float(spot_order_info['accFillSz'])
                                 swap_filled = float(swap_order_info['accFillSz']) * contract_val
                                 spot_filled_sum += spot_filled
@@ -546,6 +545,7 @@ class ReducePosition(OKExAPI):
                                 spot_fee = float(spot_order_info['fee'])
                                 swap_fee = float(swap_order_info['fee'])
                                 rpl = swap_filled * (open_price - swap_price)
+                                # margin_recoup = - Δswap_balance + rpl + swap_fee
                                 # 现货成交量加保证金变动
                                 usdt_release += rpl + spot_filled * spot_price + spot_fee + swap_fee \
                                                 + prev_swap_balance - swap_balance
@@ -572,7 +572,7 @@ class ReducePosition(OKExAPI):
                                 self.exitFlag = True
                                 break
 
-                            spot_position, swap_position = await gather(self.spot_position(), self.swap_position())
+                            spot_position = await self.spot_position()
                             target_position = min(target_position, spot_position, swap_position)
                             # 重新订阅
                             break

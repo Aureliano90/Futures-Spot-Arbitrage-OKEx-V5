@@ -63,7 +63,8 @@ def average_true_range(candles: list, days=7):
     return statistics.mean(tr)
 
 
-# @init_debug
+@call_coroutine
+# @debug_timer
 class Stat:
     """交易数据统计功能类
     """
@@ -82,27 +83,6 @@ class Stat:
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
             self.exist = True
-
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # 在async上下文内呼叫构造函数，不能再run
-                    # print('Event loop is running. Call with await.')
-                    pass
-                else:
-                    # 在async上下文外呼叫构造函数
-                    self.spot_info = loop.create_task(
-                        self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
-                    self.swap_info = loop.create_task(
-                        self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
-                    loop.run_until_complete(gather(self.spot_info, self.swap_info))
-                    self.spot_info = self.spot_info.result()
-                    self.swap_info = self.swap_info.result()
-            except Exception as e:
-                fprint(f'{self.__name__}({self.coin}) init error')
-                fprint(e)
-                self.exist = False
-                fprint(nonexistent_crypto.format(self.coin))
         else:
             self.exist = False
 
@@ -110,7 +90,7 @@ class Stat:
         """异步构造函数\n
         await Stat()先召唤__init__()，然后是awaitable __await__()。
 
-        :return:Stat
+        :return: Stat
         """
         if self.coin:
             try:
@@ -160,7 +140,7 @@ class Stat:
         """
         async with sem:
             limit = days * 6 + 1
-            candles, temp = [], []
+            candles = temp = []
             while limit > 0:
                 if limit <= 300:
                     if len(temp) == 300:
@@ -182,16 +162,10 @@ class Stat:
     async def profitability(self, funding_rate_list, days=7) -> List[dict]:
         """显示各币种资金费率除以波动率
         """
-        # begin = time.monotonic()
-        task_list = []
         # /api/v5/market/candles 限速： 20次/2s
         sem = asyncio.Semaphore(20)
-        for n in funding_rate_list:
-            task_list.append(self.get_candles(sem, n['instrument'] + '-USDT', days))
+        task_list = [self.get_candles(sem, n['instrument'] + '-USDT', days) for n in funding_rate_list]
         gather_result = await gather(*task_list)
-        # end = time.monotonic()
-        # print(f"get_candles takes {end - begin} s")
-
         for n in range(len(funding_rate_list)):
             atr = average_true_range(gather_result[n]['candles'], days)
             funding_rate_list[n]['profitability'] = int(funding_rate_list[n]['funding_rate'] / sqrt(atr) * 10000)
@@ -207,20 +181,12 @@ class Stat:
         """开仓期现差价正态分布统计
         """
         Record = record.Record('Ticker')
-
-        timestamp = datetime.utcnow()
-        # print(timestamp)
-        # 只统计最近4小时
-        timestamp = timestamp.__sub__(timedelta(hours=4))
-        # print(timestamp)
+        timestamp = datetime.utcnow() - timedelta(hours=4)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$open_pd'}, 'std': {'$stdDevSamp': '$open_pd'},
                                 'max': {'$max': '$open_pd'}, 'min': {'$min': '$open_pd'}, 'count': {'$sum': 1}}}]
-        result = {}
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
-        # print(result)
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         avg = result['avg']
         std = result['std']
         total = result['count']
@@ -236,29 +202,25 @@ class Stat:
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p1sigma, '$gt': m1sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count1 = result['count']
         frequency1 = count1 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p15sigma, '$gt': m15sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count15 = result['count']
         frequency15 = count15 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p2sigma, '$gt': m2sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count2 = result['count']
         frequency2 = count2 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p3sigma, '$gt': m3sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count3 = result['count']
         frequency3 = count3 / total
         print(f'开仓 {self.coin} {p2sigma:.2%}')
@@ -268,20 +230,12 @@ class Stat:
         """平仓期现差价正态分布统计
         """
         Record = record.Record('Ticker')
-
-        timestamp = datetime.utcnow()
-        # print(timestamp)
-        # 只统计最近4小时
-        timestamp = timestamp.__sub__(timedelta(hours=4))
-        # print(timestamp)
+        timestamp = datetime.utcnow() - timedelta(hours=4)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$close_pd'}, 'std': {'$stdDevSamp': '$close_pd'},
                                 'max': {'$max': '$close_pd'}, 'min': {'$min': '$close_pd'}, 'count': {'$sum': 1}}}]
-        result = {}
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
-        # print(result)
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         avg = result['avg']
         std = result['std']
         total = result['count']
@@ -297,29 +251,25 @@ class Stat:
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p1sigma, '$gt': m1sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count1 = result['count']
         frequency1 = count1 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p15sigma, '$gt': m15sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count15 = result['count']
         frequency15 = count15 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p2sigma, '$gt': m2sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count2 = result['count']
         frequency2 = count2 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p3sigma, '$gt': m3sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            result = x
+        result = [x for x in Record.mycol.aggregate(pipeline)][0]
         count3 = result['count']
         frequency3 = count3 / total
         print(f'平仓 {self.coin} {m2sigma:.2%}')
@@ -331,11 +281,7 @@ class Stat:
         :param hours: 最近几小时
         """
         Record = record.Record('Ticker')
-        timestamp = datetime.utcnow()
-        # print(timestamp)
-        # 只统计最近4小时
-        timestamp = timestamp.__sub__(timedelta(hours=hours))
-        # print(timestamp)
+        timestamp = datetime.utcnow() - timedelta(hours=hours)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}}]
         timelist: List[datetime] = []
@@ -355,18 +301,13 @@ class Stat:
         :param hours: 最近几小时
         :rtype: dict
         """
-        timestamp = datetime.utcnow()
-        # print(timestamp)
-        # 只统计最近4小时
-        timestamp = timestamp.__sub__(timedelta(hours=hours))
-        # print(timestamp)
-
         Record = record.Record('Ticker')
+        timestamp = datetime.utcnow() - timedelta(hours=hours)
+
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$open_pd'}, 'std': {'$stdDevSamp': '$open_pd'},
                                 'max': {'$max': '$open_pd'}, 'min': {'$min': '$open_pd'}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            return x
+        return result[0] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
 
     def recent_close_stat(self, hours=4):
         """返回近期平仓期现差价统计值
@@ -374,18 +315,13 @@ class Stat:
         :param hours: 最近几小时
         :rtype: dict
         """
-        timestamp = datetime.utcnow()
-        # print(timestamp)
-        # 只统计最近4小时
-        timestamp = timestamp.__sub__(timedelta(hours=hours))
-        # print(timestamp)
-
         Record = record.Record('Ticker')
+        timestamp = datetime.utcnow() - timedelta(hours=hours)
+
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$close_pd'}, 'std': {'$stdDevSamp': '$close_pd'},
                                 'max': {'$max': '$close_pd'}, 'min': {'$min': '$close_pd'}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            return x
+        return result[0] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
 
     def open_time(self, account):
         """返回开仓时间
@@ -396,14 +332,8 @@ class Stat:
         Record = record.Record('Ledger')
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': "开仓"}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
-        open_time = 0
-        for x in Record.mycol.aggregate(pipeline):
-            # 开仓时间
-            open_time = x['timestamp']
-        if open_time:
-            return open_time
-        else:
-            return datetime(2021, 4, 1)
+        open_time = result[0]['timestamp'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
+        return open_time if open_time else datetime(2021, 4, 1)
 
     def close_time(self, account):
         """返回开仓时间
@@ -414,14 +344,8 @@ class Stat:
         Record = record.Record('Ledger')
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': "平仓"}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
-        close_time = 0
-        for x in Record.mycol.aggregate(pipeline):
-            # 平仓时间
-            close_time = x['timestamp']
-        if close_time:
-            return close_time
-        else:
-            return datetime.utcnow()
+        close_time = result[0]['timestamp'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
+        return close_time if close_time else datetime.utcnow()
 
     def history_funding(self, account, days=0):
         """最近累计资金费
@@ -431,16 +355,15 @@ class Stat:
         :rtype: float
         """
         Record = record.Record('Ledger')
-        if days == 0:
+        if days == -1:
+            open_time = datetime(2021, 4, 1)
+        elif days == 0:
             open_time = self.open_time(account)
         else:
-            open_time = datetime.utcnow().__sub__(timedelta(days=days))
+            open_time = datetime.utcnow() - timedelta(days=days)
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'timestamp': {'$gt': open_time}}},
                     {'$group': {'_id': '$instrument', 'sum': {'$sum': '$funding'}}}]
-        for x in Record.mycol.aggregate(pipeline):
-            # 累计资金费
-            return x['sum']
-        return 0.
+        return result[0]['sum'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else 0.
 
     def history_cost(self, account, days=0):
         """最近累计成本
@@ -450,10 +373,12 @@ class Stat:
         :rtype: float
         """
         Record = record.Record('Ledger')
-        if days == 0:
+        if days == -1:
+            open_time = datetime(2021, 4, 1)
+        elif days == 0:
             open_time = self.open_time(account)
         else:
-            open_time = datetime.utcnow().__sub__(timedelta(days=days))
+            open_time = datetime.utcnow() - timedelta(days=days)
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'timestamp': {'$gt': open_time}}},
                     {'$group': {'_id': '$instrument', 'spot_notional': {'$sum': '$spot_notional'},
                                 'swap_notional': {'$sum': '$swap_notional'}, 'fee': {'$sum': '$fee'}}}]
