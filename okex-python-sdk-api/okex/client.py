@@ -49,7 +49,7 @@ class Client(object):
         else:
             return ""
 
-    async def async_request(self, method, request_path, params):
+    async def _request(self, method, request_path, params):
         if method == c.GET:
             request_path = request_path + utils.parse_params_to_str(params)
         # url
@@ -88,13 +88,13 @@ class Client(object):
             except requests.exceptions.RequestException as e:
                 print(e)
                 retry += 1
-                time.sleep(30)
+                await asyncio.sleep(30)
 
             # Cloudflare error
             if str(response.status_code).startswith('5'):
                 # print(response)
                 retry += 1
-                time.sleep(30)
+                await asyncio.sleep(30)
             else:
                 success = True
 
@@ -109,11 +109,11 @@ class Client(object):
         except ValueError:
             raise exceptions.OkexRequestException('Invalid Response: %s' % response.text)
 
-    async def async_request_without_params(self, method, request_path):
-        return await self.async_request(method, request_path, {})
+    async def _request_without_params(self, method, request_path):
+        return await self._request(method, request_path, {})
 
-    async def async_request_with_params(self, method, request_path, params):
-        return await self.async_request(method, request_path, params)
+    async def _request_with_params(self, method, request_path, params):
+        return await self._request(method, request_path, params)
 
     # def _request(self, method, request_path, params):
     #     if method == c.GET:

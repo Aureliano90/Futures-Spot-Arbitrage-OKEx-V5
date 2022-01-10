@@ -128,8 +128,10 @@ class ReducePosition(OKExAPI):
                             spot_size = f'{spot_size:f}'
                             # print(contract_size, spot_size, min_size)
 
-                            # 下单
-                            if order_size > 0:
+                            timestamp = datetime.utcnow()
+                            # 下单，如果资金费不是马上更新
+                            if order_size > 0 and not ((timestamp.hour % 8 == 7 and timestamp.minute == 59) or (
+                                    timestamp.hour % 8 == 0 and timestamp.minute == 0)):
                                 spot_order, swap_order = await gather(
                                     self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=spot_size,
                                                                   price=spot_ticker['bidPx'], order_type='fok'),
@@ -428,8 +430,10 @@ class ReducePosition(OKExAPI):
                         contract_size = f'{contract_size:d}'
                         spot_size = f'{spot_size:f}'
 
-                        # 下单
-                        if order_size > 0:
+                        timestamp = datetime.utcnow()
+                        # 下单，如果资金费不是马上更新
+                        if order_size > 0 and not ((timestamp.hour % 8 == 7 and timestamp.minute == 59) or (
+                                timestamp.hour % 8 == 0 and timestamp.minute == 0)):
                             spot_order, swap_order = await gather(
                                 self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=spot_size,
                                                               price=spot_ticker['bidPx'], order_type='fok'),

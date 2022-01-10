@@ -12,14 +12,14 @@ if sys.version_info < (3, 8):
     print('Your Python version: ', sys.version)
 
 
-@call_coroutine
-async def async_init():
-    stat = await trading_data.Stat('BTC')
-    print(trading_data.Stat)
-    print(f'{stat.__name__}({stat.coin}), {stat}, {stat.__doc__}')
-    add = await open_position.AddPosition('BTC', 3)
-    print(open_position.AddPosition)
-    print(f'{add.__name__}({add.coin}), {add}, {add.__doc__}')
+# @call_coroutine
+# async def async_init():
+#     stat = await trading_data.Stat('BTC')
+#     print(trading_data.Stat)
+#     print(f'{stat.__name__}({stat.coin}), {stat}, {stat.__doc__}')
+#     add = await open_position.AddPosition('BTC', 3)
+#     print(open_position.AddPosition)
+#     print(f'{add.__name__}({add.coin}), {add}, {add.__doc__}')
 
 
 def main():

@@ -20,7 +20,7 @@ class AssetAPI(Client):
         :param ccy: 币种
         """
         params = {'ccy': ccy}
-        return (await self.async_request_with_params(GET, ASSET_BALANCE, params))['data'][0]
+        return (await self._request_with_params(GET, ASSET_BALANCE, params))['data'][0]
 
     async def transfer(self, ccy, amt, account_from, account_to, instId='', toInstId='') -> bool:
         """资金划转\n
@@ -38,7 +38,7 @@ class AssetAPI(Client):
             params['instId'] = instId
         if toInstId:
             params['toInstId'] = toInstId
-        result = await self.async_request_with_params(POST, ASSET_TRANSFER, params)
+        result = await self._request_with_params(POST, ASSET_TRANSFER, params)
         if result['code'] == '0':
             return True
         else:
@@ -64,4 +64,4 @@ class AssetAPI(Client):
             params['before'] = before
         if limit:
             params['limit'] = limit
-        return (await self.async_request_with_params(GET, GET_CANDLES, params))['data']
+        return (await self._request_with_params(GET, GET_CANDLES, params))['data']

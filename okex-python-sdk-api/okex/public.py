@@ -25,7 +25,7 @@ class PublicAPI(Client):
         params = {'instType': instType}
         if uly:
             params['uly'] = uly
-        return (await self.async_request_with_params(GET, GET_INSTRUMENTS, params))['data']
+        return (await self._request_with_params(GET, GET_INSTRUMENTS, params))['data']
 
     async def get_specific_instrument(self, instType, instId, uly=''):
         """获取单个可交易产品的信息\n
@@ -38,7 +38,7 @@ class PublicAPI(Client):
         params = {'instType': instType, 'instId': instId}
         if uly:
             params['uly'] = uly
-        result = await self.async_request_with_params(GET, GET_INSTRUMENTS, params)
+        result = await self._request_with_params(GET, GET_INSTRUMENTS, params)
         if result['code'] == '51001':
             raise OkexRequestException(result['msg'])
         return result['data'][0]
@@ -50,7 +50,7 @@ class PublicAPI(Client):
         :param instId: 产品ID，如 BTC-USD-SWAP
         """
         params = {'instId': instId}
-        return (await self.async_request_with_params(GET, FUNDING_RATE, params))['data'][0]
+        return (await self._request_with_params(GET, FUNDING_RATE, params))['data'][0]
 
     async def get_historical_funding_rate(self, instId: str, after='', before='', limit='') -> List[dict]:
         """获取最近3个月的历史资金费率\n
@@ -68,7 +68,7 @@ class PublicAPI(Client):
             params['before'] = before
         if limit:
             params['limit'] = limit
-        return (await self.async_request_with_params(GET, FUNDING_RATE_HISTORY, params))['data']
+        return (await self._request_with_params(GET, FUNDING_RATE_HISTORY, params))['data']
 
     async def get_tickers(self, instType: str, uly='') -> List[dict]:
         """获取所有产品行情信息\n
@@ -81,11 +81,11 @@ class PublicAPI(Client):
         if uly:
             params['uly'] = uly
         try:
-            return (await self.async_request_with_params(GET, GET_TICKERS, params))['data']
+            return (await self._request_with_params(GET, GET_TICKERS, params))['data']
         except Exception as e:
             await asyncio.sleep(60)
             # print("get_ticker exception: ", e)
-            return (await self.async_request_with_params(GET, GET_TICKERS, params))['data']
+            return (await self._request_with_params(GET, GET_TICKERS, params))['data']
 
 
     async def get_specific_ticker(self, instId: str) -> dict:
@@ -96,8 +96,8 @@ class PublicAPI(Client):
         """
         params = {'instId': instId}
         try:
-            return (await self.async_request_with_params(GET, GET_TICKER, params))['data'][0]
+            return (await self._request_with_params(GET, GET_TICKER, params))['data'][0]
         except Exception as e:
             await asyncio.sleep(60)
             # print("get_ticker exception: ", e)
-            return (await self.async_request_with_params(GET, GET_TICKER, params))['data'][0]
+            return (await self._request_with_params(GET, GET_TICKER, params))['data'][0]

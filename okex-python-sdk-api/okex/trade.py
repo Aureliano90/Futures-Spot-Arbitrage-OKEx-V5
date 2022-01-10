@@ -26,7 +26,7 @@ class TradeAPI(Client):
         """
         params = {'instId': instId, 'tdMode': 'cash', 'side': side, 'ordType': order_type, 'sz': size, 'tgtCcy': tgtCcy,
                   'px': price, 'clOrdId': client_oid}
-        order = await self.async_request_with_params(POST, TRADE_ORDER, params)
+        order = await self._request_with_params(POST, TRADE_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
         else:
@@ -48,7 +48,7 @@ class TradeAPI(Client):
         """
         params = {'instId': instId, 'tdMode': 'cross', 'ccy': 'USDT', 'side': side, 'ordType': order_type, 'sz': size,
                   'px': price, 'clOrdId': client_oid, 'reduceOnly': reduceOnly}
-        order = await self.async_request_with_params(POST, TRADE_ORDER, params)
+        order = await self._request_with_params(POST, TRADE_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
         else:
@@ -69,7 +69,7 @@ class TradeAPI(Client):
         """
         params = {'instId': instId, 'tdMode': 'isolated', 'ccy': 'USDT', 'side': side, 'ordType': order_type,
                   'sz': size, 'px': price, 'clOrdId': client_oid, 'reduceOnly': reduceOnly}
-        order = await self.async_request_with_params(POST, TRADE_ORDER, params)
+        order = await self._request_with_params(POST, TRADE_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
         else:
@@ -86,7 +86,7 @@ class TradeAPI(Client):
         """
         if order_id:
             params = {'ordId': order_id, 'instId': instId}
-            return (await self.async_request_with_params(GET, TRADE_ORDER, params))['data'][0]
+            return (await self._request_with_params(GET, TRADE_ORDER, params))['data'][0]
         elif client_oid:
             params = {'clOrdId': order_id, 'instId': client_oid}
-            return (await self.async_request_with_params(GET, TRADE_ORDER, params))['data'][0]
+            return (await self._request_with_params(GET, TRADE_ORDER, params))['data'][0]

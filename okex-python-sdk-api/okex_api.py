@@ -44,6 +44,8 @@ class OKExAPI(object):
         if coin:
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
+            self.spot_info = None
+            self.swap_info = None
             self.holding = None
             self.exitFlag = False
             self.exist = True
@@ -130,7 +132,11 @@ class OKExAPI(object):
         async with sem:
             if not swap_ID:
                 swap_ID = self.swap_ID
-            result: list = await self.accountAPI.get_specific_position(swap_ID)
+            try:
+                result: list = await self.accountAPI.get_specific_position(swap_ID)
+            except OkexAPIException as e:
+                await asyncio.sleep(10)
+                result: list = await self.accountAPI.get_specific_position(swap_ID)
             if self.asem:
                 await asyncio.sleep(1)
             keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']

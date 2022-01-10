@@ -114,6 +114,7 @@ class AddPosition(OKExAPI):
             if extra > 0:
                 if not await self.reduce_margin(extra):
                     extra -= 1
+                    await self.reduce_margin(extra)
                     return extra
                 return extra
             return 0
@@ -226,8 +227,10 @@ class AddPosition(OKExAPI):
                         spot_size = f'{spot_size:f}'
                         # print(order_size, contract_size, spot_size)
 
-                        # 下单
-                        if order_size > 0:
+                        timestamp = datetime.utcnow()
+                        # 下单，如果资金费不是马上更新
+                        if order_size > 0 and not ((timestamp.hour % 8 == 7 and timestamp.minute == 59) or (
+                                timestamp.hour % 8 == 0 and timestamp.minute == 0)):
                             spot_order, swap_order = await gather(
                                 self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy', size=spot_size,
                                                               price=spot_ticker['askPx'], order_type='fok'),

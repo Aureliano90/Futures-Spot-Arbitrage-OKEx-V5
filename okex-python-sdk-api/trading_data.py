@@ -82,6 +82,8 @@ class Stat:
             self.coin = coin
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
+            self.spot_info = None
+            self.swap_info = None
             self.exist = True
         else:
             self.exist = False
