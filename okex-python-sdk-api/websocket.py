@@ -254,6 +254,7 @@ async def subscribe_without_login(url, channels, verbose=False):
             if verbose:
                 fprint("连接断开，正在重连……")
             continue
+    await unsubscribe_without_login(url, channels)
 
 
 # subscribe channels need login
@@ -296,12 +297,17 @@ async def subscribe(url, api_key, passphrase, secret_key, channels, verbose=Fals
                     # if verbose:
                     #     fprint(get_timestamp() + res)
                     # Generate the latest result
+                    res = eval(res)
+                    if 'event' in res:
+                        continue
+                    # if 'data' in res:
                     yield res
 
         except Exception as e:
             if verbose:
                 fprint("连接断开，正在重连……")
             continue
+    await unsubscribe(url, api_key, passphrase, secret_key, channels)
 
 
 # trade
@@ -343,6 +349,7 @@ async def trade(url, api_key, passphrase, secret_key, trade_param, verbose=False
                     # if verbose:
                     #     fprint(get_timestamp() + res)
                     # Generate the latest result
+                    res = eval(res)
                     yield res
 
         except Exception as e:

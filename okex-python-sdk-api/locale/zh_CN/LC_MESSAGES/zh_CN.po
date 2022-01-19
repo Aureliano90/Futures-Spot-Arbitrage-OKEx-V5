@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-01-06 09:17-0600\n"
-"PO-Revision-Date: 2022-01-06 09:19-0600\n"
+"POT-Creation-Date: 2022-01-19 16:38-0600\n"
+"PO-Revision-Date: 2022-01-19 16:38-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -457,6 +457,14 @@ msgstr "记录行情中"
 #: lang.py:345
 msgid "Margin cannot be reduced."
 msgstr "无法减少保证金。"
+
+#: lang.py:348
+msgid "Database is empty."
+msgstr "数据库为空。"
+
+#: lang.py:351
+msgid "Input q to abort\n"
+msgstr "输入q中止\n"
 
 #~ msgid "amounts to reduce:"
 #~ msgstr "减仓数量:"

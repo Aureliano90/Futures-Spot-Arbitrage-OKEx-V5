@@ -54,10 +54,7 @@ def average_true_range(candles: list, days=7):
     # Use 4h candles
     if days * 6 > 1440:
         days = 240
-    if days * 6 <= len(candles) + 1:
-        num_candles = days * 6
-    else:
-        num_candles = len(candles) - 1
+    num_candles = min(days * 6, len(candles) - 1)
     for n in range(num_candles):
         tr.append(true_range(candles[n], candles[n + 1]))
     return statistics.mean(tr)
@@ -68,18 +65,21 @@ def average_true_range(candles: list, days=7):
 class Stat:
     """交易数据统计功能类
     """
+    assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
+    publicAPI = public.PublicAPI()
+    sem = None
 
     @property
     def __name__(self):
         return 'Stat'
 
     def __init__(self, coin: str = None):
-        self.assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
-        self.publicAPI = public.PublicAPI()
+        # assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
+        # self.publicAPI = public.PublicAPI()
 
         self.coin = coin
         if coin:
-            self.coin = coin
+            assert isinstance(coin, str)
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
             self.spot_info = None
@@ -129,18 +129,21 @@ class Stat:
             self.exist = False
         return self
 
-    def __del__(self):
-        self.assetAPI.__del__()
-        self.publicAPI.__del__()
+    @staticmethod
+    def clean():
+        if hasattr(Stat, 'assetAPI'):
+            Stat.assetAPI.__del__()
+        if hasattr(Stat, 'publicAPI'):
+            Stat.publicAPI.__del__()
 
-    async def get_candles(self, sem, instId, days, bar='4H') -> dict:
+    async def get_candles(self, instId, days, bar='4H') -> dict:
         """获取4小时K线
 
-        :param sem: Semaphore
         :param instId: 产品ID
+        :param days: 最近几天
         :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H]
         """
-        async with sem:
+        async with Stat.sem:
             limit = days * 6 + 1
             candles = temp = []
             while limit > 0:
@@ -165,8 +168,8 @@ class Stat:
         """显示各币种资金费率除以波动率
         """
         # /api/v5/market/candles 限速： 20次/2s
-        sem = asyncio.Semaphore(20)
-        task_list = [self.get_candles(sem, n['instrument'] + '-USDT', days) for n in funding_rate_list]
+        Stat.sem = asyncio.Semaphore(20)
+        task_list = [self.get_candles(n['instrument'] + '-USDT', days) for n in funding_rate_list]
         gather_result = await gather(*task_list)
         for n in range(len(funding_rate_list)):
             atr = average_true_range(gather_result[n]['candles'], days)

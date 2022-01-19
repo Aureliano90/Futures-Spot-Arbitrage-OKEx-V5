@@ -7,7 +7,7 @@ import lang
 import record
 from utils import *
 from asyncio import create_task, gather
-from websocket import subscribe_without_login
+from websocket import subscribe_without_login, subscribe
 
 
 @call_coroutine
@@ -15,33 +15,41 @@ from websocket import subscribe_without_login
 class OKExAPI(object):
     """基本OKEx功能类
     """
+    api_initiated = False
+    asem = None
+    psem = None
+    __key = None
 
     @property
     def __name__(self):
         return 'OKExAPI'
 
     def __init__(self, coin: str = None, accountid=3):
-        self.asem = None
-        self.psem = None
         self.accountid = accountid
-        apikey = key.Key(accountid)
-        api_key = apikey.api_key
-        secret_key = apikey.secret_key
-        passphrase = apikey.passphrase
 
-        if accountid == 3:
-            self.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
-            self.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
-            self.publicAPI = public.PublicAPI(test=True)
-            self.public_url = "wss://ws.okex.com:8443/ws/v5/public?brokerId=9999"
-        else:
-            self.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
-            self.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
-            self.publicAPI = public.PublicAPI()
-            self.public_url = "wss://ws.okex.com:8443/ws/v5/public"
+        if not OKExAPI.api_initiated:
+            apikey = key.Key(accountid)
+            api_key = apikey.api_key
+            secret_key = apikey.secret_key
+            passphrase = apikey.passphrase
+            OKExAPI.__key = dict(api_key=api_key, passphrase=passphrase, secret_key=secret_key)
+            if accountid == 3:
+                OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
+                OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
+                OKExAPI.publicAPI = public.PublicAPI(test=True)
+                OKExAPI.public_url = "wss://ws.okex.com:8443/ws/v5/public?brokerId=9999"
+                OKExAPI.private_url = "wss://ws.okex.com:8443/ws/v5/private?brokerId=9999"
+            else:
+                OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
+                OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
+                OKExAPI.publicAPI = public.PublicAPI()
+                OKExAPI.public_url = "wss://ws.okex.com:8443/ws/v5/public"
+                OKExAPI.private_url = "wss://ws.okex.com:8443/ws/v5/private"
+            OKExAPI.api_initiated = True
 
         self.coin = coin
         if coin:
+            assert isinstance(coin, str)
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
             self.spot_info = None
@@ -74,28 +82,32 @@ class OKExAPI(object):
             self.exist = False
         return self
 
-    def __del__(self):
-        self.accountAPI.__del__()
-        self.tradeAPI.__del__()
-        self.publicAPI.__del__()
+    @staticmethod
+    def clean():
+        if hasattr(OKExAPI, 'accountAPI'):
+            OKExAPI.accountAPI.__del__()
+        if hasattr(OKExAPI, 'tradeAPI'):
+            OKExAPI.tradeAPI.__del__()
+        if hasattr(OKExAPI, 'publicAPI'):
+            OKExAPI.publicAPI.__del__()
 
-    def set_asemaphore(self, sem):
+    @staticmethod
+    def set_asemaphore(sem):
         """控制并发连接
         """
-        self.asem = sem
+        OKExAPI.asem = sem
 
-    def set_psemaphore(self, sem):
+    @staticmethod
+    def set_psemaphore(sem):
         """控制并发连接
         """
-        self.psem = sem
+        OKExAPI.psem = sem
 
     async def check_account_level(self):
         """检查账户模式，需开通合约交易
         """
         level = (await self.accountAPI.get_account_config())['acctLv']
-        if level == '1':
-            fprint(lang.upgrade_account)
-            exit()
+        assert level != '1', lang.upgrade_account
 
     async def check_position_mode(self):
         """检查是否为买卖模式
@@ -106,20 +118,18 @@ class OKExAPI(object):
             await self.accountAPI.set_position_mode('net_mode')
             fprint(lang.change_net_mode)
         mode = (await self.accountAPI.get_account_config())['posMode']
-        if mode != 'net_mode':
-            fprint(lang.set_mode_fail)
-            exit()
+        assert mode == 'net_mode', lang.set_mode_fail
 
     async def usdt_balance(self):
         """获取USDT保证金
         """
         return await self.spot_position('USDT')
 
+    @call_coroutine
     async def spot_position(self, coin=None):
         """获取现货余额
         """
-        if not coin:
-            coin = self.coin
+        if not coin: coin = self.coin
         data: list = (await self.accountAPI.get_coin_account(coin))['details']
         return float(data[0]['availEq']) if data else 0.
 
@@ -130,15 +140,13 @@ class OKExAPI(object):
         # /api/v5/account/positions 限速：10次/2s
         sem = self.asem if self.asem else asyncio.Semaphore(5)
         async with sem:
-            if not swap_ID:
-                swap_ID = self.swap_ID
+            if not swap_ID: swap_ID = self.swap_ID
             try:
                 result: list = await self.accountAPI.get_specific_position(swap_ID)
             except OkexAPIException as e:
                 await asyncio.sleep(10)
                 result: list = await self.accountAPI.get_specific_position(swap_ID)
-            if self.asem:
-                await asyncio.sleep(1)
+            if self.asem: await asyncio.sleep(1)
             keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
             for holding in result:
                 if holding['mgnMode'] == 'isolated':
@@ -198,8 +206,7 @@ class OKExAPI(object):
         :return: 是否成功
         :rtype: bool
         """
-        if transfer_amount <= 0:
-            return False
+        if transfer_amount <= 0: return False
         try:
             if await self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='add', amt=transfer_amount):
                 fprint(lang.added_margin.format(transfer_amount))
@@ -209,8 +216,7 @@ class OKExAPI(object):
         except OkexAPIException as e:
             fprint(e)
             fprint(lang.transfer_failed)
-            if e.code == "58110":
-                time.sleep(600)
+            if e.code == "58110": await asyncio.sleep(600)
             return False
 
     async def reduce_margin(self, transfer_amount):
@@ -220,8 +226,7 @@ class OKExAPI(object):
         :return: 是否成功
         :rtype: bool
         """
-        if transfer_amount <= 0:
-            return False
+        if transfer_amount <= 0: return False
         try:
             if await self.accountAPI.adjust_margin(instId=self.swap_ID, posSide='net', type='reduce',
                                                    amt=transfer_amount):
@@ -232,10 +237,13 @@ class OKExAPI(object):
         except OkexAPIException as e:
             fprint(e)
             fprint(lang.transfer_failed)
-            if e.code == "58110":
-                time.sleep(600)
+            if e.code == "58110": await asyncio.sleep(600)
             return False
 
     async def get_tickers(self):
         return await gather(self.publicAPI.get_specific_ticker(self.spot_ID),
                             self.publicAPI.get_specific_ticker(self.swap_ID))
+
+    @staticmethod
+    def _key():
+        return OKExAPI.__key

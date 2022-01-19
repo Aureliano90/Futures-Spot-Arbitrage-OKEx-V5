@@ -57,6 +57,7 @@ class AddPosition(OKExAPI):
         :param leverage: 杠杆
         :return: 减少保证金
         """
+        assert leverage > 0
         holding = await self.swap_holding()
         position = abs(holding['pos'] * float(self.swap_info['ctVal']))
         if holding and position:
@@ -119,7 +120,7 @@ class AddPosition(OKExAPI):
                 return extra
             return 0
 
-    @call_coroutine
+    @run_with_cancel
     async def add(self, usdt_size=0.0, target_size=0.0, leverage=0, price_diff=0.002, accelerate_after=0):
         """加仓期现组合
 
@@ -131,8 +132,7 @@ class AddPosition(OKExAPI):
         :return: 加仓金额
         :rtype: float
         """
-        if not leverage:
-            leverage = await self.get_lever()
+        if not leverage: leverage = await self.get_lever()
         if usdt_size:
             last = float((await self.publicAPI.get_specific_ticker(self.spot_ID))['last'])
             target_position = usdt_size * leverage / (leverage + 1) / last
@@ -142,6 +142,8 @@ class AddPosition(OKExAPI):
 
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
+        size_digits = self.spot_info['lotSz'].find('.')
+        size_digits = len(self.spot_info['lotSz'][size_digits:]) - 1
         contract_val = float(self.swap_info['ctVal'])
 
         # 查询账户余额
@@ -168,18 +170,17 @@ class AddPosition(OKExAPI):
 
         channels = [{"channel": "tickers", "instId": self.spot_ID}, {"channel": "tickers", "instId": self.swap_ID}]
         spot_ticker = swap_ticker = None
+        self.exitFlag = False
 
         # 如果仍未建仓完毕
         while target_position >= contract_val and not self.exitFlag:
             # 下单后重新订阅
-            async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
+            async for ticker in subscribe_without_login(self.public_url, channels):
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
                     Stat = await trading_data.Stat(self.coin)
-                    if recent := Stat.recent_open_stat(accelerate_after):
-                        price_diff = recent['avg'] + 2 * recent['std']
-                    else:
-                        fprint(lang.fetch_ticker_first)
+                    assert (recent := Stat.recent_open_stat(accelerate_after)), lang.fetch_ticker_first
+                    price_diff = recent['avg'] + 2 * recent['std']
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
                 ticker = ticker['data'][0]
@@ -216,15 +217,19 @@ class AddPosition(OKExAPI):
                         best_bid_size = float(swap_ticker['bidSz'])
                         # print(best_ask_size, best_bid_size)
                         # continue
-                        order_size = min(target_position, round_to(best_ask_size, min_size),
-                                         best_bid_size * contract_val)
+                        order_size = min(target_position, best_ask_size, best_bid_size * contract_val)
+                        order_size = round_to(order_size, min_size)
                         order_size = round_to(order_size, contract_val)
 
                         # 考虑现货手续费，分别计算现货数量与合约张数
+                        spot_size = round_to(order_size / (1 + trade_fee), size_increment)
+                        if spot_size > best_ask_size:
+                            order_size -= min_size
+                            order_size = round_to(order_size, contract_val)
+                            spot_size = round_to(order_size / (1 + trade_fee), size_increment)
+                        spot_size = f'{spot_size:.{size_digits}f}'
                         contract_size = round(order_size / contract_val)
                         contract_size = f'{contract_size:d}'
-                        spot_size = round_to(order_size / (1 + trade_fee), size_increment)
-                        spot_size = f'{spot_size:f}'
                         # print(order_size, contract_size, spot_size)
 
                         timestamp = datetime.utcnow()
@@ -378,7 +383,8 @@ class AddPosition(OKExAPI):
                         else:
                             # print("订单太小", order_size)
                             pass
-        if spot_notional != 0:
+
+        if spot_notional:
             Ledger = record.Record('Ledger')
             timestamp = datetime.utcnow()
             mylist = []

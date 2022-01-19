@@ -7,10 +7,10 @@ import lang
 
 
 class Record:
+    myclient = pymongo.MongoClient('mongodb://localhost:27017/')
+    mydb = myclient['OKEx']
 
     def __init__(self, col=''):
-        self.myclient = pymongo.MongoClient('mongodb://localhost:27017/')
-        self.mydb = self.myclient['OKEx']
         self.mycol = self.mydb[col]
 
     def find_last(self, match: dict):
@@ -54,8 +54,7 @@ async def record():
     publicAPI = public.PublicAPI()
 
     while True:
-        timestamp = datetime.utcnow()
-        begin = timestamp
+        begin = timestamp = datetime.utcnow()
 
         # 每8小时记录资金费
         if timestamp.hour % 8 == 0:
@@ -71,26 +70,30 @@ async def record():
                             funding_rate_list.append(mydict)
                     funding.mycol.insert_many(funding_rate_list)
 
-                    myquery = {'timestamp': {'$lt': timestamp.__sub__(timedelta(hours=48))}}
+                    myquery = {'timestamp': {'$lt': timestamp - timedelta(hours=48)}}
                     ticker.mycol.delete_many(myquery)
 
-        spot_ticker, swap_ticker = await asyncio.gather(publicAPI.get_tickers('SPOT'), publicAPI.get_tickers('SWAP'))
+        spot_ticker = await publicAPI.get_tickers('SPOT')
+        swap_ticker = await publicAPI.get_tickers('SWAP')
         mylist = []
         for m in instrumentsID:
             swap_ID = m
             spot_ID = swap_ID[:swap_ID.find('-SWAP')]
             coin = spot_ID[:spot_ID.find('-USDT')]
-            spot_ask, spot_bid, swap_bid, swap_ask = 0., 0., 0., 0.
-            for n in spot_ticker:
+            spot_ask = spot_bid = swap_bid = swap_ask = 0.
+            for i, n in enumerate(spot_ticker):
                 if n['instId'] == spot_ID:
                     timestamp = funding_rate.utcfrommillisecs(n['ts'])
-                    # print(timestamp)
                     spot_ask = float(n['askPx'])
                     spot_bid = float(n['bidPx'])
-            for n in swap_ticker:
+                    spot_ticker.pop(i)
+                    break
+            for i, n in enumerate(swap_ticker):
                 if n['instId'] == swap_ID:
                     swap_ask = float(n['askPx'])
                     swap_bid = float(n['bidPx'])
+                    swap_ticker.pop(i)
+                    break
             if spot_ask and spot_bid:
                 open_pd = (swap_bid - spot_ask) / spot_ask
                 close_pd = (swap_ask - spot_bid) / spot_bid
@@ -101,6 +104,6 @@ async def record():
             mylist.append(mydict)
         ticker.mycol.insert_many(mylist)
         timestamp = datetime.utcnow()
-        delta = timestamp.__sub__(begin).total_seconds()
+        delta = (timestamp - begin).total_seconds()
         if delta < 10:
             await asyncio.sleep(10 - delta)

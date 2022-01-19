@@ -89,6 +89,13 @@ class Client(object):
                 print(e)
                 retry += 1
                 await asyncio.sleep(30)
+                continue
+
+            if response.status_code == 429:
+                retry += 1
+                print(response.status_code, request_path)
+                await asyncio.sleep(5)
+                continue
 
             # Cloudflare error
             if str(response.status_code).startswith('5'):
@@ -100,7 +107,7 @@ class Client(object):
 
         # exception handle
         if not str(response.status_code).startswith('2'):
-            print('client.py error')
+            print('client.py error.', request_path)
             print("response.status_code: ", response.status_code)
             raise exceptions.OkexAPIException(response)
 

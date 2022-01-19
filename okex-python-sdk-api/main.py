@@ -4,12 +4,11 @@ import close_position
 import monitor
 import trading_data
 import menu
+import record
 from utils import *
 import sys
 
-if sys.version_info < (3, 8):
-    print('Python version >=3.8 is required.')
-    print('Your Python version: ', sys.version)
+assert sys.version_info >= (3, 8), print('Python version >=3.8 is required.\nYour Python version: ', sys.version)
 
 
 # @call_coroutine
@@ -24,7 +23,7 @@ if sys.version_info < (3, 8):
 
 def main():
     print(datetime.now())
-    menu.main_menu(accountid=2)
+    menu.main_menu(accountid=3)
     # menu.monitor_all(2)
     # menu.profit_all(2)
     # menu.close_all(2)

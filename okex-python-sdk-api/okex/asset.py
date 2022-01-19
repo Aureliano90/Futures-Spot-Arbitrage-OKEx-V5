@@ -20,7 +20,9 @@ class AssetAPI(Client):
         :param ccy: 币种
         """
         params = {'ccy': ccy}
-        return (await self._request_with_params(GET, ASSET_BALANCE, params))['data'][0]
+        res = await self._request_with_params(GET, ASSET_BALANCE, params)
+        assert res['code'] == '0', f"/api/v5/asset/balances, msg={res['msg']}"
+        return res['data'][0]
 
     async def transfer(self, ccy, amt, account_from, account_to, instId='', toInstId='') -> bool:
         """资金划转\n
@@ -55,13 +57,7 @@ class AssetAPI(Client):
         :param before: 请求此时间戳之后
         :param limit: 分页返回的结果集数量，300，不填默认返回100条
         """
-        params = {'instId': instId}
-        if bar:
-            params['bar'] = bar
-        if after:
-            params['after'] = after
-        if before:
-            params['before'] = before
-        if limit:
-            params['limit'] = limit
-        return (await self._request_with_params(GET, GET_CANDLES, params))['data']
+        params = dict(instId=instId, bar=bar, after=after, before=before, limit=limit)
+        res = await self._request_with_params(GET, GET_CANDLES, params)
+        assert res['code'] == '0', f"/api/v5/market/candles, msg={res['msg']}"
+        return res['data']

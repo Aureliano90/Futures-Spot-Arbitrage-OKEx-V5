@@ -33,9 +33,8 @@ async def monitor_all(accountid: int):
 
 def monitor_one(coin: str, accountid: int, sem=None):
     mon = monitor.Monitor(coin=coin, accountid=accountid)
-    if sem:
-        mon.set_psemaphore(sem)
-    mon.watch()
+    if sem: mon.set_psemaphore(sem)
+    asyncio.get_event_loop().run_until_complete(mon.watch())
 
 
 async def print_apy(coin: str, accountid: int, asem):
@@ -60,7 +59,7 @@ async def profit_all(accountid: int):
     # /api/v5/account/positions 限速：10次/2s
     asem = asyncio.Semaphore(5)
     for coin in await get_coinlist(accountid):
-        mon, Stat = await gather(monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin))
+        mon, Stat = await monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin)
         mon.set_asemaphore(asem)
         gather_result = await gather(mon.apr(1), mon.apr(7), mon.apr())
         fprint(apr_message.format(coin, *gather_result))
@@ -81,21 +80,19 @@ async def history_profit(accountid: int):
                 {'$group': {'_id': '$instrument'}}]
     temp = [x['_id'] for x in Record.mycol.aggregate(pipeline)]
     coinlist = await get_coinlist(accountid)
-    coinlist = list(set(temp) - set(coinlist))
+    coinlist = set(temp) - set(coinlist)
     for coin in coinlist:
         Stat = await trading_data.Stat(coin)
         funding = Stat.history_funding(accountid)
         cost = Stat.history_cost(accountid)
         open_time = Stat.open_time(accountid)
         close_time = Stat.close_time(accountid)
-        Stat.__del__()
         pipeline = [{'$match': {'account': accountid, 'instrument': coin, 'title': "平仓"}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
         position = 0
         for x in Record.mycol.aggregate(pipeline):
-            if 'position' in x:
-                position = x['position']
-        delta = close_time.__sub__(open_time).total_seconds()
+            if 'position' in x: position = x['position']
+        delta = (close_time - open_time).total_seconds()
         apr = 0
         if position:
             apr = (funding + cost) / position / delta * 86400 * 365
@@ -117,7 +114,6 @@ async def cumulative_profit(accountid: int):
         Stat = await trading_data.Stat(coin)
         funding = Stat.history_funding(accountid, -1)
         cost = Stat.history_cost(accountid, -1)
-        Stat.__del__()
         fprint(cumulative_pnl.format(coin, funding + cost))
 
 
@@ -142,23 +138,26 @@ async def close_all(accountid: int):
 
     :param accountid: 账号id
     """
-    fundingRate = funding_rate.FundingRate()
     processes = []
     for n in await get_coinlist(accountid):
-        Stat, reducePosition = await gather(trading_data.Stat(coin=n),
-                                            close_position.ReducePosition(coin=n, accountid=accountid))
-        if recent := Stat.recent_close_stat(4):
-            close_pd = recent['avg'] - 2 * recent['std']
-            fprint(funding_close.format(n, await fundingRate.current(n + '-USDT-SWAP'), recent['avg'], recent['std'],
-                                        recent['min'], close_pd))
-        else:
-            fprint(fetch_ticker_first)
-            break
-        process = multiprocessing.Process(target=reducePosition.close, args=(close_pd, 2))
+        process = multiprocessing.Process(target=close_one, args=(n, accountid))
         process.start()
         processes.append(process)
     for n in processes:
         n.join()
+
+
+def close_one(coin: str, accountid: int):
+    fundingRate = funding_rate.FundingRate()
+    Stat = trading_data.Stat(coin=coin)
+    if recent := Stat.recent_close_stat(4):
+        close_pd = recent['avg'] - 2 * recent['std']
+        fprint(funding_close.format(coin, fundingRate.current(coin + '-USDT-SWAP'), recent['avg'], recent['std'],
+                                    recent['min'], close_pd))
+        reducePosition = close_position.ReducePosition(coin=coin, accountid=accountid)
+        asyncio.get_event_loop().run_until_complete(reducePosition.close(close_pd, 2))
+    else:
+        fprint(fetch_ticker_first)
 
 
 @call_coroutine
@@ -172,6 +171,7 @@ async def get_coinlist(accountid: int):
     pipeline = [{'$match': {'account': accountid}},
                 {'$group': {'_id': '$instrument'}}]
     coinlist = [x['_id'] for x in Record.mycol.aggregate(pipeline)]
+    assert coinlist, empty_db
     mon = await monitor.Monitor(accountid=accountid)
     # /api/v5/account/positions 限速：10次/2s
     mon.set_asemaphore(asyncio.Semaphore(5))
@@ -185,13 +185,13 @@ def main_menu(accountid: int):
 
     :param accountid: 账号id
     """
+    assert isinstance(accountid, int)
     fprint(f'{accountid=}')
     while (command := input(main_menu_text)) != 'q':
         loop = asyncio.get_event_loop()
         if command == '1':
             Monitor = monitor.Monitor(coin='BTC', accountid=accountid)
             loop.run_until_complete(gather(Monitor.check_account_level(), Monitor.check_position_mode()))
-            Monitor.__del__()
             monitor_all(accountid)
         elif command == '2':
             crypto_menu(accountid)
@@ -207,6 +207,8 @@ def main_menu(accountid: int):
             break
         else:
             print(wrong_command)
+    trading_data.Stat.clean()
+    monitor.Monitor.clean()
 
 
 def crypto_menu(accountid: int):
@@ -217,7 +219,6 @@ def crypto_menu(accountid: int):
         if Monitor.exist:
             break
         else:
-            Monitor.__del__()
             continue
 
     while (command := input(crypto_menu_text)) != 'b':
@@ -225,10 +226,12 @@ def crypto_menu(accountid: int):
             while True:
                 try:
                     usdt = float(input(input_USDT))
+                    assert usdt >= 0
                 except:
                     continue
                 try:
                     leverage = float(input(input_leverage))
+                    assert leverage > 0
                 except:
                     continue
                 AddPosition = open_position.AddPosition(coin=coin, accountid=accountid)
@@ -240,13 +243,12 @@ def crypto_menu(accountid: int):
                     Monitor.watch()
                 else:
                     fprint(fetch_ticker_first)
-                AddPosition.__del__()
-                Stat.__del__()
                 break
         elif command == '2':
             while True:
                 try:
                     usdt = float(input(input_USDT))
+                    assert usdt >= 0
                 except:
                     continue
                 ReducePosition = close_position.ReducePosition(coin=coin, accountid=accountid)
@@ -257,22 +259,18 @@ def crypto_menu(accountid: int):
                     ReducePosition.reduce(usdt_size=usdt, price_diff=close_pd, accelerate_after=hours)
                 else:
                     fprint(fetch_ticker_first)
-                ReducePosition.__del__()
-                Stat.__del__()
                 break
         elif command == '3':
-            process = multiprocessing.Process(target=monitor_one, args=(coin, accountid))
-            process.start()
-            process.join(0.1)
+            Monitor.watch()
         elif command == '4':
             while True:
                 try:
                     leverage = float(input(input_leverage))
+                    assert leverage > 0
                 except:
                     continue
                 AddPosition = open_position.AddPosition(coin=coin, accountid=accountid)
                 AddPosition.adjust_swap_lever(leverage)
-                AddPosition.__del__()
                 break
         elif command == '5':
             ReducePosition = close_position.ReducePosition(coin=coin, accountid=accountid)
@@ -283,8 +281,6 @@ def crypto_menu(accountid: int):
                 ReducePosition.close(price_diff=close_pd, accelerate_after=hours)
             else:
                 fprint(fetch_ticker_first)
-            ReducePosition.__del__()
-            Stat.__del__()
         elif command == '6':
             if not Monitor.position_exist():
                 fprint(no_position)
@@ -300,22 +296,29 @@ def crypto_menu(accountid: int):
                 localtime = Stat.open_time(accountid).replace(tzinfo=timezone.utc).astimezone().replace(
                     tzinfo=None)
                 fprint(open_time_pnl.format(localtime.isoformat(timespec='minutes'), funding + cost))
-                Stat.__del__()
         elif command == '7':
             while True:
                 try:
                     hours = int(input(how_many_hours))
+                    assert hours > 0
                 except:
                     continue
                 Stat = trading_data.Stat(coin)
                 Stat.plot(hours)
-                Stat.__del__()
+                break
+        elif command == '8':
+            while True:
+                try:
+                    usdt = float(input(input_USDT))
+                    assert usdt >= 0
+                except:
+                    continue
+                Monitor.amm(usdt)
                 break
         elif command == 'b':
             pass
         else:
             print(wrong_command)
-    Monitor.__del__()
 
 
 def funding_menu(accountid: int):
@@ -325,6 +328,7 @@ def funding_menu(accountid: int):
             while True:
                 try:
                     days = int(input(how_many_days))
+                    assert days > 0
                 except:
                     continue
                 FundingRate.show_profitable_rate(days)
@@ -340,6 +344,7 @@ def funding_menu(accountid: int):
             while True:
                 try:
                     days = int(input(how_many_days))
+                    assert days > 0
                 except:
                     continue
                 fprint(funding_day)
@@ -379,7 +384,6 @@ def account_menu(accountid: int):
                         pass
                     else:
                         continue
-            Monitor.__del__()
             Record = record.Record('Ledger')
             filter = {'account': accountid, 'instrument': coin}
             delete_result = Record.mycol.delete_many(filter)

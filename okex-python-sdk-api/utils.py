@@ -1,17 +1,18 @@
 import functools
 import inspect
+import sys
 from datetime import datetime, timedelta, timezone
 import math
 import time
 import asyncio
+import lang
 
 logfile = open("log.txt", "a", encoding="utf-8")
 
 
 def fprint(*args):
     print(*args)
-    print(datetime.now(), end='    ', file=logfile)
-    print(*args, file=logfile, flush=True)
+    print(datetime.now(), *args, file=logfile)
 
 
 def apy(apr: float):
@@ -22,15 +23,16 @@ def utcfrommillisecs(millisecs: str):
     return datetime.utcfromtimestamp(int(millisecs) / 1000)
 
 
-def round_to(number, fraction):
+def round_to(number, fraction) -> float:
     """返回fraction的倍数
     """
     # 小数点后位数
-    ndigits = len('{:f}'.format(fraction - int(fraction))) - 2
+    fs = f'{fraction:.18f}'.rstrip('0')
+    ndigits = len(fs[fs.find('.'):]) - 1
     if ndigits > 0:
-        return round(int(number / fraction) * fraction, ndigits)
+        return round(number / fraction // 1 * fraction, ndigits)
     else:
-        return round(int(number / fraction) * fraction)
+        return round(number / fraction // 1 * fraction)
 
 
 def debug_timer(cls):
@@ -72,7 +74,7 @@ def debug_timer(cls):
             cls.__del__ = __del__
         return cls
     elif asyncio.iscoroutinefunction(cls):
-        # print(f'{cls.__name__} is coroutine')
+        # print(f'{cls.__name__} is coroutine function')
 
         @functools.wraps(cls)
         async def wrapper(*args, **kwargs):
@@ -110,7 +112,7 @@ def call_coroutine(cls):
             loop = asyncio.get_event_loop()
             # coro is a coroutine object.
             coro = cls(*args, **kwargs)
-            # print(f'{cls.__name__} {asyncio.iscoroutine(res)=}')
+            # print(f'{cls.__name__} {asyncio.iscoroutine(coro)=}')
             if loop.is_running():
                 # print('loop is running')
                 # Return the coroutine object to be awaited.
@@ -151,4 +153,80 @@ def call_coroutine(cls):
                     loop.run_until_complete(self.__await__())
 
             cls.__init__ = __init__
+    return cls
+
+
+def sinput():
+    for i in sys.stdin:
+        return i.strip()
+
+
+def ainput(*args, **kwargs):
+    loop = asyncio.get_event_loop()
+    kwargs['end'] = ''
+    print(*args, **kwargs)
+    return asyncio.ensure_future(loop.run_in_executor(None, functools.partial(sinput)))
+
+
+def input_cancel(t, r, c):
+    """Cancel task t if the result of c is r
+
+    :param t:
+    :param c:
+    :param r:
+    """
+    if not t.done():
+        if r:
+            # print(t, f'{r=}', c)
+            if c.result() == r:
+                t.cancel()
+        else:
+            # print(t, f'{r=}', c)
+            t.cancel()
+
+
+def run_with_cancel(cls):
+    if asyncio.iscoroutinefunction(cls):
+        # cls is a coroutine function.
+        @functools.wraps(cls)
+        def wrapper(*args, **kwargs):
+            loop = asyncio.get_event_loop()
+            # coro is a coroutine object.
+            coro = cls(*args, **kwargs)
+            # print(f'{cls.__name__} {asyncio.iscoroutine(coro)=}')
+            if loop.is_running():
+                # print('loop is running')
+                # Return the coroutine object to be awaited.
+                async def _coro():
+                    _t = loop.create_task(coro)
+                    _c = ainput(lang.input_q_abort)
+                    _g = asyncio.gather(_t, _c, return_exceptions=True)
+                    _t.add_done_callback(functools.partial(input_cancel, _c, ''))
+                    _c.add_done_callback(functools.partial(input_cancel, _t, 'q'))
+                    try:
+                        await _g
+                    except asyncio.exceptions.CancelledError:
+                        pass
+                    finally:
+                        if not _t.cancelled():
+                            return _t.result()
+
+                return _coro()
+            else:
+                # print('loop is not running')
+                # Execute the coroutine object and return its result.
+                t = loop.create_task(coro)
+                c = ainput(lang.input_q_abort)
+                g = asyncio.gather(t, c, return_exceptions=True)
+                t.add_done_callback(functools.partial(input_cancel, c, ''))
+                c.add_done_callback(functools.partial(input_cancel, t, 'q'))
+                try:
+                    loop.run_until_complete(g)
+                except asyncio.exceptions.CancelledError:
+                    pass
+                finally:
+                    if not t.cancelled():
+                        return t.result()
+
+        return wrapper
     return cls

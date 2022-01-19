@@ -1,3 +1,4 @@
+from math import sqrt
 from okex_api import *
 import funding_rate
 import open_position
@@ -14,7 +15,8 @@ class Monitor(OKExAPI):
     """监控功能类
     """
 
-    def __str__(self):
+    @property
+    def __name__(self):
         return 'Monitor'
 
     def __init__(self, coin=None, accountid=3):
@@ -89,8 +91,7 @@ class Monitor(OKExAPI):
         with sem:
             Ledger = record.Record('Ledger')
             ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
-            if self.psem:
-                await asyncio.sleep(1)
+            if self.psem: await asyncio.sleep(1)
         realized_rate = 0.
         for item in ledger:
             if item['instId'] == self.swap_ID:
@@ -106,8 +107,7 @@ class Monitor(OKExAPI):
     async def position_exist(self, swap_ID=None):
         """判断是否有仓位
         """
-        if not swap_ID:
-            swap_ID = self.swap_ID
+        if not swap_ID: swap_ID = self.swap_ID
         if await self.swap_position(swap_ID) == 0:
             # fprint(lang.nonexistent_position.format(swap_ID))
             return False
@@ -118,12 +118,11 @@ class Monitor(OKExAPI):
                 return False
         return True
 
-    @call_coroutine
+    @run_with_cancel
     async def watch(self):
         """监控仓位，自动加仓、减仓
         """
-        if not await self.position_exist():
-            exit()
+        assert await self.position_exist()
 
         fundingRate = funding_rate.FundingRate()
         addPosition: open_position.AddPosition
@@ -158,8 +157,9 @@ class Monitor(OKExAPI):
         accelerated = False
         adding = False
         reducing = False
+        self.exitFlag = False
 
-        while True:
+        while not self.exitFlag:
             begin = timestamp = datetime.utcnow()
             swap_ticker = await self.publicAPI.get_specific_ticker(self.swap_ID)
             last = float(swap_ticker['last'])
@@ -168,14 +168,10 @@ class Monitor(OKExAPI):
             if not updated and timestamp.minute == 1:
                 (current_rate, next_rate), liquidation_price = await gather(fundingRate.current_next(self.swap_ID),
                                                                             self.liquidation_price())
-                if liquidation_price == 0:
-                    exit()
+                assert liquidation_price
 
-                if recent := Stat.recent_open_stat():
-                    open_pd = recent['avg'] + recent['std']
-                else:
-                    fprint(lang.fetch_ticker_first)
-                    break
+                assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
+                open_pd = recent['avg'] + recent['std']
                 recent = Stat.recent_close_stat()
                 close_pd = recent['avg'] - recent['std']
                 cost = open_pd - close_pd + 2 * trade_fee
@@ -216,11 +212,8 @@ class Monitor(OKExAPI):
                     Ledger.mycol.insert_one(mydict)
 
                     # 期现差价控制在2个标准差
-                    if recent := Stat.recent_close_stat():
-                        close_pd = recent['avg'] - 2 * recent['std']
-                    else:
-                        fprint(lang.fetch_ticker_first)
-                        break
+                    assert (recent := Stat.recent_close_stat()), lang.fetch_ticker_first
+                    close_pd = recent['avg'] - 2 * recent['std']
 
                     swap_position = await self.swap_position()
                     target_size = swap_position / (leverage + 1) ** 2
@@ -250,11 +243,8 @@ class Monitor(OKExAPI):
                     Ledger.mycol.insert_one(mydict)
 
                     # 期现差价控制在2个标准差
-                    if recent := Stat.recent_open_stat():
-                        open_pd = recent['avg'] + 2 * recent['std']
-                    else:
-                        fprint(lang.fetch_ticker_first)
-                        break
+                    assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
+                    open_pd = recent['avg'] + 2 * recent['std']
 
                     # swap_position = await self.swap_position()
                     # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
@@ -278,18 +268,14 @@ class Monitor(OKExAPI):
                         while not reduce_task.done():
                             await asyncio.sleep(1)
 
-                        if recent := Stat.recent_close_stat(1):
-                            close_pd = recent['avg'] - 1.5 * recent['std']
-                        else:
-                            fprint(lang.fetch_ticker_first)
-                            break
+                        assert (recent := Stat.recent_close_stat(1)), lang.fetch_ticker_first
+                        close_pd = recent['avg'] - 1.5 * recent['std']
 
                         liquidation_price = await self.liquidation_price()
                         swap_position = await self.swap_position()
                         target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         reduce_task = asyncio.create_task(
                             reducePosition.reduce(target_size=target_size, price_diff=close_pd))
-                        reducePosition.exitFlag = False
                         reducing = True
                         accelerated = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
@@ -299,18 +285,14 @@ class Monitor(OKExAPI):
                         while not reduce_task.done():
                             await asyncio.sleep(1)
 
-                        if recent := Stat.recent_close_stat(2):
-                            close_pd = recent['avg'] - 2 * recent['std']
-                        else:
-                            fprint(lang.fetch_ticker_first)
-                            break
+                        assert (recent := Stat.recent_close_stat(2)), lang.fetch_ticker_first
+                        close_pd = recent['avg'] - 2 * recent['std']
 
                         liquidation_price = await self.liquidation_price()
                         swap_position = await self.swap_position()
                         target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
                         reduce_task = asyncio.create_task(
                             reducePosition.reduce(target_size=target_size, price_diff=close_pd))
-                        reducePosition.exitFlag = False
                         reducing = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                 elif adding and not add_task.done():
@@ -319,24 +301,187 @@ class Monitor(OKExAPI):
                         while not add_task.done():
                             await asyncio.sleep(1)
 
-                        if recent := Stat.recent_open_stat(2):
-                            open_pd = recent['avg'] + 2 * recent['std']
-                        else:
-                            fprint(lang.fetch_ticker_first)
-                            break
+                        assert (recent := Stat.recent_open_stat(2)), lang.fetch_ticker_first
+                        open_pd = recent['avg'] + 2 * recent['std']
 
                         # liquidation_price = await self.liquidation_price()
                         # swap_position = await self.swap_position()
                         # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
                         if (usdt_size := usdt_size - add_task.result()) > 0:
                             add_task = asyncio.create_task(addPosition.add(usdt_size=usdt_size, price_diff=open_pd))
-                            addPosition.exitFlag = False
                             adding = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                 else:
                     liquidation_price = await self.liquidation_price()
                     adding = reducing = task_started = False
-            timestamp = datetime.utcnow()
-            delta = timestamp.__sub__(begin).total_seconds()
+            delta = (datetime.utcnow() - begin).total_seconds()
             if delta < 10:
                 await asyncio.sleep(10 - delta)
+
+    @run_with_cancel
+    async def amm(self, usdt=0):
+        begin = timestamp = datetime.utcnow()
+        r = 0.05
+        min_size = float(self.spot_info['minSz'])
+        size_increment = float(self.spot_info['lotSz'])
+        size_digits = self.spot_info['lotSz'].find('.')
+        size_digits = len(self.spot_info['lotSz'][size_digits:]) - 1
+        tick_size = float(self.spot_info['tickSz'])
+        tick_digits = self.spot_info['tickSz'].find('.')
+        tick_digits = len(self.spot_info['tickSz'][tick_digits:]) - 1
+        trade_fee, usdt_balance, spot_ticker, spot_position = await gather(
+            self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID), self.usdt_balance(),
+            self.publicAPI.get_specific_ticker(self.spot_ID), self.spot_position())
+        taker_fee = float(trade_fee['taker'])
+        maker_fee = float(trade_fee['maker'])
+        initial_price = last = float(spot_ticker['last'])
+
+        Record = record.Record('AMM')
+        if usdt == 0:
+            mydict = Record.find_last({'account': self.accountid, 'instrument': self.coin, 'op': 'open'})
+            k = mydict['k']
+            begin = mydict['timestamp']
+            initial_price = mydict['price']
+        else:
+            assert usdt_balance > usdt / 2, print(lang.insufficient_USDT)
+            # n1*n2=k n1=sqrt(k/p1) v=2*n1*p1=2*sqrt(k*p1)
+            k = (usdt / 2) ** 2 / initial_price
+            mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp, 'k': k, 'op': 'open',
+                      'price': initial_price}
+            Record.mycol.insert_one(mydict)
+
+        n1 = sqrt(k / last)
+        if spot_position < n1:
+            spot_size = round_to((n1 - spot_position) / (1 + taker_fee), size_increment)
+            spot_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy', size=spot_size,
+                                                             tgtCcy='base_ccy', order_type='market')
+            assert spot_order['ordId'] != '-1', print(spot_order)
+            if usdt == 0:
+                spot_order = await self.tradeAPI.get_order_info(instId=self.spot_ID, order_id=spot_order['ordId'])
+                spot_filled = float(spot_order['accFillSz']) + float(spot_order['fee'])
+                spot_price = float(spot_order['avgPx'])
+                spot_fee = float(spot_order['fee']) * spot_price
+                mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': timestamp,
+                          'spot_notional': spot_filled * spot_price, 'fee': spot_fee, 'k': k, 'op': 'order'}
+                Record.mycol.insert_one(mydict)
+
+        def stat():
+            pipeline = [
+                {'$match': {'account': self.accountid, 'instrument': self.coin, 'timestamp': {'$gt': begin}}},
+                {'$group': {'_id': '$instrument', 'spot_notional': {'$sum': '$spot_notional'},
+                            'fee': {'$sum': '$fee'}}}]
+            res = [x for x in Record.mycol.aggregate(pipeline)]
+            if res:
+                spot_notional = res[0]['spot_notional']
+                fee_total = res[0]['fee']
+                spot_price = k / n1**2
+                lp_value = 2. * k / n1
+                lp_pnl = 2. * sqrt(k * initial_price) - lp_value + spot_notional + fee_total
+                period = (datetime.utcnow() - begin).total_seconds() / 86400 / 365
+                theta = lp_pnl / period
+                gamma = - 0.5 * n1 / spot_price
+                # theta + 0.5 * sigma**2 * spot_price**2 * gamma + r * (spot_price * delta - lp_value) == 0
+                sigma2 = - (theta - r * 0.5 * lp_value) / (0.5 * spot_price ** 2 * gamma)
+                if sigma2 > 0:
+                    sigma = sqrt(sigma2)
+                    print(f"LP APR={theta / lp_value:%}")
+                    print(f"Realized volatility={sigma:%}")
+                else:
+                    print(f'{sigma2=}, {period=}')
+                    print(f'{2. * sqrt(k * initial_price):8.2f}, {spot_notional + fee_total:8.2f}, {lp_value:8.2f}')
+                    print(f'{(theta - r * 0.5 * lp_value) / lp_value:7.2%}')
+        stat()
+
+        async def cancel_orders():
+            orders = await self.tradeAPI.pending_order(instType='SPOT', instId=self.spot_ID, state='live')
+            tasks = [self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=order['ordId']) for order in orders]
+            if tasks:
+                orders = await gather(*tasks)
+                for order in orders:
+                    assert order['ordId'] != '-1', print(order)
+        await cancel_orders()
+
+        sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
+        buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
+        sell_price = f'{sell_price:.{tick_digits}f}'
+        buy_price = f'{buy_price:.{tick_digits}f}'
+        spot_size = round_to(min_size / (1 + maker_fee), size_increment)
+        sell_size = self.spot_info['minSz']
+        buy_size = f'{spot_size:.{size_digits}f}'
+        sell_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=sell_size,
+                                                         price=sell_price, order_type='limit')
+        buy_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy', size=buy_size,
+                                                        price=buy_price, order_type='limit')
+        assert sell_order['ordId'] != '-1', print(sell_order)
+        assert buy_order['ordId'] != '-1', print(buy_order)
+
+        channels = [{"channel": "orders", "instType": "SPOT", "instId": self.spot_ID}]
+        kwargs = OKExAPI._key()
+        kwargs['channels'] = channels
+
+        self.exitFlag = False
+        while not self.exitFlag:
+            async for current_order in subscribe(self.private_url, **kwargs):
+                current_order = current_order['data'][0]
+                print(utcfrommillisecs(current_order['uTime']), current_order['ordId'], current_order['side'],
+                      current_order['state'])
+                # 下单成功
+                if current_order['state'] == 'filled':
+                    spot_price = float(current_order['avgPx'])
+                    spot_fee = float(current_order['fee'])
+                    if current_order['ordId'] == sell_order['ordId']:
+                        spot_filled = float(current_order['accFillSz'])
+                        spot_notional = spot_filled * spot_price
+                        mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': datetime.utcnow(),
+                                  'spot_notional': spot_notional, 'fee': spot_fee, 'k': k, 'op': 'order'}
+                        Record.mycol.insert_one(mydict)
+                        order = await self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=buy_order['ordId'])
+                        assert order['ordId'] != '-1', print(order)
+
+                        n1 -= spot_filled
+                        sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
+                        buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
+                        sell_price = f'{sell_price:.{tick_digits}f}'
+                        buy_price = f'{buy_price:.{tick_digits}f}'
+                        spot_size = round_to(min_size / (1 + maker_fee), size_increment)
+                        sell_size = self.spot_info['minSz']
+                        buy_size = f'{spot_size:.{size_digits}f}'
+                        sell_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell',
+                                                                         size=sell_size, price=sell_price,
+                                                                         order_type='limit')
+                        buy_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy',
+                                                                        size=buy_size, price=buy_price,
+                                                                        order_type='limit')
+                        assert sell_order['ordId'] != '-1', print(sell_order)
+                        assert buy_order['ordId'] != '-1', print(buy_order)
+
+                    elif current_order['ordId'] == buy_order['ordId']:
+                        spot_filled = float(current_order['accFillSz']) + spot_fee
+                        spot_notional = - spot_filled * spot_price
+                        mydict = {'account': self.accountid, 'instrument': self.coin, 'timestamp': datetime.utcnow(),
+                                  'spot_notional': spot_notional, 'fee': spot_fee * spot_price, 'k': k, 'op': 'order'}
+                        Record.mycol.insert_one(mydict)
+                        order = await self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=sell_order['ordId'])
+                        assert order['ordId'] != '-1', print(order)
+
+                        n1 += spot_filled
+                        sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
+                        buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
+                        sell_price = f'{sell_price:.{tick_digits}f}'
+                        buy_price = f'{buy_price:.{tick_digits}f}'
+                        spot_size = round_to(min_size / (1 + maker_fee), size_increment)
+                        sell_size = self.spot_info['minSz']
+                        buy_size = f'{spot_size:.{size_digits}f}'
+                        sell_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell',
+                                                                         size=sell_size, price=sell_price,
+                                                                         order_type='limit')
+                        buy_order = await self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy',
+                                                                        size=buy_size, price=buy_price,
+                                                                        order_type='limit')
+                        assert sell_order['ordId'] != '-1', print(sell_order)
+                        assert buy_order['ordId'] != '-1', print(buy_order)
+                    else:
+                        print(current_order)
+
+                    stat()
+        await cancel_orders()

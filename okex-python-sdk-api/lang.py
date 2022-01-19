@@ -345,3 +345,8 @@ record_ticker = _('Recording ticker')
 no_margin_reduce = _('Margin cannot be reduced.')
 # "无法减少保证金。"
 
+empty_db = _('Database is empty.')
+# "数据库为空。"
+
+input_q_abort = _('Input q to abort\n')
+# "输入q中止\n"

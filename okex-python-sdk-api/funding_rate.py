@@ -27,6 +27,7 @@ class FundingRate:
         """
         return [n['instId'] for n in await self.publicAPI.get_instruments('SWAP') if n['instId'].find('USDT') != -1]
 
+    @call_coroutine
     async def current(self, instrument_id=''):
         """当期资金费
 
@@ -83,6 +84,7 @@ class FundingRate:
 
         :param days: 天数
         """
+        assert isinstance(days, int) and days > 0
         limit = f'{days * 3:d}'
         task_list = [self.publicAPI.get_historical_funding_rate(instId=m, limit=limit) for m in
                      await self.get_instruments_ID()]
@@ -150,6 +152,7 @@ class FundingRate:
         :param days: 最近几天
         :rtype: List[dict]
         """
+        assert isinstance(days, int) and days > 0
         limit = str(days * 3)
         task_list = [self.publicAPI.get_historical_funding_rate(instId=m, limit=limit) for m in
                      await self.get_instruments_ID()]
@@ -208,6 +211,7 @@ class FundingRate:
     async def show_profitable_rate(self, days=7):
         """显示收益最高十个币种资金费
         """
+        assert isinstance(days, int) and days > 0
         funding_rate_list = await self.get_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
         funding_rate_list = funding_rate_list[:20]
