@@ -1,6 +1,0 @@
-requests~=2.27.1
-httpcore~=0.14.5
-httpx[http2]~=0.21.3
-pymongo~=4.0.1
-matplotlib~=3.5.1
-websockets~=10.1
