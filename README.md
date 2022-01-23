@@ -2,8 +2,8 @@
 
 ## Introduction
 
-An object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Written in April for
-my personal use. Functional and stable enough for me. Modified and
+An object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Written in April 2021
+for my personal use. Modified and
 optimized [OKEx V3 API SDK](https://github.com/okex/V3-Open-API-SDK)
 according to [V5 API documentation](https://www.okex.com/docs-v5/en).
 
@@ -37,9 +37,6 @@ Chinese and English support, completed with annotations and docstrings.
 * Typical arbitrage of perpetual futures and spot is passively receiving funding fees while keeping the position open.
   However it is profitable to proactively close a portion of the position when the futures premium surges and reopen it
   later when the premium subdues.
-* The program does not interact when opening, closing or monitoring positions.
-* If the program is killed when opening or closing positions, the operation will not resume. Could make it continue
-  operation.
 
 ## Optimizations
 
@@ -58,6 +55,8 @@ call `coro` in normal context and `await coro` in async context.
 
 Install Python 3.8+ and required packages.
 
+`python setup.py install`
+or
 `pip install -r requirements.txt`
 
 Install [MongoDB](https://www.mongodb.com/try/download/community).

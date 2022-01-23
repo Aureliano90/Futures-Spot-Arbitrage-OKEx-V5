@@ -1,0 +1,9 @@
+LICENSE
+README.md
+setup.py
+Futures_Spot_Arbitrage_OKEx_V5.egg-info/PKG-INFO
+Futures_Spot_Arbitrage_OKEx_V5.egg-info/SOURCES.txt
+Futures_Spot_Arbitrage_OKEx_V5.egg-info/dependency_links.txt
+Futures_Spot_Arbitrage_OKEx_V5.egg-info/entry_points.txt
+Futures_Spot_Arbitrage_OKEx_V5.egg-info/requires.txt
+Futures_Spot_Arbitrage_OKEx_V5.egg-info/top_level.txt

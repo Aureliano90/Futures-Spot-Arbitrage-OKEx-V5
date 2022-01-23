@@ -10,13 +10,14 @@ setup(
     author_email='81753529+Aureliano90@users.noreply.github.com',
     description='',
     python_requires=">=3.8",
-    install_requires=['httpx~=0.18.2',
+    install_requires=['requests~=2.27.1',
+                      'httpcore~=0.14.5',
+                      'httpx[http2]~=0.21.3',
                       'pymongo~=4.0.1',
                       'matplotlib~=3.5.1',
                       'websockets~=10.1'],
     entry_points={
-            'console_scripts': [
-                'ok = okex-python-sdk-api.main:main'
-            ]
-        },
+            'console_scripts':
+                'ok = main:main'
+            },
 )
