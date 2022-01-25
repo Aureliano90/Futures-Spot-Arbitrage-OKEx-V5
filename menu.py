@@ -32,10 +32,13 @@ async def monitor_all(accountid: int):
 
 
 def monitor_one(coin: str, accountid: int, sem=None):
-    mon = monitor.Monitor(coin=coin, accountid=accountid)
-    if sem: mon.set_psemaphore(sem)
-    mon.watch()
-    monitor.Monitor.clean()
+    try:
+        mon = monitor.Monitor(coin=coin, accountid=accountid)
+        if sem: mon.set_psemaphore(sem)
+        mon.watch()
+    finally:
+        trading_data.Stat.clean()
+        monitor.Monitor.clean()
 
 
 async def print_apy(coin: str, accountid: int, asem):
