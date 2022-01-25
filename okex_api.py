@@ -36,14 +36,18 @@ class OKExAPI(object):
                 OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.publicAPI = public.PublicAPI(test=True)
-                OKExAPI.public_url = "wss://wspap.okx.com:8443/ws/v5/public"
-                OKExAPI.private_url = "wss://wspap.okx.com:8443/ws/v5/private"
+                # OKExAPI.public_url = "wss://wspap.okx.com:8443/ws/v5/public"
+                # OKExAPI.private_url = "wss://wspap.okx.com:8443/ws/v5/private"
+                OKExAPI.public_url = "wss://wspap.okex.com:8443/ws/v5/public?brokerId=9999"
+                OKExAPI.private_url = "wss://wspap.okex.com:8443/ws/v5/private?brokerId=9999"
             else:
                 OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
                 OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
                 OKExAPI.publicAPI = public.PublicAPI()
-                OKExAPI.public_url = "wss://ws.okx.com:8443/ws/v5/public"
-                OKExAPI.private_url = "wss://ws.okx.com:8443/ws/v5/private"
+                # OKExAPI.public_url = "wss://ws.okx.com:8443/ws/v5/public"
+                # OKExAPI.private_url = "wss://ws.okx.com:8443/ws/v5/private"
+                OKExAPI.public_url = "wss://ws.okex.com:8443/ws/v5/public"
+                OKExAPI.private_url = "wss://ws.okex.com:8443/ws/v5/private"
             OKExAPI.api_initiated = True
 
         self.coin = coin
@@ -92,13 +96,13 @@ class OKExAPI(object):
 
     @staticmethod
     def set_asemaphore(sem):
-        """控制并发连接
+        """控制asyncio并发连接
         """
         OKExAPI.asem = sem
 
     @staticmethod
     def set_psemaphore(sem):
-        """控制并发连接
+        """控制multiprocessing并发连接
         """
         OKExAPI.psem = sem
 
@@ -124,7 +128,7 @@ class OKExAPI(object):
         """
         return await self.spot_position('USDT')
 
-    @call_coroutine
+    # @call_coroutine
     async def spot_position(self, coin=None):
         """获取现货余额
         """
@@ -132,7 +136,7 @@ class OKExAPI(object):
         data: list = (await self.accountAPI.get_coin_account(coin))['details']
         return float(data[0]['availEq']) if data else 0.
 
-    @call_coroutine
+    # @call_coroutine
     async def swap_holding(self, swap_ID=None):
         """获取合约持仓
         """

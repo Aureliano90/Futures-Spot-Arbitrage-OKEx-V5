@@ -55,12 +55,27 @@ class AssetAPI(Client):
         GET /api/v5/market/candles
 
         :param instId: 产品ID
-        :param bar: 时间粒度
+        :param bar: 时间粒度, [1m/3m/5m/15m/30m/1H/2H/4H/6H/12H/1D/1W/1M/3M/6M/1Y]
         :param after: 请求此时间戳之前
         :param before: 请求此时间戳之后
-        :param limit: 分页返回的结果集数量，300，不填默认返回100条
+        :param limit: 分页返回的结果集数量，最大为300，不填默认返回100条
         """
         params = dict(instId=instId, bar=bar, after=after, before=before, limit=limit)
         res = await self._request_with_params(GET, GET_CANDLES, params)
         assert res['code'] == '0', f"/api/v5/market/candles, msg={res['msg']}"
+        return res['data']
+
+    async def history_kline(self, instId: str, bar='4H', after='', before='', limit='') -> List[List]:
+        """获取最近几年的历史k线数据\n
+        GET /api/v5/market/history-candles
+
+        :param instId: 产品ID
+        :param bar: 时间粒度, [1m/3m/5m/15m/30m/1H/2H/4H/6H/12H/1D/1W/1M/3M/6M/1Y]
+        :param after: 请求此时间戳之前
+        :param before: 请求此时间戳之后
+        :param limit: 分页返回的结果集数量，最大为100，不填默认返回100条
+        """
+        params = dict(instId=instId, bar=bar, after=after, before=before, limit=limit)
+        res = await self._request_with_params(GET, HISTORY_CANDLES, params)
+        assert res['code'] == '0', f"/api/v5/market/history-candles, msg={res['msg']}"
         return res['data']

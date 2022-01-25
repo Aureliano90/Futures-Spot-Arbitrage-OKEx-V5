@@ -66,7 +66,7 @@ async def profit_all(accountid: int):
         fprint(apr_message.format(coin, *gather_result))
         funding = Stat.history_funding(accountid)
         cost = Stat.history_cost(accountid)
-        localtime = Stat.open_time(accountid).replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+        localtime = utc_to_local(Stat.open_time(accountid))
         fprint(open_time_pnl.format(localtime.isoformat(timespec='minutes'), funding + cost))
 
 
@@ -186,32 +186,34 @@ def main_menu(accountid: int):
 
     :param accountid: 账号id
     """
-    assert isinstance(accountid, int)
-    fprint(f'{accountid=}')
-    Monitor = monitor.Monitor(coin='BTC', accountid=accountid)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(gather(Monitor.check_account_level(), Monitor.check_position_mode()))
-    while (command := input(main_menu_text)) != 'q':
-        if command == '1':
-            monitor_all(accountid)
-        elif command == '2':
-            crypto_menu(accountid)
-        elif command == '3':
-            funding_menu(accountid)
-        elif command == '4':
-            account_menu(accountid)
-        elif command == '5':
-            process = multiprocessing.Process(target=record.record_ticker)
-            process.start()
-            process.join(0.2)
-        elif command == 'q':
-            break
-        else:
-            print(wrong_command)
-    if 'process' in locals():
-        process.kill()
-    trading_data.Stat.clean()
-    monitor.Monitor.clean()
+    try:
+        assert isinstance(accountid, int)
+        fprint(f'{accountid=}')
+        Monitor = monitor.Monitor(coin='BTC', accountid=accountid)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(gather(Monitor.check_account_level(), Monitor.check_position_mode()))
+        while (command := input(main_menu_text)) != 'q':
+            if command == '1':
+                monitor_all(accountid)
+            elif command == '2':
+                crypto_menu(accountid)
+            elif command == '3':
+                funding_menu(accountid)
+            elif command == '4':
+                account_menu(accountid)
+            elif command == '5':
+                process = multiprocessing.Process(target=record.record_ticker)
+                process.start()
+                process.join(0.2)
+            elif command == 'q':
+                break
+            else:
+                print(wrong_command)
+    finally:
+        if 'process' in locals():
+            process.kill()
+        trading_data.Stat.clean()
+        monitor.Monitor.clean()
 
 
 def crypto_menu(accountid: int):
@@ -296,8 +298,7 @@ def crypto_menu(accountid: int):
                 Stat = trading_data.Stat(coin)
                 funding = Stat.history_funding(accountid)
                 cost = Stat.history_cost(accountid)
-                localtime = Stat.open_time(accountid).replace(tzinfo=timezone.utc).astimezone().replace(
-                    tzinfo=None)
+                localtime = utc_to_local(Stat.open_time(accountid))
                 fprint(open_time_pnl.format(localtime.isoformat(timespec='minutes'), funding + cost))
         elif command == '7':
             while True:
@@ -308,6 +309,8 @@ def crypto_menu(accountid: int):
                     continue
                 Stat = trading_data.Stat(coin)
                 Stat.plot(hours)
+                Stat.gaussian_dist(hours, 'o')
+                Stat.gaussian_dist(hours, 'c')
                 break
         elif command == '8':
             while True:
@@ -331,7 +334,7 @@ def funding_menu(accountid: int):
             while True:
                 try:
                     days = int(input(how_many_days))
-                    assert days > 0
+                    assert 0 < days <= 90
                 except:
                     continue
                 FundingRate.show_profitable_rate(days)
@@ -347,7 +350,7 @@ def funding_menu(accountid: int):
             while True:
                 try:
                     days = int(input(how_many_days))
-                    assert days > 0
+                    assert 0 < days <= 90
                 except:
                     continue
                 fprint(funding_day)

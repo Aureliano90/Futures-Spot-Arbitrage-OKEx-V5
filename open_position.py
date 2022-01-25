@@ -141,8 +141,7 @@ class AddPosition(OKExAPI):
 
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
-        size_digits = self.spot_info['lotSz'].find('.')
-        size_digits = len(self.spot_info['lotSz'][size_digits:]) - 1
+        size_decimals = num_decimals(self.spot_info['lotSz'])
         contract_val = float(self.swap_info['ctVal'])
 
         # 查询账户余额
@@ -226,7 +225,7 @@ class AddPosition(OKExAPI):
                             order_size -= min_size
                             order_size = round_to(order_size, contract_val)
                             spot_size = round_to(order_size / (1 + trade_fee), size_increment)
-                        spot_size = f'{spot_size:.{size_digits}f}'
+                        spot_size = f'{spot_size:.{size_decimals}f}'
                         contract_size = round(order_size / contract_val)
                         contract_size = f'{contract_size:d}'
                         # print(order_size, contract_size, spot_size)
@@ -433,8 +432,7 @@ class AddPosition(OKExAPI):
                 record.Record('Portfolio').mycol.insert_one(
                     dict(account=self.accountid, instrument=self.coin, leverage=leverage))
                 await self.set_swap_lever(leverage)
-                return await self.add(usdt_size=usdt_size, leverage=leverage, price_diff=price_diff,
-                                      accelerate_after=accelerate_after)
+                return await self.add(usdt_size=usdt_size, price_diff=price_diff, accelerate_after=accelerate_after)
             else:
                 fprint(lang.insufficient_USDT)
                 return 0.

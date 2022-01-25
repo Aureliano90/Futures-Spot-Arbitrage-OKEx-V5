@@ -2,9 +2,8 @@
 
 ## Introduction
 
-An object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Written in April 2021
-for my personal use. Modified and
-optimized [OKEx V3 API SDK](https://github.com/okex/V3-Open-API-SDK)
+An object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Initially written in
+April 2021 for my personal use. Modified and optimized [OKEx V3 API SDK](https://github.com/okex/V3-Open-API-SDK)
 according to [V5 API documentation](https://www.okex.com/docs-v5/en).
 
 Chinese and English support, completed with annotations and docstrings.
@@ -19,6 +18,11 @@ Chinese and English support, completed with annotations and docstrings.
     * Use historical tickers and statistics to open position when futures have max premium, on the basis that the
       premium over a period of time satisfies Gaussian distribution;
     * Accelerate when a desired premium does not appear by given time;
+
+<p align="center">
+  <img width="600" height="300" src="https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/blob/main/gaussian.png" alt='Premium'>
+</p>
+
 * Close a position by selling spot and closing short on perpetual futures
     * Use historical tickers and statistics to close position when futures have max discount;
     * Accelerate when a desired discount does not appear by given time;

@@ -22,7 +22,7 @@ assert sys.version_info >= (3, 8), print('Python version >=3.8 is required.\nYou
 
 
 def main():
-    print(datetime.now().strftime("%Y-%m-%d, %H:%M:%S"))
+    print(datetime_str(datetime.now()))
     menu.main_menu(accountid=3)
     # menu.monitor_all(2)
     # menu.profit_all(2)

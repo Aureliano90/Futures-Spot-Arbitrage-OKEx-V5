@@ -9,9 +9,30 @@ import lang
 logfile = open("log.txt", "a", encoding="utf-8")
 
 
+def rtruncate(s, n):
+    """Truncate n chars from string on the right
+
+    :param s: string
+    :param n: number of chars to be truncated
+    """
+    return s[:len(s) - n]
+
+
+def datetime_str(d: datetime) -> str:
+    """Format datetime
+    """
+    return rtruncate(d.strftime("%Y-%m-%d, %H:%M:%S.%f"), 4)
+
+
+def utc_to_local(d: datetime) -> datetime:
+    """Convert utc datetime to local
+    """
+    return d.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+
+
 def fprint(*args):
     print(*args)
-    print(datetime.now(), *args, file=logfile)
+    print(datetime_str(datetime.now()), *args, file=logfile)
 
 
 def apy(apr: float):
@@ -20,6 +41,10 @@ def apy(apr: float):
 
 def utcfrommillisecs(millisecs: str):
     return datetime.utcfromtimestamp(int(millisecs) / 1000)
+
+
+def num_decimals(f: str):
+    return len(f[f.find('.'):]) - 1
 
 
 def round_to(number, fraction) -> float:
@@ -155,15 +180,16 @@ def call_coroutine(cls):
     return cls
 
 
-waiting = False
+waiting_input = False
 written = False
 input_buffer = None
 input_future = None
+future_cancelled = False
 
 
 def minput(*args):
-    global waiting, written
-    if waiting:
+    global waiting_input, written
+    if waiting_input:
         print(*args, end='')
         while not written:
             time.sleep(1)
@@ -173,38 +199,60 @@ def minput(*args):
 
 
 def sinput(*args):
-    global written, waiting, input_buffer
+    global written, waiting_input, input_buffer
     written = False
-    try:
-        input_buffer = input(*args)
-    except EOFError:
-        input_buffer = ''
-    waiting = False
+    if waiting_input:
+        print(*args, end='')
+        while not written:
+            # print('sinput waiting_input')
+            time.sleep(1)
+        # print('leaving sinput', input_buffer, 'received')
+        return input_buffer
+    else:
+        waiting_input = True
+        try:
+            input_buffer = input(*args)
+        except EOFError:
+            input_buffer = ''
+    waiting_input = False
     written = True
+    # print('leaving sinput', input_buffer, 'written')
     return input_buffer
 
 
 def ainput(*args):
-    global waiting, input_future
-    if waiting:
+    global input_future, future_cancelled
+    if waiting_input:
+        if future_cancelled:
+            loop = asyncio.get_event_loop()
+            input_future = asyncio.ensure_future(loop.run_in_executor(None, functools.partial(sinput, *args)))
+            future_cancelled = False
         return input_future
     else:
-        waiting = True
         loop = asyncio.get_event_loop()
         input_future = asyncio.ensure_future(loop.run_in_executor(None, functools.partial(sinput, *args)))
+        future_cancelled = False
         return input_future
 
 
 def input_cancel(t, r, c):
     """Cancel task t if the result of c is r
     """
-    if not t.done():
-        if r:
-            if not c.cancelled():
-                if c.result() == r:
-                    t.cancel()
-        else:
-            t.cancel()
+    try:
+        if not t.done():
+            if r:
+                if not c.cancelled():
+                    if c.result() == r:
+                        t.cancel()
+                        # print(f'{r=}', c)
+            else:
+                t.cancel()
+                global future_cancelled
+                # sinput future cancelled
+                future_cancelled = True
+                # print(f'{r=}', c)
+    except asyncio.exceptions.CancelledError:
+        pass
 
 
 def run_with_cancel(cls):
@@ -231,11 +279,7 @@ def run_with_cancel(cls):
                         pass
                     finally:
                         if not _t.cancelled():
-                            _res = _t.result()
-                            if isinstance(_res, Exception):
-                                raise _res
-                            else:
-                                return _res
+                            return _t.result()
 
                 return _coro()
             else:
@@ -252,11 +296,7 @@ def run_with_cancel(cls):
                     pass
                 finally:
                     if not t.cancelled():
-                        res = t.result()
-                        if isinstance(res, Exception):
-                            raise res
-                        else:
-                            return res
+                        return t.result()
 
         return wrapper
     return cls

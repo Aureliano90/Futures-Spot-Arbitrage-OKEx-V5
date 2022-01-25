@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.94.1] - January 25rd, 2022
+
+### Fixed
+* Minor bugs.
+
+### Added
+* More statistics and plots for the premium of futures.
+
 ## [0.94.0] - January 23rd, 2022
 
 First metastable release.

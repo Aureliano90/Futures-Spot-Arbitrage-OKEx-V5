@@ -40,5 +40,6 @@ MARGIN_BALANCE = '/api/v5/account/position/margin-balance'
 ASSET_BALANCE = '/api/v5/asset/balances'
 ASSET_TRANSFER = '/api/v5/asset/transfer'
 GET_CANDLES = '/api/v5/market/candles'
+HISTORY_CANDLES = '/api/v5/market/history-candles'
 
 SERVER_TIMESTAMP_URL = '/api/v5/public/time'

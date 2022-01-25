@@ -30,8 +30,7 @@ class ReducePosition(OKExAPI):
         """
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
-        size_digits = self.spot_info['lotSz'].find('.')
-        size_digits = len(self.spot_info['lotSz'][size_digits:]) - 1
+        size_decimals = num_decimals(self.spot_info['lotSz'])
         contract_val = float(self.swap_info['ctVal'])
 
         spot_position, holding = await gather(self.spot_position(), self.swap_holding())
@@ -126,7 +125,7 @@ class ReducePosition(OKExAPI):
                         contract_size = round(order_size / contract_val)
                         contract_size = f'{contract_size:d}'
                         spot_size = round_to(order_size, size_increment)
-                        spot_size = f'{spot_size:.{size_digits}f}'
+                        spot_size = f'{spot_size:.{size_decimals}f}'
                         # print(contract_size, spot_size, min_size)
 
                         timestamp = datetime.utcnow()
@@ -312,8 +311,7 @@ class ReducePosition(OKExAPI):
         """
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
-        size_digits = self.spot_info['lotSz'].find('.')
-        size_digits = len(self.spot_info['lotSz'][size_digits:]) - 1
+        size_decimals = num_decimals(self.spot_info['lotSz'])
         contract_val = float(self.swap_info['ctVal'])
 
         spot_position, holding = await gather(self.spot_position(), self.swap_holding())
@@ -424,7 +422,7 @@ class ReducePosition(OKExAPI):
                                 else:
                                     continue
                         contract_size = f'{contract_size:d}'
-                        spot_size = f'{spot_size:.{size_digits}f}'
+                        spot_size = f'{spot_size:.{size_decimals}f}'
 
                         timestamp = datetime.utcnow()
                         # 下单，如果资金费不是马上更新

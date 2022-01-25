@@ -320,11 +320,9 @@ class Monitor(OKExAPI):
         r = 0.05
         min_size = float(self.spot_info['minSz'])
         size_increment = float(self.spot_info['lotSz'])
-        size_digits = self.spot_info['lotSz'].find('.')
-        size_digits = len(self.spot_info['lotSz'][size_digits:]) - 1
+        size_decimals = num_decimals(self.spot_info['lotSz'])
         tick_size = float(self.spot_info['tickSz'])
-        tick_digits = self.spot_info['tickSz'].find('.')
-        tick_digits = len(self.spot_info['tickSz'][tick_digits:]) - 1
+        tick_decimals = num_decimals(self.spot_info['tickSz'])
         trade_fee, usdt_balance, spot_ticker, spot_position = await gather(
             self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID), self.usdt_balance(),
             self.publicAPI.get_specific_ticker(self.spot_ID), self.spot_position())
@@ -333,11 +331,13 @@ class Monitor(OKExAPI):
         initial_price = last = float(spot_ticker['last'])
 
         Record = record.Record('AMM')
+        # Manage existing LP position
         if usdt == 0:
             mydict = Record.find_last(dict(account=self.accountid, instrument=self.coin, op='open'))
             k = mydict['k']
             begin = mydict['timestamp']
             initial_price = mydict['price']
+        # Open new LP position
         else:
             assert usdt_balance > usdt / 2, print(lang.insufficient_USDT)
             # n1*n2=k n1=sqrt(k/p1) v=2*n1*p1=2*sqrt(k*p1)
@@ -401,21 +401,27 @@ class Monitor(OKExAPI):
 
         await cancel_orders()
 
-        sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
-        buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
-        sell_price = f'{sell_price:.{tick_digits}f}'
-        buy_price = f'{buy_price:.{tick_digits}f}'
-        spot_size = round_to(min_size / (1 + maker_fee), size_increment)
-        sell_size = self.spot_info['minSz']
-        buy_size = f'{spot_size:.{size_digits}f}'
-        kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price, order_type='limit')
-        sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
-        kwargs = dict(instId=self.spot_ID, side='buy', size=buy_size, price=buy_price, order_type='limit')
-        buy_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
-        sell_order = await sell_order
-        buy_order = await buy_order
-        assert sell_order['ordId'] != '-1', print(sell_order)
-        assert buy_order['ordId'] != '-1', print(buy_order)
+        sell_order = buy_order = None
+
+        async def initial_orders():
+            nonlocal sell_order, buy_order
+            sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
+            buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
+            sell_price = f'{sell_price:.{tick_decimals}f}'
+            buy_price = f'{buy_price:.{tick_decimals}f}'
+            spot_size = round_to(min_size / (1 + maker_fee), size_increment)
+            sell_size = self.spot_info['minSz']
+            buy_size = f'{spot_size:.{size_decimals}f}'
+            kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price, order_type='limit')
+            sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
+            kwargs = dict(instId=self.spot_ID, side='buy', size=buy_size, price=buy_price, order_type='limit')
+            buy_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
+            sell_order = await sell_order
+            buy_order = await buy_order
+            assert sell_order['ordId'] != '-1', print(sell_order)
+            assert buy_order['ordId'] != '-1', print(buy_order)
+
+        await initial_orders()
 
         channels = [dict(channel="orders", instType="SPOT", instId=self.spot_ID)]
         kwargs = OKExAPI._key()
@@ -424,8 +430,9 @@ class Monitor(OKExAPI):
         self.exitFlag = False
         async for current_order in subscribe(self.private_url, **kwargs):
             current_order = current_order['data'][0]
-            print(utcfrommillisecs(current_order['uTime']).strftime("%Y-%m-%d, %H:%M:%S"), current_order['ordId'],
-                  current_order['side'], current_order['state'])
+            timestamp = utcfrommillisecs(current_order['uTime'])
+            print(datetime_str(utc_to_local(timestamp)), current_order['ordId'], current_order['side'],
+                  current_order['state'])
             # 下单成功
             if current_order['state'] == 'filled':
                 spot_price = float(current_order['avgPx'])
@@ -450,11 +457,11 @@ class Monitor(OKExAPI):
 
                     sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
                     buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
-                    sell_price = f'{sell_price:.{tick_digits}f}'
-                    buy_price = f'{buy_price:.{tick_digits}f}'
+                    sell_price = f'{sell_price:.{tick_decimals}f}'
+                    buy_price = f'{buy_price:.{tick_decimals}f}'
                     spot_size = round_to(min_size / (1 + maker_fee), size_increment)
                     sell_size = self.spot_info['minSz']
-                    buy_size = f'{spot_size:.{size_digits}f}'
+                    buy_size = f'{spot_size:.{size_decimals}f}'
                     kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price,
                                   order_type='limit')
                     sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
@@ -485,11 +492,11 @@ class Monitor(OKExAPI):
 
                     sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
                     buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
-                    sell_price = f'{sell_price:.{tick_digits}f}'
-                    buy_price = f'{buy_price:.{tick_digits}f}'
+                    sell_price = f'{sell_price:.{tick_decimals}f}'
+                    buy_price = f'{buy_price:.{tick_decimals}f}'
                     spot_size = round_to(min_size / (1 + maker_fee), size_increment)
                     sell_size = self.spot_info['minSz']
-                    buy_size = f'{spot_size:.{size_digits}f}'
+                    buy_size = f'{spot_size:.{size_decimals}f}'
                     kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price,
                                   order_type='limit')
                     sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))

@@ -8,9 +8,9 @@ lang_zh_CN = gettext.translation(APP_NAME, LOCALE_DIR, ["zh_CN"])
 lang_en = gettext.translation(APP_NAME, LOCALE_DIR, ["en"])
 
 # 中文输出
-lang_zh_CN.install()
+# lang_zh_CN.install()
 # English support
-# lang_en.install()
+lang_en.install()
 
 input_USDT = _('Input USDT\n')
 # "输入USDT数量\n"
@@ -148,22 +148,40 @@ coin_funding_value = _('Crypto   Funding     APR Profitability')
 # '币种        资金费     APR  投资价值'
 
 pd_open = _('Premium/discount at open')
-# '开仓期现差价'
+# '开仓期现价差'
 
 pd_close = _('Premium/discount at close')
-# '平仓期现差价'
+# '平仓期现价差'
 
-two_std = _('Two standard deviation')
+one_std = _('One standard deviation')
+# '一个标准差'
+
+two_std = _('Two standard deviations')
 # '两个标准差'
+
+three_std = _('Three standard deviations')
+# '三个标准差'
+
+historical_data = _('Historical data')
+# "历史数据"
+
+gaussian_dist = _('Gaussian distribution')
+# "正态分布"
+
+plot_average = _('Average: {:.3%}')
+# "平均值： {:.3%}"
 
 plot_time = _('Time')
 # "时间"
 
 plot_premium = _('Premium')
-# "差价"
+# "价差"
+
+plot_probability = _('Probability')
+# "概率"
 
 plot_title = _('{:s} premium in {:d} hours')
-# "{:s} {:d}小时期现差价"
+# "{:s} {:d}小时期现价差"
 
 nonexistent_crypto = _('Crypto {:s} does not exist.')
 # "{:s}币种不存在。"

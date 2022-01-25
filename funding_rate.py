@@ -77,6 +77,48 @@ class FundingRate:
         # 50 s without asyncio
         # 1.6 s with asyncio
 
+    async def funding_history(self, instId, limit=270):
+        """下载最近3个月资金费率
+        """
+        historical_funding_rate = temp = []
+        while limit > 0:
+            if limit <= 100:
+                if len(temp) == 100:
+                    # 最后一次
+                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId,
+                                                                            after=temp[99]['fundingTime'], limit=limit)
+                else:
+                    # 第一次
+                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId, limit=limit)
+            else:
+                if len(temp) == 100:
+                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId,
+                                                                            after=temp[99]['fundingTime'], limit='100')
+                else:
+                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId, limit='100')
+            historical_funding_rate.extend(temp)
+            limit -= 100
+        return historical_funding_rate
+
+    async def get_rate(self, days=7):
+        """返回最近资金费列表
+
+        :param days: 最近几天
+        :rtype: List[dict]
+        """
+        assert isinstance(days, int) and 0 < days <= 90
+        limit = days * 3
+        task_list = [self.funding_history(instId=m, limit=limit) for m in await self.get_instruments_ID()]
+        funding_rate_list = []
+        for historical_funding_rate in await asyncio.gather(*task_list):
+            instId = historical_funding_rate[0]['instId']
+            if len(historical_funding_rate) < limit:
+                continue
+            realized_rate = [float(n['realizedRate']) for n in historical_funding_rate]
+            instrumentID = instId[:instId.find('-')]
+            funding_rate_list.append(dict(instrument=instrumentID, funding_rate=statistics.mean(realized_rate)))
+        return funding_rate_list
+
     @call_coroutine
     # @debug_timer
     async def show_nday_rate(self, days: int):
@@ -84,36 +126,18 @@ class FundingRate:
 
         :param days: 天数
         """
-        assert isinstance(days, int) and days > 0
-        limit = f'{days * 3:d}'
-        task_list = [self.publicAPI.get_historical_funding_rate(instId=m, limit=limit) for m in
-                     await self.get_instruments_ID()]
-        funding_rate_list = []
-        for historical_funding_rate in await asyncio.gather(*task_list):
-            instId = historical_funding_rate[0]['instId']
-            realized_rate = []
-            if len(historical_funding_rate) == 0:
-                pass
-            elif len(historical_funding_rate) < days * 3:
-                pass
-            else:
-                for n in historical_funding_rate:
-                    realized_rate.append(float(n['realizedRate']))
-                funding_rate_list.append(
-                    dict(instrument_id=instId, funding_rate=statistics.mean(realized_rate[:days * 3])))
-
+        assert isinstance(days, int) and 0 < days <= 90
+        funding_rate_list = await self.get_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
         for n in funding_rate_list:
-            instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
+            instrumentID = n['instrument']
             fprint(f"{instrumentID:8s}{n['funding_rate']:8.3%}")
-        # 1.4 s with asyncio
 
     # @debug_timer
     async def print_30day_rate(self):
         """输出最近30天平均资金费到文件
         """
-        task_list = [self.publicAPI.get_historical_funding_rate(instId=m, limit='90') for m in
-                     await self.get_instruments_ID()]
+        task_list = [self.funding_history(instId=m, limit=90) for m in await self.get_instruments_ID()]
         funding_rate_list = []
         for historical_funding_rate in await asyncio.gather(*task_list):
             instId = historical_funding_rate[0]['instId']
@@ -145,36 +169,6 @@ class FundingRate:
             funding_rate_file.write(f"{n['7day_funding_rate']:7.3%}")
             funding_rate_file.write(f"{n['30day_funding_rate']:8.3%}\n")
         funding_rate_file.close()
-
-    async def get_rate(self, days=7):
-        """返回最近资金费列表
-
-        :param days: 最近几天
-        :rtype: List[dict]
-        """
-        assert isinstance(days, int) and days > 0
-        limit = str(days * 3)
-        task_list = [self.publicAPI.get_historical_funding_rate(instId=m, limit=limit) for m in
-                     await self.get_instruments_ID()]
-        funding_rate_list = []
-        for historical_funding_rate in await asyncio.gather(*task_list):
-            instId = historical_funding_rate[0]['instId']
-            if len(historical_funding_rate) < days * 3:
-                pass
-            else:
-                realized_rate = [float(n['realizedRate']) for n in historical_funding_rate]
-                instrumentID = instId[:instId.find('-')]
-                funding_rate_list.append(dict(instrument=instrumentID, funding_rate=statistics.mean(realized_rate)))
-        return funding_rate_list
-
-    async def funding_history(self, instId):
-        """下载最近3个月资金费率
-        """
-        temp = historical_funding_rate = await self.publicAPI.get_historical_funding_rate(instId=instId)
-        while len(temp) == 100:
-            temp = await self.publicAPI.get_historical_funding_rate(instId=instId, after=temp[99]['fundingTime'])
-            historical_funding_rate.extend(temp)
-        return historical_funding_rate
 
     @call_coroutine
     @debug_timer
@@ -211,7 +205,7 @@ class FundingRate:
     async def show_profitable_rate(self, days=7):
         """显示收益最高十个币种资金费
         """
-        assert isinstance(days, int) and days > 0
+        assert isinstance(days, int) and 0 < days <= 90
         funding_rate_list = await self.get_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
         funding_rate_list = funding_rate_list[:20]
