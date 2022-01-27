@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.94.3] - January 26rd, 2022
+
+### Changed
+* Minor change to client.
+* Updated `setup.py` and `requirements.txt`.
+
 ## [0.94.2] - January 25rd, 2022
 
 ### Changed

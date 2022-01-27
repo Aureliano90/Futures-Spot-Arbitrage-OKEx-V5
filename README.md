@@ -2,7 +2,7 @@
 
 ## Introduction
 
-An object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Initially written in
+An asynchronous object-oriented program for arbitrage between perpetual futures and spot on OKEx using V5 API. Initially written in
 April 2021 for my personal use. Modified and optimized [OKEx V3 API SDK](https://github.com/okex/V3-Open-API-SDK)
 according to [V5 API documentation](https://www.okex.com/docs-v5/en).
 
@@ -20,7 +20,7 @@ Chinese and English support, completed with annotations and docstrings.
     * Accelerate when a desired premium does not appear by given time;
 
 <p align="center">
-  <img width="800" height="400" src="https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/blob/main/gaussian.png" alt='Premium'>
+  <img width="800" height="400" src="https://raw.githubusercontent.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/5f66262943e9ed6e0a854411833b84978ab54bc5/gaussian.png" alt='Premium'>
 </p>
 
 * Close a position by selling spot and closing short on perpetual futures
@@ -65,11 +65,11 @@ or
 
 Install [MongoDB](https://www.mongodb.com/try/download/community).
 
-Paste API keys in key.py (use account 3 for demo trading).
+Paste API keys in `config.py` (use account 3 for demo trading).
 
-Un-annotate "lang_en.install()" in lang.py for English support.
+Set `language='cn'` for Chinese and `language='en'` for English in `config.py`.
 
-Simply run main.py.
+Simply `python main.py`.
 
 ## Background
 
