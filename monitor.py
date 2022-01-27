@@ -428,87 +428,93 @@ class Monitor(OKExAPI):
         kwargs['channels'] = channels
 
         self.exitFlag = False
-        async for current_order in subscribe(self.private_url, **kwargs):
-            current_order = current_order['data'][0]
-            timestamp = utcfrommillisecs(current_order['uTime'])
-            print(datetime_str(utc_to_local(timestamp)), current_order['ordId'], current_order['side'],
-                  current_order['state'])
-            # 下单成功
-            if current_order['state'] == 'filled':
-                spot_price = float(current_order['avgPx'])
-                spot_fee = float(current_order['fee'])
-                if current_order['ordId'] == sell_order['ordId']:
-                    spot_filled = float(current_order['accFillSz'])
-                    cash_notional = spot_filled * spot_price
-                    spot_notional = k * spot_filled / n1 / (n1 - spot_filled)
-                    n1 -= spot_filled
-                    mydict = dict(account=self.accountid, instrument=self.coin, timestamp=datetime.utcnow(), op='order',
-                                  cash_notional=cash_notional, spot_notional=spot_notional, fee=spot_fee, k=k)
-                    Record.mycol.insert_one(mydict)
-                    if buy_order['ordId'] != '-1':
-                        order = await self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=buy_order['ordId'])
-                        if order['ordId'] == '-1':
-                            # Cancellation failed.
-                            if order['code'] == '51402':
-                                sell_order['ordId'] = '-1'
-                                continue
-                            else:
-                                assert order['ordId'] != '-1', print(order)
+        try:
+            async for current_order in subscribe(self.private_url, **kwargs):
+                current_order = current_order['data'][0]
+                timestamp = utcfrommillisecs(current_order['uTime'])
+                print(datetime_str(utc_to_local(timestamp)), current_order['ordId'], current_order['side'],
+                      current_order['state'])
+                # 下单成功
+                if current_order['state'] == 'filled':
+                    spot_price = float(current_order['avgPx'])
+                    spot_fee = float(current_order['fee'])
+                    if current_order['ordId'] == sell_order['ordId']:
+                        spot_filled = float(current_order['accFillSz'])
+                        cash_notional = spot_filled * spot_price
+                        spot_notional = k * spot_filled / n1 / (n1 - spot_filled)
+                        n1 -= spot_filled
+                        mydict = dict(account=self.accountid, instrument=self.coin, timestamp=datetime.utcnow(), op='order',
+                                      cash_notional=cash_notional, spot_notional=spot_notional, fee=spot_fee, k=k)
+                        Record.mycol.insert_one(mydict)
+                        if buy_order['ordId'] != '-1':
+                            order = await self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=buy_order['ordId'])
+                            if order['ordId'] == '-1':
+                                # Cancellation failed.
+                                if order['code'] == '51402':
+                                    sell_order['ordId'] = '-1'
+                                    continue
+                                else:
+                                    assert order['ordId'] != '-1', print(order)
 
-                    sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
-                    buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
-                    sell_price = f'{sell_price:.{tick_decimals}f}'
-                    buy_price = f'{buy_price:.{tick_decimals}f}'
-                    spot_size = round_to(min_size / (1 + maker_fee), size_increment)
-                    sell_size = self.spot_info['minSz']
-                    buy_size = f'{spot_size:.{size_decimals}f}'
-                    kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price,
-                                  order_type='limit')
-                    sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
-                    kwargs = dict(instId=self.spot_ID, side='buy', size=buy_size, price=buy_price, order_type='limit')
-                    buy_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
-                    sell_order = await sell_order
-                    assert sell_order['ordId'] != '-1', print(sell_order)
-                    buy_order = await buy_order
-                    assert buy_order['ordId'] != '-1', print(buy_order)
+                        sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
+                        buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
+                        sell_price = f'{sell_price:.{tick_decimals}f}'
+                        buy_price = f'{buy_price:.{tick_decimals}f}'
+                        spot_size = round_to(min_size / (1 + maker_fee), size_increment)
+                        sell_size = self.spot_info['minSz']
+                        buy_size = f'{spot_size:.{size_decimals}f}'
+                        kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price,
+                                      order_type='limit')
+                        sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
+                        kwargs = dict(instId=self.spot_ID, side='buy', size=buy_size, price=buy_price, order_type='limit')
+                        buy_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
+                        sell_order = await sell_order
+                        assert sell_order['ordId'] != '-1', print(sell_order)
+                        buy_order = await buy_order
+                        assert buy_order['ordId'] != '-1', print(buy_order)
 
-                elif current_order['ordId'] == buy_order['ordId']:
-                    spot_filled = float(current_order['accFillSz']) + spot_fee
-                    cash_notional = - spot_filled * spot_price
-                    spot_notional = - k * spot_filled / n1 / (n1 + spot_filled)
-                    n1 += spot_filled
-                    mydict = dict(account=self.accountid, instrument=self.coin, timestamp=datetime.utcnow(), op='order',
-                                  cash_notional=cash_notional, spot_notional=spot_notional, fee=spot_fee, k=k)
-                    Record.mycol.insert_one(mydict)
-                    if sell_order['ordId'] != '-1':
-                        order = await self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=sell_order['ordId'])
-                        if order['ordId'] == '-1':
-                            # Cancellation failed.
-                            if order['code'] == '51402':
-                                buy_order['ordId'] = '-1'
-                                continue
-                            else:
-                                assert order['ordId'] != '-1', print(order)
+                    elif current_order['ordId'] == buy_order['ordId']:
+                        spot_filled = float(current_order['accFillSz']) + spot_fee
+                        cash_notional = - spot_filled * spot_price
+                        spot_notional = - k * spot_filled / n1 / (n1 + spot_filled)
+                        n1 += spot_filled
+                        mydict = dict(account=self.accountid, instrument=self.coin, timestamp=datetime.utcnow(), op='order',
+                                      cash_notional=cash_notional, spot_notional=spot_notional, fee=spot_fee, k=k)
+                        Record.mycol.insert_one(mydict)
+                        if sell_order['ordId'] != '-1':
+                            order = await self.tradeAPI.cancel_order(instId=self.spot_ID, order_id=sell_order['ordId'])
+                            if order['ordId'] == '-1':
+                                # Cancellation failed.
+                                if order['code'] == '51402':
+                                    buy_order['ordId'] = '-1'
+                                    continue
+                                else:
+                                    assert order['ordId'] != '-1', print(order)
 
-                    sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
-                    buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
-                    sell_price = f'{sell_price:.{tick_decimals}f}'
-                    buy_price = f'{buy_price:.{tick_decimals}f}'
-                    spot_size = round_to(min_size / (1 + maker_fee), size_increment)
-                    sell_size = self.spot_info['minSz']
-                    buy_size = f'{spot_size:.{size_decimals}f}'
-                    kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price,
-                                  order_type='limit')
-                    sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
-                    kwargs = dict(instId=self.spot_ID, side='buy', size=buy_size, price=buy_price, order_type='limit')
-                    buy_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
-                    sell_order = await sell_order
-                    assert sell_order['ordId'] != '-1', print(sell_order)
-                    buy_order = await buy_order
-                    assert buy_order['ordId'] != '-1', print(buy_order)
-                else:
-                    print(current_order)
+                        sell_price = round_to(k / (n1 - min_size) ** 2, tick_size)
+                        buy_price = round_to(k / (n1 + min_size) ** 2, tick_size)
+                        sell_price = f'{sell_price:.{tick_decimals}f}'
+                        buy_price = f'{buy_price:.{tick_decimals}f}'
+                        spot_size = round_to(min_size / (1 + maker_fee), size_increment)
+                        sell_size = self.spot_info['minSz']
+                        buy_size = f'{spot_size:.{size_decimals}f}'
+                        kwargs = dict(instId=self.spot_ID, side='sell', size=sell_size, price=sell_price,
+                                      order_type='limit')
+                        sell_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
+                        kwargs = dict(instId=self.spot_ID, side='buy', size=buy_size, price=buy_price, order_type='limit')
+                        buy_order = create_task(self.tradeAPI.take_spot_order(**kwargs))
+                        sell_order = await sell_order
+                        assert sell_order['ordId'] != '-1', print(sell_order)
+                        buy_order = await buy_order
+                        assert buy_order['ordId'] != '-1', print(buy_order)
+                    else:
+                        print(current_order)
 
-                stat()
-                if self.exitFlag: break
-        await cancel_orders()
+                    stat()
+            #         if self.exitFlag: break
+            # await cancel_orders()
+        except asyncio.CancelledError:
+            print(datetime_str(datetime.now()))
+            print(f'{sell_order=}')
+            print(f'{buy_order=}')
+            await cancel_orders()

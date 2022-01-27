@@ -1,11 +1,12 @@
 from typing import List
 import okex.asset as asset
 import okex.public as public
+import config
 import record
-import matplotlib.pyplot as plt
 from utils import *
 from lang import *
 from asyncio import create_task, gather
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -394,8 +395,9 @@ class Stat:
         x = np.arange(min, max, width / 10)
         y = np.exp(- np.square(x - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
 
-        plt.rcParams['font.sans-serif'] = ['SimHei']
-        plt.rcParams['axes.unicode_minus'] = False
+        if config.language == 'cn':
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            plt.rcParams['axes.unicode_minus'] = False
         plt.rcParams['font.size'] = 12
         plt.figure(figsize=(16, 8))
         color = 'g' if side == 'o' else 'r'
@@ -553,8 +555,9 @@ class Stat:
         recent = self.recent_close_stat(hours)
         close_pd = recent['avg'] - 2 * recent['std']
         mylist = self.recent_ticker(hours)
-        plt.rcParams['font.sans-serif'] = ['SimHei']
-        plt.rcParams['axes.unicode_minus'] = False
+        if config.language == 'cn':
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            plt.rcParams['axes.unicode_minus'] = False
         plt.rcParams['font.size'] = 12
         plt.figure(figsize=(16, 8))
         plt.plot(mylist['timestamp'], mylist['open_pd'], '.', color='g', label=pd_open)

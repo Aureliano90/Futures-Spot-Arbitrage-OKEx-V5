@@ -2,7 +2,7 @@ import okex.account as account
 import okex.public as public
 import okex.trade as trade
 from okex.exceptions import OkexException, OkexAPIException
-import key
+import config
 import record
 from utils import *
 from asyncio import create_task, gather
@@ -27,7 +27,7 @@ class OKExAPI(object):
         self.accountid = accountid
 
         if not OKExAPI.api_initiated:
-            apikey = key.Key(accountid)
+            apikey = config.Key(accountid)
             api_key = apikey.api_key
             secret_key = apikey.secret_key
             passphrase = apikey.passphrase

@@ -1,4 +1,9 @@
-from lang import nonexistent_account
+import lang
+
+# 中文输出
+language = 'cn'
+# English support
+# language = 'en'
 
 
 class Key:
@@ -18,5 +23,5 @@ class Key:
             self.secret_key = ""
             self.passphrase = ""
         else:
-            print(nonexistent_account)
+            print(lang.nonexistent_account)
             exit()

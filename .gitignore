@@ -2,5 +2,5 @@
 /build
 /dist
 /Futures_Spot_Arbitrage_OKEx_V5.egg-info
-/key.py
+/config.py
 /log.txt

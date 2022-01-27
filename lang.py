@@ -1,5 +1,6 @@
 import gettext
 import os
+import config
 
 APP_NAME = "main"
 LOCALE_DIR = os.path.abspath("locale")
@@ -7,10 +8,10 @@ currentDir = os.path.dirname(os.path.realpath(__file__))
 lang_zh_CN = gettext.translation(APP_NAME, LOCALE_DIR, ["zh_CN"])
 lang_en = gettext.translation(APP_NAME, LOCALE_DIR, ["en"])
 
-# 中文输出
-# lang_zh_CN.install()
-# English support
-lang_en.install()
+if config.language == 'cn':
+    lang_zh_CN.install()
+else:
+    lang_en.install()
 
 input_USDT = _('Input USDT\n')
 # "输入USDT数量\n"
@@ -348,11 +349,11 @@ less_than_ctval = _('less than contract value')
 abort_text = _('Abort.')
 # "中止。"
 
-added_margin = _('Added margin {} USDT')
-# "增加保证金{} USDT"
+added_margin = _('Added margin {:.2f} USDT')
+# "增加保证金{:.2f} USDT"
 
-reduced_margin = _('Reduced margin {} USDT')
-# "减少保证金{} USDT"
+reduced_margin = _('Reduced margin {:.2f} USDT')
+# "减少保证金{:.2f} USDT"
 
 fetch_ticker_first = _('Fetch ticker first.')
 # "先记录行情。"

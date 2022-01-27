@@ -64,6 +64,8 @@ class AddPosition(OKExAPI):
             fprint(lang.adjust_leverage, leverage)
             avgPx = holding['avgPx']
             last = holding['last']
+            prev_margin = holding['margin']
+            prev_lever = holding['lever']
             max_lever = float(self.swap_info['lever'])
 
             if last >= avgPx:
@@ -117,6 +119,8 @@ class AddPosition(OKExAPI):
                     await self.reduce_margin(extra)
                     return extra
                 return extra
+            elif prev_lever > notional_lever:
+                fprint(lang.added_margin.format(margin - prev_margin))
             return 0
 
     @run_with_cancel

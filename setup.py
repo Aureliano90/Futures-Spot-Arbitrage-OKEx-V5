@@ -11,10 +11,11 @@ setup(
     description='',
     python_requires=">=3.8",
     install_requires=['requests~=2.27.1',
-                      'httpx[http2]~=0.21.3',
+                      'httpcore~=0.14.5',
+                      'httpx[http2]~=0.22.0',
                       'pymongo~=4.0.1',
                       'matplotlib~=3.5.1',
-                      'numpy~=1.20.3',
+                      'numpy~=1.22.1',
                       'websockets~=10.1'],
     entry_points={
             'console_scripts':
