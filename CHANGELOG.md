@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.95.0] - February 2nd, 2022
+
+### Changed
+* Translated error codes.
+* Improved robustness.
+* Improved output format.
+
+### Removed
+* Duplicate code.
+
 ## [0.94.3] - January 26rd, 2022
 
 ### Changed

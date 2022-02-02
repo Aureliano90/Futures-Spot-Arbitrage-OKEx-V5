@@ -21,8 +21,18 @@ assert sys.version_info >= (3, 8), print('Python version >=3.8 is required.\nYou
 #     print(f'{add.__name__}({add.coin}), {add}, {add.__doc__}')
 
 
+def test():
+    try:
+        funding_rate.FundingRate().print_30day_rate()
+    finally:
+        trading_data.Stat.clean()
+        monitor.Monitor.clean()
+
+
 def main():
     print(datetime_str(datetime.now()))
+    # test()
+    # exit()
     menu.main_menu(accountid=3)
     # menu.monitor_all(2)
     # menu.profit_all(2)

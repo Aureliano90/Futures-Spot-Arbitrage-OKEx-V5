@@ -1,6 +1,7 @@
 from typing import List
 from .client import Client
 from .consts import *
+from codedict import codes
 
 
 class AccountAPI(Client):
@@ -8,17 +9,12 @@ class AccountAPI(Client):
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
         Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
 
-    def __del__(self):
-        # print("AccountAPI del started")
-        super().__del__()
-        # print("AccountAPI del finished")
-
     async def get_account_config(self) -> dict:
         """查看当前账户的配置信息\n
         GET /api/v5/account/config
         """
         res = await self._request_without_params(GET, ACCOUNT_CONFIG)
-        assert res['code'] == '0', f"/api/v5/account/config, msg={res['msg']}"
+        assert res['code'] == '0', f"{ACCOUNT_CONFIG}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def set_position_mode(self, posMode) -> dict:
@@ -29,7 +25,7 @@ class AccountAPI(Client):
         """
         params = dict(posMode=posMode)
         res = await self._request_with_params(POST, POSITION_MODE, params)
-        assert res['code'] == '0', f"/api/v5/account/set-position-mode, msg={res['msg']}"
+        assert res['code'] == '0', f"{POSITION_MODE}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def get_positions(self, instType='', instId=None, posId=None) -> List[dict]:
@@ -49,11 +45,11 @@ class AccountAPI(Client):
             params = dict(instId=instId)
         else:
             if not type(posId) is str:
-                assert len(posId) <= 10
+                assert len(posId) <= 20
                 posId = ','.join(posId)
             params = dict(posId=posId)
         res = await self._request_with_params(GET, ACCOUNT_POSITION, params)
-        assert res['code'] == '0', f"/api/v5/account/positions, msg={res['msg']}"
+        assert res['code'] == '0', f"{ACCOUNT_POSITION}, msg={codes[res['code']]}"
         return res['data']
 
     async def get_specific_position(self, instId='', posId='') -> List[dict]:
@@ -65,7 +61,7 @@ class AccountAPI(Client):
         """
         params = dict(instId=instId) if instId else dict(posId=posId)
         res = await self._request_with_params(GET, ACCOUNT_POSITION, params)
-        assert res['code'] == '0', f"/api/v5/account/positions, msg={res['msg']}"
+        assert res['code'] == '0', f"{ACCOUNT_POSITION}, msg={codes[res['code']]}"
         return res['data']
 
     async def get_account_balance(self) -> dict:
@@ -73,21 +69,21 @@ class AccountAPI(Client):
         GET /api/v5/account/balance
         """
         res = await self._request_without_params(GET, ACCOUNT_BALANCE)
-        assert res['code'] == '0', f"/api/v5/account/balance, msg={res['msg']}"
+        assert res['code'] == '0', f"{ACCOUNT_BALANCE}, msg={codes[res['code']]}"
         return res['data'][0]
 
-    async def get_coin_account(self, ccy) -> dict:
+    async def get_coin_balance(self, ccy) -> dict:
         """获取账户中单币种余额\n
         GET /api/v5/account/balance?ccy=BTC,ETH
 
         :param ccy: 币种，如 BTC，支持多币种查询（不超过20个），币种之间半角逗号分隔
         """
         if not type(ccy) is str:
-            assert len(ccy) <= 10
+            assert len(ccy) <= 20
             ccy = ','.join(ccy)
         params = dict(ccy=ccy)
         res = await self._request_with_params(GET, ACCOUNT_BALANCE, params)
-        assert res['code'] == '0', f"/api/v5/account/balance, msg={res['msg']}"
+        assert res['code'] == '0', f"{ACCOUNT_BALANCE}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def get_trade_fee(self, instType, instId='', uly='', category='') -> dict:
@@ -102,7 +98,7 @@ class AccountAPI(Client):
         params = dict(instId=instId) if instId else dict(uly=uly) if uly else dict(category=category)
         params['instType'] = instType
         res = await self._request_with_params(GET, TRADE_FEE, params)
-        assert res['code'] == '0', f"/api/v5/account/trade-fee, msg={res['msg']}"
+        assert res['code'] == '0', f"{TRADE_FEE}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def get_leverage(self, instId, mgnMode) -> dict:
@@ -114,7 +110,7 @@ class AccountAPI(Client):
         """
         params = dict(instId=instId, mgnMode=mgnMode)
         res = await self._request_with_params(GET, GET_LEVERAGE, params)
-        assert res['code'] == '0', f"/api/v5/account/leverage-info, msg={res['msg']}"
+        assert res['code'] == '0', f"{GET_LEVERAGE}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def set_leverage(self, lever, mgnMode, instId='', ccy='', posSide='') -> dict:
@@ -133,7 +129,7 @@ class AccountAPI(Client):
             params = dict(lever=lever, mgnMode=mgnMode, ccy=ccy)
         if posSide: params['posSide'] = posSide
         res = await self._request_with_params(POST, SET_LEVERAGE, params)
-        assert res['code'] == '0', f"/api/v5/account/set-leverage, msg={res['msg']}"
+        assert res['code'] == '0', f"{SET_LEVERAGE}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def get_max_size(self, instId, tdMode, ccy='', px='', leverage='') -> dict:
@@ -151,7 +147,7 @@ class AccountAPI(Client):
         if ccy: params['px'] = px
         if ccy: params['leverage'] = leverage
         res = await self._request_with_params(GET, MAX_SIZE, params)
-        assert res['code'] == '0', f"/api/v5/account/max-size, msg={res['msg']}"
+        assert res['code'] == '0', f"{MAX_SIZE}, msg={codes[res['code']]}"
         return res['data'][0]
 
     async def get_ledger(self, instType, ccy, mgnMode='', ctType='', type='', subType='', after='', before='',
@@ -173,7 +169,7 @@ class AccountAPI(Client):
         params = dict(instType=instType, ccy=ccy, mgnMode=mgnMode, ctType=ctType, type=type, subType=subType,
                       after=after, before=before, limit=limit)
         res = await self._request_with_params(GET, GET_LEDGER, params)
-        assert res['code'] == '0', f"/api/v5/account/bills, msg={res['msg']}"
+        assert res['code'] == '0', f"{GET_LEDGER}, msg={codes[res['code']]}"
         return res['data']
 
     async def get_archive_ledger(self, instType, ccy, mgnMode='', ctType='', type='', subType='', after='', before='',
@@ -195,7 +191,7 @@ class AccountAPI(Client):
         params = dict(instType=instType, ccy=ccy, mgnMode=mgnMode, ctType=ctType, type=type, subType=subType,
                       after=after, before=before, limit=limit)
         res = await self._request_with_params(GET, GET_ARCHIVE_LEDGER, params)
-        assert res['code'] == '0', f"/api/v5/account/bills-archive, msg={res['msg']}"
+        assert res['code'] == '0', f"{GET_ARCHIVE_LEDGER}, msg={codes[res['code']]}"
         return res['data']
 
     async def adjust_margin(self, instId, posSide, type, amt):
@@ -213,5 +209,5 @@ class AccountAPI(Client):
         if res['code'] == '0':
             return True
         else:
-            print(res['msg'])
+            print(f"{MARGIN_BALANCE}, msg={codes[res['code']]}")
             return False

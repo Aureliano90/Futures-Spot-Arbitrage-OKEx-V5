@@ -32,7 +32,7 @@ def utc_to_local(d: datetime) -> datetime:
 
 def fprint(*args):
     print(*args)
-    print(datetime_str(datetime.now()), *args, file=logfile)
+    print(datetime_str(datetime.now()), *args, file=logfile, flush=True)
 
 
 def apy(apr: float):
@@ -44,19 +44,68 @@ def utcfrommillisecs(millisecs: str):
 
 
 def num_decimals(f: str):
+    """Number of decimals
+    """
     return len(f[f.find('.'):]) - 1
 
 
-def round_to(number, fraction) -> float:
-    """返回fraction的倍数
+def float_str(f: float, decimals: int):
+    """String of float with certain decimals
     """
-    # 小数点后位数
+    return f'{f:.{decimals}f}'
+
+
+def round_to(number, fraction) -> float:
+    """Return the quotient of number and fraction
+    """
     fs = f'{fraction:.18f}'.rstrip('0')
-    ndigits = len(fs[fs.find('.'):]) - 1
-    if ndigits > 0:
-        return round(number / fraction // 1 * fraction, ndigits)
+    decimals = num_decimals(fs)
+    if decimals > 0:
+        return round(number / fraction // 1 * fraction, decimals)
     else:
         return round(number / fraction // 1 * fraction)
+
+
+async def get_with_limit(api, tag, max, limit=0, sem=None, sleep=0., **kwargs):
+    """Loop api until limit is reached
+
+    :param api: api coroutine
+    :param tag: tag used in after argument
+    :param max: max number of results in a single call
+    :param limit: number of entries
+    :param sem: semaphore
+    :param sleep: interval between calls
+    :param kwargs: other arguments
+    :return: List
+    """
+    if not sem: sem = asyncio.Semaphore(1)
+    async with sem:
+        if limit > 0:
+            res = temp = []
+            while limit > 0:
+                if limit <= max:
+                    if len(temp) == max:
+                        # 最后一次
+                        temp = await api(**kwargs, after=temp[max-1][tag], limit=limit)
+                    else:
+                        # 第一次
+                        temp = await api(**kwargs, limit=limit)
+                else:
+                    if len(temp) == max:
+                        temp = await api(**kwargs, after=temp[max-1][tag], limit=max)
+                    else:
+                        temp = await api(**kwargs, limit=max)
+                await asyncio.sleep(sleep)
+                res.extend(temp)
+                limit -= max
+        else:
+            res = temp = await api(**kwargs)
+            await asyncio.sleep(sleep)
+            while len(temp) == max:
+                temp = await api(**kwargs, after=temp[max-1][tag])
+                await asyncio.sleep(sleep)
+                res.extend(temp)
+        return res
 
 
 def debug_timer(cls):

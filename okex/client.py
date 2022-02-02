@@ -15,30 +15,22 @@ class Client(object):
         self.PASSPHRASE = passphrase
         self.use_server_time = use_server_time
         self.test = test
-        self.aclient = httpx.AsyncClient(base_url=c.API_URL, http2=True, follow_redirects=True)
+        self.client = httpx.AsyncClient(base_url=c.API_URL, http2=True, follow_redirects=True)
 
     def __del__(self):
         # print("Client del started")
         loop = asyncio.get_event_loop()
         if loop.is_running():
             # print('Event loop is running. Create __del__ task.')
-            loop.create_task(self.aclient.aclose())
+            loop.create_task(self.client.aclose())
         else:
             # print('Event loop closed. Run __del__ until complete.')
-            loop.run_until_complete(self.aclient.aclose())
+            loop.run_until_complete(self.client.aclose())
         # print("Client del finished")
-
-    async def update_limits(self, limits: httpx.Limits = None):
-        await self.aclient.aclose()
-        self.aclient.__del__()
-        if limits:
-            self.aclient = httpx.AsyncClient(base_url=c.API_URL, http2=True, limits=limits)
-        else:
-            self.aclient = httpx.AsyncClient(base_url=c.API_URL, http2=True)
 
     async def _get_timestamp(self):
         url = c.SERVER_TIMESTAMP_URL
-        response = await self.aclient.get(url)
+        response = await self.client.get(url)
         if response.status_code == 200:
             t = datetime.utcfromtimestamp(int(response.json()['data'][0]['ts']) / 1000)
             t = t.isoformat("T", "milliseconds")
@@ -75,16 +67,16 @@ class Client(object):
                 # send request
                 if method == c.GET:
                     try:
-                        response = await self.aclient.get(url, headers=header)
-                    except httpx.ReadTimeout:
-                        timestamp = datetime.utcnow().strftime("%Y-%m-%d, %H:%M:%S.%f")
-                        print(timestamp[:len(timestamp) - 4], httpx.ReadTimeout)
-                        print(f'{request_path=}')
+                        response = await self.client.get(url, headers=header)
+                    except httpx.TimeoutException:
+                        # timestamp = datetime.utcnow().strftime("%Y-%m-%d, %H:%M:%S.%f")
+                        # print(timestamp[:len(timestamp) - 4], httpx.ReadTimeout)
+                        # print(f'{request_path=}')
                         continue
                 elif method == c.POST:
-                    response = await self.aclient.post(url, data=body, headers=header)
+                    response = await self.client.post(url, data=body, headers=header)
                 elif method == c.DELETE:
-                    response = await self.aclient.delete(url, headers=header)
+                    response = await self.client.delete(url, headers=header)
                 else:
                     raise ValueError
 

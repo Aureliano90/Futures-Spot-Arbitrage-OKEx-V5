@@ -101,6 +101,7 @@ funding_menu_text = _("""
 3   Current funding rates for all
 4   Last x days funding rates for all
 5   Last 30 days funding rates for all
+6   Write 30 days funding rates to file
 b   Back
 """)
 # """
@@ -109,6 +110,7 @@ b   Back
 # 3   显示全币种当前资金费
 # 4   显示全币种最近x天资金费
 # 5   显示全币种最近30天资金费
+# 6   写入最近30天资金费
 # b   返回
 # """
 
@@ -136,14 +138,11 @@ funding_close = _('{:6s} Funding Rate: {:7.3%}, Avg premium at close: {:7.3%}, S
                   ' Min: {:7.3%}, Minus 2 std: {:7.3%}')
 # "{:6s} 资金费：{:7.3%}，平仓价差：{:7.3%}，标准差：{:7.3%}，最小值：{:7.3%}，减2个标准差：{:7.3%}"
 
-funding_day = _('Crypto   funding')
+funding_day = _('Crypto   Funding')
 # "币种        资金费"
 
-funding_30day = _('Crypto  30 day funding')
-# "币种     30天资金费"
-
-coin_7_30 = _('Crypto     7 day  30 day\n')
-# "币种     7天资金费 30天资金费\n"
+coin_7_30 = _('Crypto     7 day  30 day')
+# "币种     7天资金费 30天资金费"
 
 coin_funding_value = _('Crypto   Funding     APR Profitability')
 # '币种        资金费     APR  投资价值'
@@ -179,7 +178,7 @@ plot_premium = _('Premium')
 # "价差"
 
 plot_probability = _('Probability')
-# "概率"
+# "或然率"
 
 plot_title = _('{:s} premium in {:d} hours')
 # "{:s} {:d}小时期现价差"

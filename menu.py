@@ -16,13 +16,16 @@ async def monitor_all(accountid: int):
 
     :param accountid: 账号id
     """
+    coinlist = await get_coinlist(accountid)
     processes = []
     # /api/v5/account/bills 限速：5次/s
     sem = multiprocessing.Semaphore(5)
     # /api/v5/account/positions 限速：10次/2s
     asem = asyncio.Semaphore(5)
-    for n in await get_coinlist(accountid):
-        await print_apy(n, accountid, asem)
+    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
+    monitor.Monitor.set_asemaphore(asem, sleep)
+    for n in coinlist:
+        await print_apy(n, accountid)
         # 不能直接传Monitor对象
         process = multiprocessing.Process(target=monitor_one, args=(n, accountid, sem))
         process.start()
@@ -41,9 +44,8 @@ def monitor_one(coin: str, accountid: int, sem=None):
         monitor.Monitor.clean()
 
 
-async def print_apy(coin: str, accountid: int, asem):
+async def print_apy(coin: str, accountid: int):
     mon = await monitor.Monitor(coin=coin, accountid=accountid)
-    mon.set_asemaphore(asem)
     fundingRate = funding_rate.FundingRate()
     current_rate, next_rate = await fundingRate.current_next(mon.swap_ID)
     fprint(coin_current_next)
@@ -54,17 +56,20 @@ async def print_apy(coin: str, accountid: int, asem):
     fprint(apy_message.format(mon.coin, *apys))
 
 
+# @debug_timer
 @call_coroutine
 async def profit_all(accountid: int):
     """当前仓位收益
 
     :param accountid: 账号id
     """
+    coinlist = await get_coinlist(accountid)
     # /api/v5/account/positions 限速：10次/2s
-    asem = asyncio.Semaphore(5)
-    for coin in await get_coinlist(accountid):
+    sem = asyncio.Semaphore(5)
+    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
+    monitor.Monitor.set_asemaphore(sem, sleep)
+    for coin in coinlist:
         mon, Stat = await monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin)
-        mon.set_asemaphore(asem)
         gather_result = await gather(mon.apr(1), mon.apr(7), mon.apr())
         fprint(apr_message.format(coin, *gather_result))
         funding = Stat.history_funding(accountid)
@@ -91,7 +96,7 @@ async def history_profit(accountid: int):
         cost = Stat.history_cost(accountid)
         open_time = Stat.open_time(accountid)
         close_time = Stat.close_time(accountid)
-        pipeline = [{'$match': {'account': accountid, 'instrument': coin, 'title': "平仓"}},
+        pipeline = [{'$match': {'account': accountid, 'instrument': coin, 'title': '平仓'}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
         position = 0
         for x in Record.mycol.aggregate(pipeline):
@@ -121,18 +126,22 @@ async def cumulative_profit(accountid: int):
         fprint(cumulative_pnl.format(coin, funding + cost))
 
 
+# @debug_timer
 @call_coroutine
 async def back_track_all(accountid: int):
     """补录当前仓位资金费
 
     :param accountid: 账号id
     """
+    coinlist = await get_coinlist(accountid)
     # /api/v5/account/bills-archive 限速：5次/2s
     sem = asyncio.Semaphore(5)
+    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
+    monitor.Monitor.set_asemaphore(sem, sleep)
     task_list = []
-    for n in await get_coinlist(accountid):
+    for n in coinlist:
         mon = await monitor.Monitor(coin=n, accountid=accountid)
-        task_list.append(mon.back_tracking(sem))
+        task_list.append(mon.back_tracking())
     await gather(*task_list)
 
 
@@ -178,7 +187,8 @@ async def get_coinlist(accountid: int):
     assert coinlist, empty_db
     mon = await monitor.Monitor(accountid=accountid)
     # /api/v5/account/positions 限速：10次/2s
-    mon.set_asemaphore(asyncio.Semaphore(5))
+    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
+    mon.set_asemaphore(asyncio.Semaphore(5), sleep)
     task_list = [mon.position_exist(n + '-USDT-SWAP') for n in coinlist]
     gather_result = await gather(*task_list)
     return [coinlist[n] for n in range(len(coinlist)) if gather_result[n]]
@@ -311,9 +321,12 @@ def crypto_menu(accountid: int):
                 except:
                     continue
                 Stat = trading_data.Stat(coin)
-                Stat.plot(hours)
-                Stat.gaussian_dist(hours, 'o')
-                Stat.gaussian_dist(hours, 'c')
+                if Stat.recent_open_stat(hours):
+                    Stat.plot(hours)
+                    Stat.gaussian_dist(hours, 'o')
+                    Stat.gaussian_dist(hours, 'c')
+                else:
+                    fprint(fetch_ticker_first)
                 break
         elif command == '8':
             while True:
@@ -322,7 +335,12 @@ def crypto_menu(accountid: int):
                     assert usdt >= 0
                 except:
                     continue
-                Monitor.amm(usdt)
+                try:
+                    grid_size = float(input('Grid size\n'))
+                    assert grid_size > 0
+                except:
+                    continue
+                Monitor.amm(usdt, grid_size)
                 break
         elif command == 'b':
             pass
@@ -356,12 +374,12 @@ def funding_menu(accountid: int):
                     assert 0 < days <= 90
                 except:
                     continue
-                fprint(funding_day)
                 FundingRate.show_nday_rate(days)
                 break
         elif command == '5':
-            fprint(funding_30day)
             FundingRate.show_nday_rate(30)
+        elif command == '6':
+            FundingRate.print_30day_rate()
         elif command == 'b':
             break
         else:

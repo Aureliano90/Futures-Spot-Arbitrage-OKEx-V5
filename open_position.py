@@ -170,7 +170,7 @@ class AddPosition(OKExAPI):
         mydict = dict(account=self.accountid, instrument=self.coin, op='add', size=target_position)
         OP.insert(mydict)
 
-        channels = [dict(channel="tickers", instId=self.spot_ID), dict(channel="tickers", instId=self.swap_ID)]
+        channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
         spot_ticker = swap_ticker = None
         self.exitFlag = False
 
@@ -203,7 +203,7 @@ class AddPosition(OKExAPI):
 
                 # 如果不满足期现溢价
                 if best_bid < best_ask * (1 + price_diff):
-                    # print("当前期现差价: ", (best_bid - best_ask) / best_ask, "<", price_diff)
+                    # print(f'当前期现差价: {(best_bid - best_ask) / best_ask:.3%} < {price_diff:.3%}')
                     pass
                 else:
                     if usdt_balance < target_position * last * (1 + 1 / leverage):
@@ -229,15 +229,14 @@ class AddPosition(OKExAPI):
                             order_size -= min_size
                             order_size = round_to(order_size, contract_val)
                             spot_size = round_to(order_size / (1 + trade_fee), size_increment)
-                        spot_size = f'{spot_size:.{size_decimals}f}'
+                        spot_size = float_str(spot_size, size_decimals)
                         contract_size = round(order_size / contract_val)
                         contract_size = f'{contract_size:d}'
                         # print(order_size, contract_size, spot_size)
 
-                        timestamp = datetime.utcnow()
+                        spot_order_info = swap_order_info = spot_order_state = swap_order_state = dict()
                         # 下单，如果资金费不是马上更新
-                        if order_size > 0 and not ((timestamp.hour % 8 == 7 and timestamp.minute == 59) or
-                                                   (timestamp.hour % 8 == 0 and timestamp.minute == 0)):
+                        if order_size > 0 and not self.funding_settling():
                             spot_order, swap_order = await gather(
                                 self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy', size=spot_size,
                                                               price=spot_ticker['askPx'], order_type='fok'),
@@ -251,36 +250,51 @@ class AddPosition(OKExAPI):
                             # 下单失败
                             else:
                                 if spot_order is OkexAPIException:
-                                    swap_order_info = await self.tradeAPI.get_order_info(instId=self.swap_ID,
-                                                                                         order_id=swap_order['ordId'])
+                                    kwargs = dict(instId=self.swap_ID, order_id=swap_order['ordId'])
+                                    swap_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                     fprint(swap_order_info)
                                     fprint(spot_order)
                                 elif swap_order is OkexAPIException:
-                                    if swap_order.message == "System error" or swap_order.code == "51022":
+                                    if swap_order['code'] in ('50026', '51022'):
                                         fprint(lang.futures_market_down)
-                                    spot_order_info = await self.tradeAPI.get_order_info(instId=self.spot_ID,
-                                                                                         order_id=spot_order['ordId'])
+                                    kwargs = dict(instId=self.spot_ID, order_id=spot_order['ordId'])
+                                    spot_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                     fprint(spot_order_info)
                                     fprint(swap_order)
                                 self.exitFlag = True
                                 break
 
-                            # 查询订单信息
-                            if spot_order['ordId'] != '-1' and swap_order['ordId'] != '-1':
-                                spot_order_info, swap_order_info = await gather(
-                                    self.tradeAPI.get_order_info(instId=self.spot_ID, order_id=spot_order['ordId']),
-                                    self.tradeAPI.get_order_info(instId=self.swap_ID, order_id=swap_order['ordId']))
-                                spot_order_state = spot_order_info['state']
-                                swap_order_state = swap_order_info['state']
-                            # 下单失败
-                            else:
-                                if spot_order['ordId'] == '-1':
-                                    fprint(lang.spot_order_failed)
-                                    fprint(spot_order)
+                            swap_order_info = dict()
+
+                            async def check_order():
+                                nonlocal spot_order_info, swap_order_info, spot_order_state, swap_order_state
+                                # 查询订单信息
+                                if spot_order['ordId'] != '-1' and swap_order['ordId'] != '-1':
+                                    spot_order_info, swap_order_info = await gather(
+                                        self.tradeAPI.get_order_info(instId=self.spot_ID, order_id=spot_order['ordId']),
+                                        self.tradeAPI.get_order_info(instId=self.swap_ID, order_id=swap_order['ordId']))
+                                    spot_order_state = spot_order_info['state']
+                                    swap_order_state = swap_order_info['state']
+                                # 下单失败
                                 else:
-                                    fprint(lang.swap_order_failed)
-                                    fprint(swap_order)
-                                self.exitFlag = True
+                                    if spot_order['ordId'] == '-1':
+                                        fprint(lang.spot_order_failed)
+                                        fprint(spot_order)
+                                        self.exitFlag = True
+                                    else:
+                                        fprint(lang.swap_order_failed)
+                                        fprint(swap_order)
+                                        if swap_order['code'] in ('50023', '51030'):
+                                            kwargs = dict(instId=self.spot_ID, order_id=spot_order['ordId'])
+                                            spot_order_info = await self.tradeAPI.get_order_info(**kwargs)
+                                            spot_order_state = spot_order_info['state']
+                                            await self.funding_settled()
+                                            swap_order_state = 'canceled'
+                                        else:
+                                            self.exitFlag = True
+
+                            await check_order()
+                            if self.exitFlag:
                                 break
 
                             # 其中一单撤销
@@ -326,21 +340,8 @@ class AddPosition(OKExAPI):
                                 else:
                                     fprint(lang.await_status_update)
 
-                                # 更新订单信息
-                                if spot_order['ordId'] != '-1' and swap_order['ordId'] != '-1':
-                                    spot_order_info, swap_order_info = await gather(
-                                        self.tradeAPI.get_order_info(instId=self.spot_ID, order_id=spot_order['ordId']),
-                                        self.tradeAPI.get_order_info(instId=self.swap_ID, order_id=swap_order['ordId']))
-                                    spot_order_state = spot_order_info['state']
-                                    swap_order_state = swap_order_info['state']
-                                else:
-                                    if spot_order['ordId'] == '-1':
-                                        fprint(lang.spot_order_failed)
-                                        fprint(spot_order)
-                                    else:
-                                        fprint(lang.swap_order_failed)
-                                        fprint(swap_order)
-                                    self.exitFlag = True
+                                await check_order()
+                                if self.exitFlag:
                                     break
 
                             # 下单成功
@@ -382,17 +383,17 @@ class AddPosition(OKExAPI):
                             # 重新订阅
                             break
                         else:
-                            # print("订单太小", order_size)
+                            # print('订单太小', order_size)
                             pass
 
         if spot_notional:
             Ledger = record.Record('Ledger')
             timestamp = datetime.utcnow()
-            mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title="现货买入",
+            mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货买入',
                            spot_notional=spot_notional)
-            mydict2 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title="合约开空",
+            mydict2 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='合约开空',
                            swap_notional=swap_notional)
-            mydict3 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title="手续费",
+            mydict3 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='手续费',
                            fee=fee_total)
             Ledger.mycol.insert_many([mydict1, mydict2, mydict3])
 
@@ -431,7 +432,7 @@ class AddPosition(OKExAPI):
                 usdt_size = last * target_size * (1 + 1 / leverage)
             if usdt_balance >= usdt_size:
                 timestamp = datetime.utcnow()
-                mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title="开仓")
+                mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='开仓')
                 Ledger.insert(mydict)
                 record.Record('Portfolio').mycol.insert_one(
                     dict(account=self.accountid, instrument=self.coin, leverage=leverage))

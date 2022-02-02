@@ -1,7 +1,6 @@
 from typing import List
-import okex.asset as asset
 import okex.public as public
-import config
+from config import language
 import record
 from utils import *
 from lang import *
@@ -87,18 +86,15 @@ def average_true_range(candles: List[List], days, bar='4H'):
 class Stat:
     """交易数据统计功能类
     """
-    assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
     publicAPI = public.PublicAPI()
     sem = None
+    sleep = 0.
 
     @property
     def __name__(self):
         return 'Stat'
 
     def __init__(self, coin: str = None):
-        # assetAPI = asset.AssetAPI(api_key='', api_secret_key='', passphrase='')
-        # self.publicAPI = public.PublicAPI()
-
         self.coin = coin
         if coin:
             assert isinstance(coin, str)
@@ -118,8 +114,8 @@ class Stat:
         """
         if self.coin:
             try:
-                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
-                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                self.spot_info = create_task(self.spot_inst())
+                self.swap_info = create_task(self.swap_inst())
                 yield from gather(self.spot_info, self.swap_info)
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
@@ -136,8 +132,8 @@ class Stat:
     async def __async__init__(self):
         if self.coin:
             try:
-                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
-                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                self.spot_info = create_task(self.spot_inst())
+                self.swap_info = create_task(self.swap_inst())
                 await self.spot_info
                 await self.swap_info
                 self.spot_info = self.spot_info.result()
@@ -153,10 +149,21 @@ class Stat:
 
     @staticmethod
     def clean():
-        if hasattr(Stat, 'assetAPI'):
-            Stat.assetAPI.__del__()
         if hasattr(Stat, 'publicAPI'):
             Stat.publicAPI.__del__()
+
+    @staticmethod
+    def set_semaphore(sem, sleep):
+        """控制asyncio并发连接
+        """
+        Stat.sem = sem
+        Stat.sleep = sleep
+
+    async def spot_inst(self):
+        return await self.publicAPI.get_specific_instrument('SPOT', self.spot_ID)
+
+    async def swap_inst(self):
+        return await self.publicAPI.get_specific_instrument('SWAP', self.swap_ID)
 
     async def get_candles(self, instId, days, bar='4H') -> List[List]:
         """获取4小时K线
@@ -165,37 +172,20 @@ class Stat:
         :param days: 最近几天
         :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H/6H/12H/1D/1W/1M/3M/6M/1Y]
         """
-        async with Stat.sem:
-            if bar.endswith('m'):
-                limit = days * 1440 // int(rtruncate(bar, 1)) + 1
-            elif bar.endswith('H'):
-                limit = days * 24 // int(rtruncate(bar, 1)) + 1
-            elif bar.endswith('D'):
-                limit = days + 1
-            elif bar.endswith('W'):
-                limit = days // 7 + 1
-            elif bar.endswith('M'):
-                limit = days // (30 * int(rtruncate(bar, 1))) + 1
-            else:
-                limit = days // 365 + 1
-            candles = temp = []
-            while limit > 0:
-                if limit <= 300:
-                    if len(temp) == 300:
-                        # 最后一次
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit=limit)
-                    else:
-                        # 第一次
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, limit=limit)
-                else:
-                    if len(temp) == 300:
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[299][0], limit='300')
-                    else:
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='300')
-                await asyncio.sleep(2)
-                candles.extend(temp)
-                limit -= 300
-            return candles
+        if bar.endswith('m'):
+            limit = days * 1440 // int(rtruncate(bar, 1)) + 1
+        elif bar.endswith('H'):
+            limit = days * 24 // int(rtruncate(bar, 1)) + 1
+        elif bar.endswith('D'):
+            limit = days + 1
+        elif bar.endswith('W'):
+            limit = days // 7 + 1
+        elif bar.endswith('M'):
+            limit = days // (30 * int(rtruncate(bar, 1))) + 1
+        else:
+            limit = days // 365 + 1
+        return await get_with_limit(self.publicAPI.get_kline, tag=0, max=300, limit=limit, sem=Stat.sem,
+                                    sleep=Stat.sleep, instId=instId, bar=bar)
 
     async def history_candles(self, instId, days, bar='4H') -> List[List]:
         """获取4小时K线
@@ -204,45 +194,27 @@ class Stat:
         :param days: 最近几天
         :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H/6H/12H/1D/1W/1M/3M/6M/1Y]
         """
-        async with Stat.sem:
-            if bar.endswith('m'):
-                limit = days * 1440 // int(rtruncate(bar, 1)) + 1
-            elif bar.endswith('H'):
-                limit = days * 24 // int(rtruncate(bar, 1)) + 1
-            elif bar.endswith('D'):
-                limit = days + 1
-            elif bar.endswith('W'):
-                limit = days // 7 + 1
-            elif bar.endswith('M'):
-                limit = days // (30 * int(rtruncate(bar, 1))) + 1
-            else:
-                limit = days // 365 + 1
-            candles = temp = []
-            while limit > 0:
-                if limit <= 100:
-                    if len(temp) == 100:
-                        # 最后一次
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[99][0], limit=limit)
-                    else:
-                        # 第一次
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, limit=limit)
-                else:
-                    if len(temp) == 100:
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, after=temp[99][0], limit='100')
-                    else:
-                        temp = await self.assetAPI.get_kline(instId=instId, bar=bar, limit='100')
-                await asyncio.sleep(2)
-                candles.extend(temp)
-                limit -= 100
-            if not candles: print(instId, candles)
-            return candles
+        if bar.endswith('m'):
+            limit = days * 1440 // int(rtruncate(bar, 1)) + 1
+        elif bar.endswith('H'):
+            limit = days * 24 // int(rtruncate(bar, 1)) + 1
+        elif bar.endswith('D'):
+            limit = days + 1
+        elif bar.endswith('W'):
+            limit = days // 7 + 1
+        elif bar.endswith('M'):
+            limit = days // (30 * int(rtruncate(bar, 1))) + 1
+        else:
+            limit = days // 365 + 1
+        return await get_with_limit(self.publicAPI.history_kline, tag=0, max=100, limit=limit, sem=Stat.sem,
+                                    sleep=Stat.sleep, instId=instId, bar=bar)
 
     # @debug_timer
     async def profitability(self, funding_rate_list, days=7) -> List[dict]:
         """显示各币种资金费率除以波动率
         """
         # /api/v5/market/candles 限速： 20次/2s
-        Stat.sem = asyncio.Semaphore(20)
+        Stat.set_semaphore(asyncio.Semaphore(20), 2)
         bar = '4H'
         if bar.endswith('m'):
             limit = days * 1440 // int(rtruncate(bar, 1)) + 1
@@ -395,7 +367,7 @@ class Stat:
         x = np.arange(min, max, width / 10)
         y = np.exp(- np.square(x - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
 
-        if config.language == 'cn':
+        if language == 'cn':
             plt.rcParams['font.sans-serif'] = ['SimHei']
             plt.rcParams['axes.unicode_minus'] = False
         plt.rcParams['font.size'] = 12
@@ -405,32 +377,27 @@ class Stat:
         plt.plot(x, y, '-', color='b', label=gaussian_dist)
 
         plt.axvline(avg, color='orange', label=plot_average.format(avg))
-        ymax = np.exp(- np.square(p1sigma - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
+        ymax = np.exp(- 1. / 2) / std / np.sqrt(2 * np.pi) * width
         y = np.arange(0, ymax, ymax / 100)
-        plt.plot([p1sigma] * len(y), y, '-', color='m', label=one_std)
-        ymax = np.exp(- np.square(m1sigma - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
+        plt.plot([p1sigma] * len(y), y, '-', color='m', label=r'$\sigma$ ' + plot_probability + f': {frequency1:.2%}')
+        plt.plot([m1sigma] * len(y), y, '-', color='m')
+        ymax = np.exp(- 4. / 2) / std / np.sqrt(2 * np.pi) * width
         y = np.arange(0, ymax, ymax / 100)
-        plt.plot([m1sigma] * len(y), y, '-', color='m', label=plot_probability + f': {frequency1:.2%}')
-        ymax = np.exp(- np.square(p2sigma - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
+        plt.plot([p2sigma] * len(y), y, '-', color='m', label=r'$2\sigma$ ' + plot_probability + f': {frequency2:.2%}')
+        plt.plot([m2sigma] * len(y), y, '-', color='m')
+        ymax = np.exp(- 9. / 2) / std / np.sqrt(2 * np.pi) * width
         y = np.arange(0, ymax, ymax / 100)
-        plt.plot([p2sigma] * len(y), y, '-', color='m', label=two_std)
-        ymax = np.exp(- np.square(m2sigma - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
-        y = np.arange(0, ymax, ymax / 100)
-        plt.plot([m2sigma] * len(y), y, '-', color='m', label=plot_probability + f': {frequency2:.2%}')
-        ymax = np.exp(- np.square(p3sigma - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
-        y = np.arange(0, ymax, ymax / 100)
-        plt.plot([p3sigma] * len(y), y, '-', color='m', label=three_std)
-        ymax = np.exp(- np.square(m3sigma - avg) / 2. / std ** 2) / std / np.sqrt(2 * np.pi) * width
-        y = np.arange(0, ymax, ymax / 100)
-        plt.plot([m3sigma] * len(y), y, '-', color='m', label=plot_probability + f': {frequency3:.2%}')
+        plt.plot([p3sigma] * len(y), y, '-', color='m', label=r'$3\sigma$ ' + plot_probability + f': {frequency3:.2%}')
+        plt.plot([m3sigma] * len(y), y, '-', color='m')
         if side == 'o':
             plt.xlabel(pd_open, fontsize=14)
         else:
             plt.xlabel(pd_close, fontsize=14)
+        plt.gca().yaxis.set_major_formatter('{x:.0%}')
         plt.gca().xaxis.set_major_formatter('{x:.3%}')
         plt.ylabel(plot_probability, fontsize=14)
         plt.ylim(bottom=0)
-        plt.legend(loc="best", fontsize=16)
+        plt.legend(loc='best', fontsize=16)
         plt.title(plot_title.format(self.coin, hours), fontsize=18)
         plt.show()
 
@@ -489,7 +456,7 @@ class Stat:
         :rtype: datetime
         """
         Record = record.Record('Ledger')
-        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': "开仓"}},
+        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': '开仓'}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
         open_time = result[0]['timestamp'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
         return open_time if open_time else datetime(2021, 4, 1)
@@ -501,7 +468,7 @@ class Stat:
         :rtype: datetime
         """
         Record = record.Record('Ledger')
-        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': "平仓"}},
+        pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': '平仓'}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
         close_time = result[0]['timestamp'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
         return close_time if close_time else datetime.utcnow()
@@ -555,21 +522,21 @@ class Stat:
         recent = self.recent_close_stat(hours)
         close_pd = recent['avg'] - 2 * recent['std']
         mylist = self.recent_ticker(hours)
-        if config.language == 'cn':
+        if language == 'cn':
             plt.rcParams['font.sans-serif'] = ['SimHei']
             plt.rcParams['axes.unicode_minus'] = False
         plt.rcParams['font.size'] = 12
         plt.figure(figsize=(16, 8))
         plt.plot(mylist['timestamp'], mylist['open_pd'], '.', color='g', label=pd_open)
-        plt.axhline(y=open_pd, color='g', linestyle='-', label=two_std)
+        plt.axhline(y=open_pd, color='g', linestyle='-', label=r'$\mu+2\sigma$')
         # plt.plot(mylist['timestamp'], [open_pd] * len(mylist['timestamp']), '-', color='g', label=two_std)
         plt.plot(mylist['timestamp'], mylist['close_pd'], '.', color='r', label=pd_close)
-        plt.axhline(y=close_pd, color='r', linestyle='-', label=two_std)
+        plt.axhline(y=close_pd, color='r', linestyle='-', label=r'$\mu-2\sigma$')
         # plt.plot(mylist['timestamp'], [close_pd] * len(mylist['timestamp']), '-', color='r', label=two_std)
         # plt.xticks(rotation=45)
         plt.gca().yaxis.set_major_formatter('{x:.3%}')
         plt.xlabel(plot_time, fontsize=14)
         plt.ylabel(plot_premium, fontsize=14)
-        plt.legend(loc="best", fontsize=14)
+        plt.legend(loc='best', fontsize=14)
         plt.title(plot_title.format(self.coin, hours), fontsize=18)
         plt.show()

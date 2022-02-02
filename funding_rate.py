@@ -68,12 +68,27 @@ class FundingRate:
             funding_rate_list.append(
                 dict(instrument_id=instId, current_rate=current_rate, estimated_rate=estimated_rate))
         funding_rate_list.sort(key=lambda x: x['current_rate'], reverse=True)
-        fprint(coin_current_next)
-        for n in funding_rate_list:
-            instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
-            current_rate = n['current_rate']
-            estimated_rate = n['estimated_rate']
-            fprint(f'{instrumentID:8s}{current_rate:9.3%}{estimated_rate:11.3%}')
+        l = len(funding_rate_list)
+        ncols = 3
+        nrows = l // ncols + 1
+        header = ''
+        for j in range(ncols):
+            header += f'{coin_current_next}'
+            if j < ncols - 1:
+                header += '\t'
+        fprint(header)
+        for i in range(nrows):
+            line = ''
+            for j in range(ncols):
+                if i + j * nrows < l:
+                    n = funding_rate_list[i + j * nrows]
+                    instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
+                    current_rate = n['current_rate']
+                    estimated_rate = n['estimated_rate']
+                    line += f'{instrumentID:8s}{current_rate:9.3%}{estimated_rate:11.3%}'
+                    if j < ncols - 1:
+                        line += '\t'
+            fprint(line)
         # 50 s without asyncio
         # 1.6 s with asyncio
 
@@ -129,10 +144,26 @@ class FundingRate:
         assert isinstance(days, int) and 0 < days <= 90
         funding_rate_list = await self.get_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
-        for n in funding_rate_list:
-            instrumentID = n['instrument']
-            fprint(f"{instrumentID:8s}{n['funding_rate']:8.3%}")
+        l = len(funding_rate_list)
+        ncols = 5
+        nrows = l // ncols + 1
+        header = ''
+        for j in range(ncols):
+            header += f'{funding_day}'
+            if j < ncols - 1:
+                header += '\t'
+        fprint(header)
+        for i in range(nrows):
+            line = ''
+            for j in range(ncols):
+                if i + j * nrows < l:
+                    n = funding_rate_list[i + j * nrows]
+                    line += f"{n['instrument']:8s}{n['funding_rate']:8.3%}"
+                    if j < ncols - 1:
+                        line += '\t'
+            fprint(line)
 
+    @call_coroutine
     # @debug_timer
     async def print_30day_rate(self):
         """输出最近30天平均资金费到文件
@@ -161,13 +192,29 @@ class FundingRate:
         funding_rate_list.sort(key=lambda x: x['30day_funding_rate'], reverse=True)
         funding_rate_list.sort(key=lambda x: x['7day_funding_rate'], reverse=True)
 
-        funding_rate_file = open("Funding Rate.txt", "w", encoding="utf-8")
-        funding_rate_file.write(coin_7_30)
-        for n in funding_rate_list:
-            instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
-            funding_rate_file.write(instrumentID.ljust(9))
-            funding_rate_file.write(f"{n['7day_funding_rate']:7.3%}")
-            funding_rate_file.write(f"{n['30day_funding_rate']:8.3%}\n")
+        funding_rate_file = open("Funding Rate.txt", "a", encoding="utf-8")
+        funding_rate_file.write(datetime_str(datetime.now()) + '\n')
+        l = len(funding_rate_list)
+        ncols = 4
+        nrows = l // ncols + 1
+        header = ''
+        for j in range(ncols):
+            header += f'{coin_7_30}'
+            if j < ncols - 1:
+                header += '\t'
+        funding_rate_file.write(header + '\n')
+        for i in range(nrows):
+            line = ''
+            for j in range(ncols):
+                if i + j * nrows < l:
+                    n = funding_rate_list[i + j * nrows]
+                    instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
+                    line += instrumentID.ljust(9)
+                    line += f"{n['7day_funding_rate']:7.3%}"
+                    line += f"{n['30day_funding_rate']:8.3%}"
+                    if j < ncols - 1:
+                        line += '\t'
+            funding_rate_file.write(line + '\n')
         funding_rate_file.close()
 
     @call_coroutine

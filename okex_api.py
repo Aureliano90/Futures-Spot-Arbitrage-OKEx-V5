@@ -16,6 +16,7 @@ class OKExAPI(object):
     """
     api_initiated = False
     asem = None
+    asleep = 0.
     psem = None
     __key = None
 
@@ -36,18 +37,18 @@ class OKExAPI(object):
                 OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.publicAPI = public.PublicAPI(test=True)
-                # OKExAPI.public_url = "wss://wspap.okx.com:8443/ws/v5/public"
-                # OKExAPI.private_url = "wss://wspap.okx.com:8443/ws/v5/private"
-                OKExAPI.public_url = "wss://wspap.okex.com:8443/ws/v5/public?brokerId=9999"
-                OKExAPI.private_url = "wss://wspap.okex.com:8443/ws/v5/private?brokerId=9999"
+                # OKExAPI.public_url = 'wss://wspap.okx.com:8443/ws/v5/public'
+                # OKExAPI.private_url = 'wss://wspap.okx.com:8443/ws/v5/private'
+                OKExAPI.public_url = 'wss://wspap.okex.com:8443/ws/v5/public?brokerId=9999'
+                OKExAPI.private_url = 'wss://wspap.okex.com:8443/ws/v5/private?brokerId=9999'
             else:
                 OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
                 OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
                 OKExAPI.publicAPI = public.PublicAPI()
-                # OKExAPI.public_url = "wss://ws.okx.com:8443/ws/v5/public"
-                # OKExAPI.private_url = "wss://ws.okx.com:8443/ws/v5/private"
-                OKExAPI.public_url = "wss://ws.okex.com:8443/ws/v5/public"
-                OKExAPI.private_url = "wss://ws.okex.com:8443/ws/v5/private"
+                # OKExAPI.public_url = 'wss://ws.okx.com:8443/ws/v5/public'
+                # OKExAPI.private_url = 'wss://ws.okx.com:8443/ws/v5/private'
+                OKExAPI.public_url = 'wss://ws.okex.com:8443/ws/v5/public'
+                OKExAPI.private_url = 'wss://ws.okex.com:8443/ws/v5/private'
             OKExAPI.api_initiated = True
 
         self.coin = coin
@@ -71,8 +72,8 @@ class OKExAPI(object):
         """
         if self.coin:
             try:
-                self.spot_info = create_task(self.publicAPI.get_specific_instrument('SPOT', self.spot_ID))
-                self.swap_info = create_task(self.publicAPI.get_specific_instrument('SWAP', self.swap_ID))
+                self.spot_info = create_task(self.spot_inst())
+                self.swap_info = create_task(self.swap_inst())
                 yield from gather(self.spot_info, self.swap_info)
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
@@ -95,16 +96,28 @@ class OKExAPI(object):
             OKExAPI.publicAPI.__del__()
 
     @staticmethod
-    def set_asemaphore(sem):
+    def _key():
+        return OKExAPI.__key
+
+    @staticmethod
+    def set_asemaphore(sem, sleep):
         """控制asyncio并发连接
         """
         OKExAPI.asem = sem
+        OKExAPI.asleep = sleep
 
     @staticmethod
     def set_psemaphore(sem):
         """控制multiprocessing并发连接
         """
         OKExAPI.psem = sem
+
+    async def spot_inst(self):
+        return await self.publicAPI.get_specific_instrument('SPOT', self.spot_ID)
+
+    async def swap_inst(self, swap_ID=None):
+        if not swap_ID: swap_ID = self.swap_ID
+        return await self.publicAPI.get_specific_instrument('SWAP', swap_ID)
 
     async def check_account_level(self):
         """检查账户模式，需开通合约交易
@@ -133,28 +146,46 @@ class OKExAPI(object):
         """获取现货余额
         """
         if not coin: coin = self.coin
-        data: list = (await self.accountAPI.get_coin_account(coin))['details']
+        data: list = (await self.accountAPI.get_coin_balance(coin))['details']
         return float(data[0]['availEq']) if data else 0.
+
+    @staticmethod
+    def funding_settling():
+        timestamp = datetime.utcnow()
+        return ((timestamp.hour % 8 == 7 and timestamp.minute == 59 and timestamp.second > 30)
+                or (timestamp.hour % 8 == 0 and timestamp.minute == 0 and timestamp.second < 30))
+
+    async def funding_settled(self):
+        while (await self.swap_inst())['state'] == 'settlement':
+            await asyncio.sleep(1)
 
     # @call_coroutine
     async def swap_holding(self, swap_ID=None):
         """获取合约持仓
         """
         # /api/v5/account/positions 限速：10次/2s
-        sem = self.asem if self.asem else asyncio.Semaphore(5)
+        if self.asem:
+            sem = self.asem
+            sleep = self.asleep
+        else:
+            sem = asyncio.Semaphore(5)
+            sleep = 0
         async with sem:
             if not swap_ID: swap_ID = self.swap_ID
+            while self.funding_settling():
+                await asyncio.sleep(1)
             try:
                 result: list = await self.accountAPI.get_specific_position(swap_ID)
-            except OkexAPIException:
-                await asyncio.sleep(10)
+            except AssertionError:
+                await self.funding_settled()
                 result: list = await self.accountAPI.get_specific_position(swap_ID)
-            if self.asem: await asyncio.sleep(1)
+            if self.asem:
+                await asyncio.sleep(sleep)
             keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
             for holding in result:
                 if holding['mgnMode'] == 'isolated':
-                    self.holding = dict([(n, float(holding[n])) if holding[n] else (n, 0.) for n in keys])
-                    return self.holding
+                    holding = dict([(n, float(holding[n])) if holding[n] else (n, 0.) for n in keys])
+                    return holding
             return None
 
     async def swap_position(self, swap_ID=None):
@@ -165,7 +196,7 @@ class OKExAPI(object):
             swap_info = self.swap_info
         else:
             try:
-                swap_info = await self.publicAPI.get_specific_instrument('SWAP', swap_ID)
+                swap_info = await self.swap_inst(swap_ID)
             except OkexException:
                 return 0.
         contract_val = float(swap_info['ctVal'])
@@ -218,7 +249,7 @@ class OKExAPI(object):
         except OkexAPIException as e:
             fprint(e)
             fprint(lang.transfer_failed)
-            if e.code == "58110": await asyncio.sleep(600)
+            if e.code == '58110': await asyncio.sleep(600)
             return False
 
     async def reduce_margin(self, transfer_amount):
@@ -239,9 +270,5 @@ class OKExAPI(object):
         except OkexAPIException as e:
             fprint(e)
             fprint(lang.transfer_failed)
-            if e.code == "58110": await asyncio.sleep(600)
+            if e.code == '58110': await asyncio.sleep(600)
             return False
-
-    @staticmethod
-    def _key():
-        return OKExAPI.__key
