@@ -23,7 +23,22 @@ assert sys.version_info >= (3, 8), print('Python version >=3.8 is required.\nYou
 
 def test():
     try:
+        # f = funding_rate.FundingRate()
+        # res = f.publicAPI.get_kline('BTC-USDT')
+        # res = asyncio.get_event_loop().run_until_complete(res)
         funding_rate.FundingRate().print_30day_rate()
+        # menu.monitor_all(2)
+        # menu.profit_all(2)
+        # menu.close_all(2)
+        # menu.back_track_all(2)
+        # async_init()
+        # funding_rate.FundingRate().back_tracking()
+        # add = open_position.AddPosition('ATOM', accountid=3)
+        # res = add.swap_holding()
+        # res = add.open(usdt_size=1000, leverage=3, price_diff=-0.02)
+        # reduce = close_position.ReducePosition('BTC', accountid=3)
+        # res = reduce.close(price_diff=0.2)
+        # print(res)
     finally:
         trading_data.Stat.clean()
         monitor.Monitor.clean()
@@ -34,19 +49,7 @@ def main():
     # test()
     # exit()
     menu.main_menu(accountid=3)
-    # menu.monitor_all(2)
-    # menu.profit_all(2)
-    # menu.close_all(2)
-    # menu.back_track_all(2)
     exit()
-    # async_init()
-    # funding_rate.FundingRate().back_tracking()
-    # add = open_position.AddPosition('ATOM', accountid=3)
-    # res = add.swap_holding()
-    # res = add.open(usdt_size=1000, leverage=3, price_diff=-0.02)
-    # reduce = close_position.ReducePosition('BTC', accountid=3)
-    # res = reduce.close(price_diff=0.2)
-    # print(res)
 
 
 if __name__ == '__main__':

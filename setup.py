@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Futures-Spot-Arbitrage-OKEx-V5',
-    version='0.95.0',
+    version='0.95.1',
     packages=find_packages(),
     url='https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5',
     license='GNU Affero General Public License v3.0',

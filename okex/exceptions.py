@@ -1,3 +1,4 @@
+from codedict import codes
 # coding=utf-8
 
 
@@ -10,16 +11,16 @@ class OkexException(Exception):
 class OkexAPIException(OkexException):
 
     def __init__(self, response):
-        print(response.text + ', ' + str(response.status_code))
+        print(f'{response.text}, {response.status_code}')
         self.code = 0
         try:
             json_res = response.json()
         except ValueError:
-            self.message = 'Invalid JSON error message from Okex: {}'.format(response.text)
+            self.message = f'Invalid JSON error message from OKEx: {response.text}'
         else:
-            if "error_code" in json_res.keys() and "error_message" in json_res.keys():
-                self.code = json_res['error_code']
-                self.message = json_res['error_message']
+            if 'code' in json_res.keys():
+                self.code = json_res['code']
+                self.message = codes[self.code]
             else:
                 self.code = 'None'
                 self.message = 'System error'
@@ -29,7 +30,7 @@ class OkexAPIException(OkexException):
         self.request = getattr(response, 'request', None)
 
     def __str__(self):  # pragma: no cover
-        return 'API Request Error(error_code=%s): %s' % (self.code, self.message)
+        return f'API Request Error(error_code={self.code}): {self.message}'
 
 
 class OkexRequestException(OkexException):
@@ -38,7 +39,7 @@ class OkexRequestException(OkexException):
         self.message = message
 
     def __str__(self):
-        return 'OkexRequestException: %s' % self.message
+        return f'OkexRequestException: {self.message}'
 
 
 class OkexParamsException(OkexException):
@@ -47,4 +48,4 @@ class OkexParamsException(OkexException):
         self.message = message
 
     def __str__(self):
-        return 'OkexParamsException: %s' % self.message
+        return f'OkexParamsException: {self.message}'

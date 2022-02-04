@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 from . import consts as c, utils, exceptions
+from codedict import codes
 import asyncio
 import requests
 import httpx
@@ -79,25 +80,33 @@ class Client(object):
                     response = await self.client.delete(url, headers=header)
                 else:
                     raise ValueError
-
             except requests.exceptions.RequestException as e:
                 print(e)
                 retry += 1
                 await asyncio.sleep(30)
                 continue
-
-            if response.status_code == 429:
-                retry += 1
-                print(response.status_code, request_path)
-                await asyncio.sleep(2)
-                continue
-
-            # Cloudflare error
-            if str(response.status_code).startswith('5'):
-                # print(response)
-                retry += 1
-                await asyncio.sleep(30)
             else:
+                try:
+                    json_res = response.json()
+                except ValueError:
+                    raise exceptions.OkexRequestException(f'Invalid Response: {response.text}')
+                # Endpoint request timeout
+                if json_res['code'] == '50004':
+                    retry += 1
+                    await asyncio.sleep(2)
+                    continue
+                # Requests too frequent
+                if response.status_code == 429:
+                    retry += 1
+                    print(request_path, codes[json_res.code])
+                    await asyncio.sleep(2)
+                    continue
+                # Cloudflare error
+                if str(response.status_code).startswith('5'):
+                    # print(response)
+                    retry += 1
+                    await asyncio.sleep(30)
+                    continue
                 success = True
 
         # exception handle
@@ -106,10 +115,7 @@ class Client(object):
             print(f'{response.status_code=}')
             raise exceptions.OkexAPIException(response)
 
-        try:
-            return response.json()
-        except ValueError:
-            raise exceptions.OkexRequestException('Invalid Response: %s' % response.text)
+        return json_res
 
     async def _request_without_params(self, method, request_path):
         return await self._request(method, request_path, {})

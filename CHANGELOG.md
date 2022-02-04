@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.95.1] - February 4th, 2022
+
+### Changed
+* Exception handling.
+
 ## [0.95.0] - February 2nd, 2022
 
 ### Changed

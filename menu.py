@@ -328,20 +328,6 @@ def crypto_menu(accountid: int):
                 else:
                     fprint(fetch_ticker_first)
                 break
-        elif command == '8':
-            while True:
-                try:
-                    usdt = float(input(input_USDT))
-                    assert usdt >= 0
-                except:
-                    continue
-                try:
-                    grid_size = float(input('Grid size\n'))
-                    assert grid_size > 0
-                except:
-                    continue
-                Monitor.amm(usdt, grid_size)
-                break
         elif command == 'b':
             pass
         else:
