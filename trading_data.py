@@ -352,7 +352,7 @@ class Stat:
             else:
                 prob[bins[n]] = counts[n]
         prob = prob / np.sum(counts)
-        stat = self.open_dist(hours)
+        stat = self.open_dist(hours) if side == 'o' else self.close_dist(hours)
         avg = stat['avg']
         std = stat['std']
         p1sigma = avg + std

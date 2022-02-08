@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.95.2] - February 8th, 2022
+
+### Fixed
+* Premium distribution plot at close.
+
 ## [0.95.1] - February 4th, 2022
 
 ### Changed
