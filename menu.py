@@ -1,13 +1,12 @@
+from asyncio import gather
+import close_position
 import funding_rate
 import monitor
 import open_position
-import close_position
-import trading_data
 import record
-import multiprocessing
-from utils import *
+import trading_data
 from lang import *
-from asyncio import gather
+from utils import *
 
 
 @call_coroutine
@@ -19,25 +18,22 @@ async def monitor_all(accountid: int):
     coinlist = await get_coinlist(accountid)
     processes = []
     # /api/v5/account/bills 限速：5次/s
-    sem = multiprocessing.Semaphore(5)
-    # /api/v5/account/positions 限速：10次/2s
-    asem = asyncio.Semaphore(5)
-    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
-    monitor.Monitor.set_asemaphore(asem, sleep)
-    for n in coinlist:
-        await print_apy(n, accountid)
+    psem = multiprocessing.Semaphore(5)
+    for coin in coinlist:
+        await print_apy(coin, accountid)
         # 不能直接传Monitor对象
-        process = multiprocessing.Process(target=monitor_one, args=(n, accountid, sem))
+        # AsyncClient has Logger. Logger can't be pickled.
+        process = multiprocessing.Process(target=monitor_one, args=(coin, accountid, psem))
         process.start()
         processes.append(process)
-    for n in processes:
-        n.join()
+    for p in processes:
+        p.join()
 
 
-def monitor_one(coin: str, accountid: int, sem=None):
+def monitor_one(coin: str, accountid: int, psem: multiprocessing.Semaphore = None):
     try:
         mon = monitor.Monitor(coin=coin, accountid=accountid)
-        if sem: mon.set_psemaphore(sem)
+        if psem: mon.set_psemaphore(psem)
         mon.watch()
     finally:
         trading_data.Stat.clean()
@@ -47,11 +43,11 @@ def monitor_one(coin: str, accountid: int, sem=None):
 async def print_apy(coin: str, accountid: int):
     mon = await monitor.Monitor(coin=coin, accountid=accountid)
     fundingRate = funding_rate.FundingRate()
-    current_rate, next_rate = await fundingRate.current_next(mon.swap_ID)
+    aprs = gather(mon.apr(1), mon.apr(7), mon.apr())
+    (current_rate, next_rate), aprs = await gather(fundingRate.current_next(mon.swap_ID), aprs)
+    apys = [apy(x) for x in aprs]
     fprint(coin_current_next)
     fprint(f'{mon.coin:6s}{current_rate:9.3%}{next_rate:11.3%}')
-    aprs = await gather(mon.apr(1), mon.apr(7), mon.apr())
-    apys = [apy(x) for x in aprs]
     fprint(apr_message.format(mon.coin, *aprs))
     fprint(apy_message.format(mon.coin, *apys))
 
@@ -64,10 +60,6 @@ async def profit_all(accountid: int):
     :param accountid: 账号id
     """
     coinlist = await get_coinlist(accountid)
-    # /api/v5/account/positions 限速：10次/2s
-    sem = asyncio.Semaphore(5)
-    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
-    monitor.Monitor.set_asemaphore(sem, sleep)
     for coin in coinlist:
         mon, Stat = await monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin)
         gather_result = await gather(mon.apr(1), mon.apr(7), mon.apr())
@@ -133,16 +125,32 @@ async def back_track_all(accountid: int):
 
     :param accountid: 账号id
     """
+    Ledger = record.Record('Ledger')
     coinlist = await get_coinlist(accountid)
-    # /api/v5/account/bills-archive 限速：5次/2s
-    sem = asyncio.Semaphore(5)
-    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
-    monitor.Monitor.set_asemaphore(sem, sleep)
-    task_list = []
-    for n in coinlist:
-        mon = await monitor.Monitor(coin=n, accountid=accountid)
-        task_list.append(mon.back_tracking())
-    await gather(*task_list)
+    mon = await monitor.Monitor(accountid=accountid)
+    # API results
+    api_ledger = await get_with_limit(mon.accountAPI.get_archive_ledger, tag='billId', max=100, limit=0,
+                                      instType='SWAP', ccy='USDT', type='8')
+    for coin in coinlist:
+        pipeline = [{'$match': {'account': accountid, 'instrument': coin, 'title': '资金费'}}]
+        # Results in DB
+        db_ledger = [n for n in Ledger.mycol.aggregate(pipeline)]
+        inserted = 0
+        for item in api_ledger:
+            if item['instId'] == coin + '-USDT-SWAP':
+                realized_rate = float(item['pnl'])
+                timestamp = datetime.utcfromtimestamp(float(item['ts']) / 1000)
+                mydict = dict(account=accountid, instrument=coin, timestamp=timestamp, title='资金费',
+                              funding=realized_rate)
+                # 查重
+                for n in db_ledger:
+                    if n['funding'] == realized_rate:
+                        if n['timestamp'] == timestamp:
+                            break
+                else:
+                    Ledger.mycol.insert_one(mydict)
+                    inserted += 1
+        fprint(lang.back_track_funding.format(coin, inserted))
 
 
 @call_coroutine
@@ -152,12 +160,12 @@ async def close_all(accountid: int):
     :param accountid: 账号id
     """
     processes = []
-    for n in await get_coinlist(accountid):
-        process = multiprocessing.Process(target=close_one, args=(n, accountid))
+    for coin in await get_coinlist(accountid):
+        process = multiprocessing.Process(target=close_one, args=(coin, accountid))
         process.start()
         processes.append(process)
-    for n in processes:
-        n.join()
+    for p in processes:
+        p.join()
 
 
 def close_one(coin: str, accountid: int):
@@ -186,9 +194,6 @@ async def get_coinlist(accountid: int):
     coinlist = [x['_id'] for x in Record.mycol.aggregate(pipeline)]
     assert coinlist, empty_db
     mon = await monitor.Monitor(accountid=accountid)
-    # /api/v5/account/positions 限速：10次/2s
-    sleep = len(coinlist) * 2 / 5 if len(coinlist) < 5 else 2.
-    mon.set_asemaphore(asyncio.Semaphore(5), sleep)
     task_list = [mon.position_exist(n + '-USDT-SWAP') for n in coinlist]
     gather_result = await gather(*task_list)
     return [coinlist[n] for n in range(len(coinlist)) if gather_result[n]]

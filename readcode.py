@@ -13,11 +13,13 @@ if language == 'cn':
                 print(strings, l)
                 if l >= 3:
                     if strings[-1].isnumeric() and strings[-2].isnumeric():
-                        descprition = ''.join([strings[i] for i in range(l - 2)])
-                        c.write(f"        '{strings[-1]}': '{descprition}',\n")
-        c.write('    }\n')
-        c.write('else:\n')
-        c.write('    codes = {\n')
+                        description = ''.join([strings[i] for i in range(l - 2)])
+                        c.write(f"        '{strings[-1]}': '{description}',\n")
+        c.write(
+            """    }
+else:
+    codes = {
+""")
         with open("error codes.txt") as f:
             for line in f.readlines():
                 strings = line.split()
@@ -25,8 +27,8 @@ if language == 'cn':
                 print(strings, l)
                 if l >= 3:
                     if strings[-1].isnumeric() and strings[-2].isnumeric():
-                        descprition = ' '.join([strings[i] for i in range(l - 2)])
-                        c.write(f"        '{strings[-1]}': '{descprition}',\n")
+                        description = ' '.join([strings[i] for i in range(l - 2)])
+                        c.write(f"        '{strings[-1]}': '{description}',\n")
         c.write('    }\n')
 
 

@@ -1,6 +1,7 @@
 from .client import Client
 from .consts import *
 from codedict import codes
+from utils import REST_Semaphore
 
 
 class AssetAPI(Client):
@@ -8,9 +9,12 @@ class AssetAPI(Client):
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
         Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
 
+    ASSET_BALANCE_SEMAPHORE = REST_Semaphore(6, 1)
+
     async def get_balance(self, ccy) -> dict:
-        """获取资金账户余额信息\n
-        GET /api/v5/asset/balances
+        """获取资金账户余额信息
+
+        GET /api/v5/asset/balances 限速： 6次/s
 
         :param ccy: 币种，支持多币种查询（不超过20个），币种之间半角逗号分隔
         """
@@ -18,13 +22,19 @@ class AssetAPI(Client):
             assert len(ccy) <= 10
             ccy = ','.join(ccy)
         params = dict(ccy=ccy)
-        res = await self._request_with_params(GET, ASSET_BALANCE, params)
+        async with AssetAPI.ASSET_BALANCE_SEMAPHORE:
+            res = await self._request_with_params(GET, ASSET_BALANCE, params)
         assert res['code'] == '0', f"{ASSET_BALANCE}, msg={codes[res['code']]}"
         return res['data'][0]
 
+    ASSET_TRANSFER_SEMAPHORE = dict()
+
     async def transfer(self, ccy, amt, account_from, account_to, instId='', toInstId='') -> bool:
-        """资金划转\n
+        """资金划转
+
         POST /api/v5/asset/transfer
+
+        限速： 1 次/s 限速规则：UserID + Currency
 
         :param ccy: 币种
         :param amt: 划转数量
@@ -38,7 +48,10 @@ class AssetAPI(Client):
             params['instId'] = instId
         if toInstId:
             params['toInstId'] = toInstId
-        res = await self._request_with_params(POST, ASSET_TRANSFER, params)
+        if ccy not in AssetAPI.ASSET_TRANSFER_SEMAPHORE.keys():
+            AssetAPI.ASSET_TRANSFER_SEMAPHORE[ccy] = REST_Semaphore(1, 1)
+        async with AssetAPI.ASSET_TRANSFER_SEMAPHORE[ccy]:
+            res = await self._request_with_params(POST, ASSET_TRANSFER, params)
         if res['code'] == '0':
             return True
         else:

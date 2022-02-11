@@ -1,10 +1,8 @@
-from okex_api import *
 import funding_rate
-import open_position
 import close_position
-import trading_data
+import open_position
+from okex_api import *
 from utils import *
-import multiprocessing
 
 
 # 监控一个币种，如果当期资金费+预测资金费小于重新开仓成本（开仓期现差价-平仓期现差价-手续费），进行平仓。
@@ -49,33 +47,6 @@ class Monitor(OKExAPI):
             apr = 0.
         return apr
 
-    async def back_tracking(self):
-        """补录最近三个月资金费
-        """
-        Ledger = record.Record('Ledger')
-        pipeline = [{'$match': {'account': self.accountid, 'instrument': self.coin, 'title': '资金费'}}]
-        # Results in DB
-        db_ledger = [n for n in Ledger.mycol.aggregate(pipeline)]
-        inserted = 0
-        api_ledger = await get_with_limit(self.accountAPI.get_archive_ledger, tag='billId', max=100, limit=0,
-                                          sem=self.asem, sleep=self.asleep, instType='SWAP', ccy='USDT', type='8')
-        # API results
-        for item in api_ledger:
-            if item['instId'] == self.swap_ID:
-                realized_rate = float(item['pnl'])
-                timestamp = datetime.utcfromtimestamp(float(item['ts']) / 1000)
-                mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='资金费',
-                              funding=realized_rate)
-                # 查重
-                for n in db_ledger:
-                    if n['funding'] == realized_rate:
-                        if n['timestamp'] == timestamp:
-                            break
-                else:
-                    Ledger.mycol.insert_one(mydict)
-                    inserted += 1
-        fprint(lang.back_track_funding.format(self.coin, inserted))
-
     async def record_funding(self):
         """记录最近一次资金费
         """
@@ -92,7 +63,7 @@ class Monitor(OKExAPI):
                 timestamp = datetime.utcfromtimestamp(float(item['ts']) / 1000)
                 mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='资金费',
                               funding=realized_rate)
-                Ledger.mycol.insert_one(mydict)
+                Ledger.mycol.find_one_and_replace(mydict, mydict, upsert=True)
                 break
         fprint(lang.received_funding.format(self.coin, realized_rate))
 
@@ -129,6 +100,7 @@ class Monitor(OKExAPI):
         Ledger = record.Record('Ledger')
         # OP = record.Record('OP')
 
+        # Obtain leverage
         portfolio = record.Record('Portfolio').mycol.find_one(dict(account=self.accountid, instrument=self.coin))
         leverage = portfolio['leverage']
         if 'size' not in portfolio:
@@ -136,7 +108,7 @@ class Monitor(OKExAPI):
         size = portfolio['size']
         fprint(lang.start_monitoring.format(self.coin, size, leverage))
 
-        # 计算手续费
+        # Get trade fees
         spot_trade_fee, swap_trade_fee, liquidation_price = await gather(
             self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID),
             self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID),
@@ -150,33 +122,44 @@ class Monitor(OKExAPI):
         time_to_accelerate = None
         accelerated = False
         adding = False
+        add_task = None
+        usdt_size = 0
         reducing = False
+        reduce_task = None
         margin_reducible = True
         self.exitFlag = False
 
         while not self.exitFlag:
             begin = timestamp = datetime.utcnow()
+            # Update price every 10s.
             swap_ticker = await self.publicAPI.get_specific_ticker(self.swap_ID)
             last = float(swap_ticker['last'])
 
-            # 每小时更新一次资金费，强平价
+            # Update funding rates and liquidation price every hour.
             if not updated and timestamp.minute == 1:
                 (current_rate, next_rate), liquidation_price = await gather(fundingRate.current_next(self.swap_ID),
                                                                             self.liquidation_price())
-                assert liquidation_price
+                # Swap position is closed.
+                if not liquidation_price:
+                    fprint(lang.has_closed.format(self.swap_ID))
+                    mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='平仓')
+                    Ledger.mycol.insert_one(mydict)
+                    record.Record('Portfolio').mycol.delete_one(dict(account=self.accountid, instrument=self.coin))
+                    return
 
                 assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
                 open_pd = recent['avg'] + recent['std']
                 recent = Stat.recent_close_stat()
                 close_pd = recent['avg'] - recent['std']
                 cost = open_pd - close_pd + 2 * trade_fee
+                # Expected funding rates too low.
                 if (timestamp.hour + 4) % 8 == 0 and current_rate + next_rate < cost:
                     fprint(lang.coin_current_next)
                     fprint(f'{self.coin:6s}{current_rate:9.3%}{next_rate:11.3%}')
                     fprint(lang.cost_to_close.format(cost))
                     fprint(lang.closing.format(self.coin))
                     await reducePosition.close(price_diff=close_pd)
-                    break
+                    return
 
                 if timestamp.hour % 8 == 0:
                     await self.record_funding()
@@ -247,6 +230,7 @@ class Monitor(OKExAPI):
                         adding = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                     else:
+                        # Liquidation price can't be less than open price.
                         fprint(lang.no_margin_reduce)
                         margin_reducible = False
             # 线程已运行

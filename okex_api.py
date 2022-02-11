@@ -4,6 +4,7 @@ import okex.trade as trade
 from okex.exceptions import OkexException, OkexAPIException
 import config
 import record
+import trading_data
 from utils import *
 from asyncio import create_task, gather
 from websocket import subscribe, subscribe_without_login
@@ -15,8 +16,6 @@ class OKExAPI(object):
     """基本OKEx功能类
     """
     api_initiated = False
-    asem = None
-    asleep = 0.
     psem = None
     __key = None
 
@@ -100,14 +99,7 @@ class OKExAPI(object):
         return OKExAPI.__key
 
     @staticmethod
-    def set_asemaphore(sem, sleep):
-        """控制asyncio并发连接
-        """
-        OKExAPI.asem = sem
-        OKExAPI.asleep = sleep
-
-    @staticmethod
-    def set_psemaphore(sem):
+    def set_psemaphore(sem: multiprocessing.Semaphore):
         """控制multiprocessing并发连接
         """
         OKExAPI.psem = sem
@@ -141,7 +133,6 @@ class OKExAPI(object):
         """
         return await self.spot_position('USDT')
 
-    # @call_coroutine
     async def spot_position(self, coin=None):
         """获取现货余额
         """
@@ -159,34 +150,23 @@ class OKExAPI(object):
         while (await self.swap_inst())['state'] == 'settlement':
             await asyncio.sleep(1)
 
-    # @call_coroutine
     async def swap_holding(self, swap_ID=None):
         """获取合约持仓
         """
-        # /api/v5/account/positions 限速：10次/2s
-        if self.asem:
-            sem = self.asem
-            sleep = self.asleep
-        else:
-            sem = asyncio.Semaphore(5)
-            sleep = 0
-        async with sem:
-            if not swap_ID: swap_ID = self.swap_ID
-            while self.funding_settling():
-                await asyncio.sleep(1)
-            try:
-                result: list = await self.accountAPI.get_specific_position(swap_ID)
-            except AssertionError:
-                await self.funding_settled()
-                result: list = await self.accountAPI.get_specific_position(swap_ID)
-            if self.asem:
-                await asyncio.sleep(sleep)
-            keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
-            for holding in result:
-                if holding['mgnMode'] == 'isolated':
-                    holding = dict([(n, float(holding[n])) if holding[n] else (n, 0.) for n in keys])
-                    return holding
-            return None
+        if not swap_ID: swap_ID = self.swap_ID
+        while self.funding_settling():
+            await asyncio.sleep(1)
+        try:
+            result: list = await self.accountAPI.get_specific_position(swap_ID)
+        except AssertionError:
+            await self.funding_settled()
+            result: list = await self.accountAPI.get_specific_position(swap_ID)
+        keys = ['pos', 'margin', 'last', 'avgPx', 'liqPx', 'upl', 'lever']
+        for holding in result:
+            if holding['mgnMode'] == 'isolated':
+                holding = dict([(n, float(holding[n])) if holding[n] else (n, 0.) for n in keys])
+                return holding
+        return None
 
     async def swap_position(self, swap_ID=None):
         """获取合约仓位

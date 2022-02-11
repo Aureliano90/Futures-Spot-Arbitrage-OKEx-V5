@@ -11,7 +11,7 @@ Chinese and English support, completed with annotations and docstrings.
 
 ## Features
 
-* Interactive command line menu;
+* Command line interface;
 * Sort and output historical funding rates over a given period;
 * Analyze historical funding rates and volatility (taken as [NATR](https://www.macroption.com/normalized-atr/)) to find
   most profitable underlying for arbitrage;
@@ -47,14 +47,13 @@ Chinese and English support, completed with annotations and docstrings.
 
 Implemented asyncio and websocket. Web IOs are parallelized where possible. AsyncClient is initialzed as a class member
 instead of Context Manager to avoid constantly creating and killing sessions which has non-negligible overheads. Special
-care was taken for proper client closure. Semaphores are used where necessary to control concurrent API access.
+care was taken for proper client closure. A custom semaphore was created to control concurrent REST API access.
 Websocket is used to fetch real time price feed. Websocket streaming functions are used as AsyncGenerators for elegant
 integration.
 
 Classes are given `__await__` attribute where necessary and can be initialized asynchronously.
-Decorator `@call_coroutine`
-was created to call coroutines directly in normal context instead of `loop.run_until_complete(coro)`. So simply
-call `coro` in normal context and `await coro` in async context.
+Decorator `@call_coroutine` was created to call coroutines directly in normal context instead
+of `loop.run_until_complete(coro)`. So simply call `coro` in normal context and `await coro` in async context.
 
 ## Installation
 

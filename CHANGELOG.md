@@ -4,44 +4,63 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.95.2] - February 8th, 2022
+## [0.96.0] - February 11th, 2022
+
+First quasi-stable release.
+
+### Changed
+
+* Unified API velocity control.
 
 ### Fixed
+
 * Premium distribution plot at close.
+
+### Added
+
+* A custom semaphore to be used with REST API with velocity limit.
+* Additional annotations.
 
 ## [0.95.1] - February 4th, 2022
 
 ### Changed
+
 * Exception handling.
 
 ## [0.95.0] - February 2nd, 2022
 
 ### Changed
+
 * Translated error codes.
 * Improved robustness.
 * Improved output format.
 
 ### Removed
+
 * Duplicate code.
 
 ## [0.94.3] - January 26rd, 2022
 
 ### Changed
+
 * Minor change to client.
 * Updated `setup.py` and `requirements.txt`.
 
 ## [0.94.2] - January 25rd, 2022
 
 ### Changed
+
 * Rolled back URLs.
 * Updated `setup.py` and `requirements.txt`.
 
 ## [0.94.1] - January 25rd, 2022
 
 ### Fixed
+
 * Minor bugs.
 
 ### Added
+
 * More statistics and plots for the premium of futures.
 
 ## [0.94.0] - January 23rd, 2022
@@ -56,9 +75,11 @@ First metastable release.
 * Cleaned up syntax.
 
 ### Fixed
+
 * Order size precision control.
 
 ### Added
+
 * Methods to abort program safely.
 * Assertions to avoid boundary conditions.
 * An experimental function.
@@ -74,7 +95,8 @@ First metastable release.
 ### Added
 
 * Debug and timing decorator `@debug_timer`.
-* Decorator `@call_coroutine` to call `coro(*args, **kwargs)` in normal context and `await coro(*args, **kwargs)` in async context.
+* Decorator `@call_coroutine` to call `coro(*args, **kwargs)` in normal context and `await coro(*args, **kwargs)` in
+  async context.
 * `setup.py`
 
 ## [0.8.1] - December 29th, 2021

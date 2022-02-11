@@ -1,5 +1,4 @@
 from okex_api import *
-import trading_data
 
 
 class ReducePosition(OKExAPI):
@@ -92,9 +91,12 @@ class ReducePosition(OKExAPI):
                 if swap_order_state == 'canceled':
                     fprint(lang.swap_order_retract, swap_order_state)
                     try:
-                        # 市价平空合约
-                        kwargs = dict(instId=self.swap_ID, side='buy', size=ask_size, order_type='market',
-                                      reduceOnly=True)
+                        tick_size = float(self.swap_info['tickSz'])
+                        tick_decimals = num_decimals(self.swap_info['tickSz'])
+                        ask_price = round_to(0.99 * float(ask_price), tick_size)
+                        ask_price = float_str(ask_price, tick_decimals)
+                        kwargs = dict(instId=self.swap_ID, side='buy', size=ask_size, price=ask_price,
+                                      order_type='limit', reduceOnly=True)
                         swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                     except Exception as e:
                         fprint(e)
@@ -191,7 +193,7 @@ class ReducePosition(OKExAPI):
             upl = holding['upl']
             last = holding['last']
             self.open_price = holding['avgPx']
-            # net_margin = swap_balance + upl
+            # net_margin = swap_balance + upl = swap_position * (liq - last)
             liq_last = (self.swap_balance + upl) / self.swap_position
         else:
             fprint(lang.nonexistent_position.format(self.swap_ID))

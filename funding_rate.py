@@ -68,54 +68,24 @@ class FundingRate:
             funding_rate_list.append(
                 dict(instrument_id=instId, current_rate=current_rate, estimated_rate=estimated_rate))
         funding_rate_list.sort(key=lambda x: x['current_rate'], reverse=True)
-        l = len(funding_rate_list)
-        ncols = 3
-        nrows = l // ncols + 1
-        header = ''
-        for j in range(ncols):
-            header += f'{coin_current_next}'
-            if j < ncols - 1:
-                header += '\t'
-        fprint(header)
-        for i in range(nrows):
-            line = ''
-            for j in range(ncols):
-                if i + j * nrows < l:
-                    n = funding_rate_list[i + j * nrows]
-                    instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
-                    current_rate = n['current_rate']
-                    estimated_rate = n['estimated_rate']
-                    line += f'{instrumentID:8s}{current_rate:9.3%}{estimated_rate:11.3%}'
-                    if j < ncols - 1:
-                        line += '\t'
-            fprint(line)
+
+        def form(n: dict):
+            instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
+            current_rate = n['current_rate']
+            estimated_rate = n['estimated_rate']
+            return f'{instrumentID:8s}{current_rate:9.3%}{estimated_rate:11.3%}'
+
+        columned_output(funding_rate_list, coin_current_next, 3, form)
         # 50 s without asyncio
         # 1.6 s with asyncio
 
     async def funding_history(self, instId, limit=270):
         """下载最近3个月资金费率
         """
-        historical_funding_rate = temp = []
-        while limit > 0:
-            if limit <= 100:
-                if len(temp) == 100:
-                    # 最后一次
-                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId,
-                                                                            after=temp[99]['fundingTime'], limit=limit)
-                else:
-                    # 第一次
-                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId, limit=limit)
-            else:
-                if len(temp) == 100:
-                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId,
-                                                                            after=temp[99]['fundingTime'], limit='100')
-                else:
-                    temp = await self.publicAPI.get_historical_funding_rate(instId=instId, limit='100')
-            historical_funding_rate.extend(temp)
-            limit -= 100
-        return historical_funding_rate
+        return await get_with_limit(self.publicAPI.get_historical_funding_rate, tag='fundingTime',
+                                    max=100, limit=limit, instId=instId)
 
-    async def get_rate(self, days=7):
+    async def get_recent_rate(self, days=7):
         """返回最近资金费列表
 
         :param days: 最近几天
@@ -142,26 +112,13 @@ class FundingRate:
         :param days: 天数
         """
         assert isinstance(days, int) and 0 < days <= 90
-        funding_rate_list = await self.get_rate(days)
+        funding_rate_list = await self.get_recent_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
-        l = len(funding_rate_list)
-        ncols = 5
-        nrows = l // ncols + 1
-        header = ''
-        for j in range(ncols):
-            header += f'{funding_day}'
-            if j < ncols - 1:
-                header += '\t'
-        fprint(header)
-        for i in range(nrows):
-            line = ''
-            for j in range(ncols):
-                if i + j * nrows < l:
-                    n = funding_rate_list[i + j * nrows]
-                    line += f"{n['instrument']:8s}{n['funding_rate']:8.3%}"
-                    if j < ncols - 1:
-                        line += '\t'
-            fprint(line)
+
+        def form(n: dict):
+            return f"{n['instrument']:8s}{n['funding_rate']:8.3%}"
+
+        columned_output(funding_rate_list, funding_day, 5, form)
 
     @call_coroutine
     # @debug_timer
@@ -253,7 +210,7 @@ class FundingRate:
         """显示收益最高十个币种资金费
         """
         assert isinstance(days, int) and 0 < days <= 90
-        funding_rate_list = await self.get_rate(days)
+        funding_rate_list = await self.get_recent_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
         funding_rate_list = funding_rate_list[:20]
         funding_rate_list = [n['instrument'] for n in await trading_data.Stat().profitability(funding_rate_list, days)]

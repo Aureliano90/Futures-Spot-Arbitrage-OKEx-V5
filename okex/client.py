@@ -98,7 +98,7 @@ class Client(object):
                 # Requests too frequent
                 if response.status_code == 429:
                     retry += 1
-                    print(request_path, codes[json_res.code])
+                    print(request_path, codes[json_res['code']])
                     await asyncio.sleep(2)
                     continue
                 # Cloudflare error

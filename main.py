@@ -23,10 +23,11 @@ assert sys.version_info >= (3, 8), print('Python version >=3.8 is required.\nYou
 
 def test():
     try:
+        menu.back_track_all(3)
         # f = funding_rate.FundingRate()
         # res = f.publicAPI.get_kline('BTC-USDT')
         # res = asyncio.get_event_loop().run_until_complete(res)
-        funding_rate.FundingRate().print_30day_rate()
+        # funding_rate.FundingRate().print_30day_rate()
         # menu.monitor_all(2)
         # menu.profit_all(2)
         # menu.close_all(2)

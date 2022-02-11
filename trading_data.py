@@ -1,4 +1,3 @@
-from typing import List
 import okex.public as public
 from config import language
 import record
@@ -87,7 +86,6 @@ class Stat:
     """交易数据统计功能类
     """
     publicAPI = public.PublicAPI()
-    sem = None
     sleep = 0.
 
     @property
@@ -152,13 +150,6 @@ class Stat:
         if hasattr(Stat, 'publicAPI'):
             Stat.publicAPI.__del__()
 
-    @staticmethod
-    def set_semaphore(sem, sleep):
-        """控制asyncio并发连接
-        """
-        Stat.sem = sem
-        Stat.sleep = sleep
-
     async def spot_inst(self):
         return await self.publicAPI.get_specific_instrument('SPOT', self.spot_ID)
 
@@ -184,8 +175,7 @@ class Stat:
             limit = days // (30 * int(rtruncate(bar, 1))) + 1
         else:
             limit = days // 365 + 1
-        return await get_with_limit(self.publicAPI.get_kline, tag=0, max=300, limit=limit, sem=Stat.sem,
-                                    sleep=Stat.sleep, instId=instId, bar=bar)
+        return await get_with_limit(self.publicAPI.get_kline, tag=0, max=300, limit=limit, instId=instId, bar=bar)
 
     async def history_candles(self, instId, days, bar='4H') -> List[List]:
         """获取4小时K线
@@ -206,15 +196,12 @@ class Stat:
             limit = days // (30 * int(rtruncate(bar, 1))) + 1
         else:
             limit = days // 365 + 1
-        return await get_with_limit(self.publicAPI.history_kline, tag=0, max=100, limit=limit, sem=Stat.sem,
-                                    sleep=Stat.sleep, instId=instId, bar=bar)
+        return await get_with_limit(self.publicAPI.history_kline, tag=0, max=100, limit=limit, instId=instId, bar=bar)
 
     # @debug_timer
     async def profitability(self, funding_rate_list, days=7) -> List[dict]:
         """显示各币种资金费率除以波动率
         """
-        # /api/v5/market/candles 限速： 20次/2s
-        Stat.set_semaphore(asyncio.Semaphore(20), 2)
         bar = '4H'
         if bar.endswith('m'):
             limit = days * 1440 // int(rtruncate(bar, 1)) + 1

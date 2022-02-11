@@ -1,5 +1,4 @@
 from okex_api import *
-import trading_data
 
 
 class AddPosition(OKExAPI):
@@ -32,11 +31,9 @@ class AddPosition(OKExAPI):
         """设置名义杠杆
 
         :param leverage: 杠杆
-        :return: 成败
+        :rtype: bool
         """
-        setting = create_task(self.accountAPI.get_leverage(self.swap_ID, 'isolated'))
-        await gather(setting, self.check_position_mode())
-        setting = setting.result()
+        setting, _ = await gather(self.accountAPI.get_leverage(self.swap_ID, 'isolated'), self.check_position_mode())
         if float(setting['lever']) != (leverage := float(f'{leverage:.2f}')):
             # 设定某个合约的杠杆
             fprint(lang.current_leverage, setting['lever'])
@@ -117,7 +114,6 @@ class AddPosition(OKExAPI):
                 if not await self.reduce_margin(extra):
                     extra -= 1
                     await self.reduce_margin(extra)
-                    return extra
                 return extra
             elif prev_lever > notional_lever:
                 fprint(lang.added_margin.format(margin - prev_margin))
@@ -304,9 +300,12 @@ class AddPosition(OKExAPI):
                                     if swap_order_state == 'canceled':
                                         fprint(lang.swap_order_retract, swap_order_state)
                                         try:
-                                            # 市价开空合约
+                                            tick_size = float(self.swap_info['tickSz'])
+                                            tick_decimals = num_decimals(self.swap_info['tickSz'])
+                                            bid_price = round_to(1.01 * best_bid, tick_size)
+                                            bid_price = float_str(bid_price, tick_decimals)
                                             kwargs = dict(instId=self.swap_ID, side='sell', size=contract_size,
-                                                          order_type='market')
+                                                          price=bid_price, order_type='limit')
                                             swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
@@ -318,10 +317,6 @@ class AddPosition(OKExAPI):
                                 elif swap_order_state == 'filled':
                                     if spot_order_state == 'canceled':
                                         fprint(lang.spot_order_retract, spot_order_state)
-                                        # 重新定价
-                                        # tick_size = float(self.spot_info['tickSz'])
-                                        # limit_price = best_ask * (1 + 0.02)
-                                        # limit_price = str(round_to(limit_price, tick_size))
                                         try:
                                             # 市价做多现货
                                             kwargs = dict(instId=self.spot_ID, side='buy', size=spot_size,
