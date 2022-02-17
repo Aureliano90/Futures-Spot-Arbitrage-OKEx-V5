@@ -60,7 +60,8 @@ async def profit_all(accountid: int):
     """
     coinlist = await get_coinlist(accountid)
     for coin in coinlist:
-        mon, Stat = await monitor.Monitor(coin=coin, accountid=accountid), trading_data.Stat(coin)
+        Stat = trading_data.Stat(coin)
+        mon = await monitor.Monitor(coin=coin, accountid=accountid)
         gather_result = await gather(mon.apr(1), mon.apr(7), mon.apr())
         fprint(apr_message.format(coin, *gather_result))
         funding = Stat.history_funding(accountid)
@@ -82,7 +83,7 @@ async def history_profit(accountid: int):
     coinlist = await get_coinlist(accountid)
     coinlist = set(temp) - set(coinlist)
     for coin in coinlist:
-        Stat = await trading_data.Stat(coin)
+        Stat = trading_data.Stat(coin)
         funding = Stat.history_funding(accountid)
         cost = Stat.history_cost(accountid)
         open_time = Stat.open_time(accountid)
@@ -111,7 +112,7 @@ async def cumulative_profit(accountid: int):
                 {'$group': {'_id': '$instrument'}}]
     coinlist = [x['_id'] for x in Record.mycol.aggregate(pipeline)]
     for coin in coinlist:
-        Stat = await trading_data.Stat(coin)
+        Stat = trading_data.Stat(coin)
         funding = Stat.history_funding(accountid, -1)
         cost = Stat.history_cost(accountid, -1)
         fprint(cumulative_pnl.format(coin, funding + cost))
@@ -256,8 +257,8 @@ def crypto_menu(accountid: int):
                     assert leverage > 0
                 except:
                     continue
-                AddPosition, Stat = loop.run_until_complete(
-                    gather(open_position.AddPosition(coin=coin, accountid=accountid), trading_data.Stat(coin)))
+                AddPosition = loop.run_until_complete(open_position.AddPosition(coin=coin, accountid=accountid))
+                Stat = trading_data.Stat(coin)
                 hours = 2
                 if recent := Stat.recent_open_stat(hours):
                     open_pd = recent['avg'] + 2 * recent['std']
@@ -273,8 +274,8 @@ def crypto_menu(accountid: int):
                     assert usdt >= 0
                 except:
                     continue
-                ReducePosition, Stat = loop.run_until_complete(
-                    gather(close_position.ReducePosition(coin=coin, accountid=accountid), trading_data.Stat(coin)))
+                ReducePosition = loop.run_until_complete(close_position.ReducePosition(coin=coin, accountid=accountid))
+                Stat = trading_data.Stat(coin)
                 hours = 2
                 if recent := Stat.recent_close_stat(hours):
                     close_pd = recent['avg'] - 2 * recent['std']
@@ -295,8 +296,8 @@ def crypto_menu(accountid: int):
                 AddPosition.adjust_swap_lever(leverage)
                 break
         elif command == '5':
-            ReducePosition, Stat = loop.run_until_complete(
-                gather(close_position.ReducePosition(coin=coin, accountid=accountid), trading_data.Stat(coin)))
+            ReducePosition = loop.run_until_complete(close_position.ReducePosition(coin=coin, accountid=accountid))
+            Stat = trading_data.Stat(coin)
             hours = 2
             if recent := Stat.recent_close_stat(hours):
                 close_pd = recent['avg'] - 2 * recent['std']

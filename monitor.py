@@ -25,7 +25,8 @@ class Monitor(OKExAPI):
         :param days: 最近几天，默认开仓算起
         :rtype: float
         """
-        Stat, holding = await gather(trading_data.Stat(self.coin), self.swap_holding())
+        Stat = trading_data.Stat(self.coin)
+        holding = await self.swap_holding()
         margin = holding['margin']
         upl = holding['upl']
         last = holding['last']
@@ -92,10 +93,9 @@ class Monitor(OKExAPI):
         fundingRate = funding_rate.FundingRate()
         addPosition: open_position.AddPosition
         reducePosition: close_position.ReducePosition
-        Stat: trading_data.Stat
-        addPosition, reducePosition, Stat = await gather(open_position.AddPosition(self.coin, self.accountid),
-                                                         close_position.ReducePosition(self.coin, self.accountid),
-                                                         trading_data.Stat(self.coin))
+        Stat = trading_data.Stat(self.coin)
+        addPosition, reducePosition = await gather(open_position.AddPosition(self.coin, self.accountid),
+                                                   close_position.ReducePosition(self.coin, self.accountid))
         Ledger = record.Record('Ledger')
         # OP = record.Record('OP')
 

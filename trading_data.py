@@ -79,7 +79,7 @@ def average_true_range(candles: List[List], days, bar='4H'):
     return np.mean(tr)
 
 
-@call_coroutine
+# @call_coroutine
 # @debug_timer
 class Stat:
     """交易数据统计功能类

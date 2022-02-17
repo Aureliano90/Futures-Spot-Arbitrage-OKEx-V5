@@ -226,7 +226,7 @@ class ReducePosition(OKExAPI):
             async for ticker in subscribe_without_login(self.public_url, channels):
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
-                    Stat = await trading_data.Stat(self.coin)
+                    Stat = trading_data.Stat(self.coin)
                     assert (recent := Stat.recent_close_stat(accelerate_after)), lang.fetch_ticker_first
                     price_diff = recent['avg'] - 2 * recent['std']
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
@@ -356,7 +356,7 @@ class ReducePosition(OKExAPI):
             async for ticker in subscribe_without_login(self.public_url, channels):
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
-                    Stat = await trading_data.Stat(self.coin)
+                    Stat = trading_data.Stat(self.coin)
                     assert (recent := Stat.recent_close_stat(accelerate_after)), lang.fetch_ticker_first
                     price_diff = recent['avg'] - 2 * recent['std']
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)

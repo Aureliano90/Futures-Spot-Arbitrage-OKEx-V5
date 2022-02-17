@@ -86,6 +86,12 @@ class Client(object):
                 await asyncio.sleep(30)
                 continue
             else:
+                # Cloudflare error
+                if str(response.status_code).startswith('5'):
+                    # print(response)
+                    retry += 1
+                    await asyncio.sleep(30)
+                    continue
                 try:
                     json_res = response.json()
                 except ValueError:
@@ -100,12 +106,6 @@ class Client(object):
                     retry += 1
                     print(request_path, codes[json_res['code']])
                     await asyncio.sleep(2)
-                    continue
-                # Cloudflare error
-                if str(response.status_code).startswith('5'):
-                    # print(response)
-                    retry += 1
-                    await asyncio.sleep(30)
                     continue
                 success = True
 
