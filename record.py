@@ -2,12 +2,10 @@ import okex.public as public
 import pymongo
 from utils import *
 import funding_rate
-import asyncio
-import lang
 
 
 class Record:
-    myclient = pymongo.MongoClient('mongodb://localhost:27017/')
+    myclient = pymongo.MongoClient('mongodb://localhost:27017/', connect=False)
     mydb = myclient['OKEx']
 
     def __init__(self, col=''):
@@ -30,7 +28,7 @@ class Record:
 
         :param match: 匹配条件
         """
-        self.mycol.insert_one(match)
+        self.mycol.find_one_and_replace(match, match, upsert=True)
 
     def delete(self, match: dict):
         """删除对应记录

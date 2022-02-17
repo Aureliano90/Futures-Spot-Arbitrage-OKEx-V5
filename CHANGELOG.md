@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.96.1] - February 16th, 2022
+
+### Added
+
+* Semaphore to be used with REST API across processes.
+
 ## [0.96.0] - February 11th, 2022
 
 First quasi-stable release.

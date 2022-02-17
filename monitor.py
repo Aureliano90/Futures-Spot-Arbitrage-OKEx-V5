@@ -51,11 +51,10 @@ class Monitor(OKExAPI):
         """记录最近一次资金费
         """
         # /api/v5/account/bills 限速：5次/s
-        sem = self.psem if self.psem else multiprocessing.Semaphore(1)
+        sem = self.sem['get_ledger'] if 'get_ledger' in self.sem else multiprocessing.Semaphore(1)
         with sem:
             Ledger = record.Record('Ledger')
             ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
-            if self.psem: await asyncio.sleep(1)
         realized_rate = 0.
         for item in ledger:
             if item['instId'] == self.swap_ID:
@@ -109,13 +108,9 @@ class Monitor(OKExAPI):
         fprint(lang.start_monitoring.format(self.coin, size, leverage))
 
         # Get trade fees
-        spot_trade_fee, swap_trade_fee, liquidation_price = await gather(
-            self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID),
-            self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID),
-            self.liquidation_price())
-        spot_trade_fee = float(spot_trade_fee['taker'])
-        swap_trade_fee = float(swap_trade_fee['taker'])
-        trade_fee = swap_trade_fee + spot_trade_fee
+        spot_trade_fee, swap_trade_fee, liquidation_price = await gather(self.spot_trade_fee(), self.swap_trade_fee(),
+                                                                         self.liquidation_price())
+        trade_fee = spot_trade_fee + swap_trade_fee
 
         updated = False
         task_started = False

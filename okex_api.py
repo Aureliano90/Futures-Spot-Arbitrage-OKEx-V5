@@ -16,7 +16,7 @@ class OKExAPI(object):
     """基本OKEx功能类
     """
     api_initiated = False
-    psem = None
+    sem = dict()
     __key = None
 
     @property
@@ -76,6 +76,12 @@ class OKExAPI(object):
                 yield from gather(self.spot_info, self.swap_info)
                 self.spot_info = self.spot_info.result()
                 self.swap_info = self.swap_info.result()
+                self.min_size = float(self.spot_info['minSz'])
+                self.size_increment = float(self.spot_info['lotSz'])
+                self.size_decimals = num_decimals(self.spot_info['lotSz'])
+                self.contract_val = float(self.swap_info['ctVal'])
+                self.tick_size = float(self.swap_info['tickSz'])
+                self.tick_decimals = num_decimals(self.swap_info['tickSz'])
             except Exception as e:
                 fprint(f'{self.__name__}__await__({self.coin}) error')
                 fprint(e)
@@ -99,10 +105,10 @@ class OKExAPI(object):
         return OKExAPI.__key
 
     @staticmethod
-    def set_psemaphore(sem: multiprocessing.Semaphore):
-        """控制multiprocessing并发连接
+    def set_semaphore(sem):
+        """控制并发连接
         """
-        OKExAPI.psem = sem
+        OKExAPI.sem = sem
 
     async def spot_inst(self):
         return await self.publicAPI.get_specific_instrument('SPOT', self.spot_ID)
@@ -194,6 +200,18 @@ class OKExAPI(object):
         """
         holding = await self.swap_holding()
         return holding['liqPx'] if holding else 0.
+
+    async def spot_trade_fee(self):
+        sem = self.sem['get_trade_fee'] if 'get_trade_fee' in self.sem else multiprocessing.Semaphore(1)
+        with sem:
+            spot_trade_fee = await self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID)
+        return float(spot_trade_fee['taker'])
+
+    async def swap_trade_fee(self):
+        sem = self.sem['get_trade_fee'] if 'get_trade_fee' in self.sem else multiprocessing.Semaphore(1)
+        with sem:
+            swap_trade_fee = await self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID)
+        return float(swap_trade_fee['taker'])
 
     async def get_lever(self):
         setting = await self.accountAPI.get_leverage(self.swap_ID, 'isolated')

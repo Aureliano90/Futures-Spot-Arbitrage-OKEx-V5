@@ -28,7 +28,6 @@ class ReducePosition(OKExAPI):
 
     async def place_close_order(self, bid_price: str, bid_size: str, ask_price: str, ask_size: str):
         spot_order_info = swap_order_info = spot_order_state = swap_order_state = dict()
-        contract_val = float(self.swap_info['ctVal'])
 
         spot_order, swap_order = await gather(
             self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=bid_size, price=bid_price,
@@ -91,10 +90,8 @@ class ReducePosition(OKExAPI):
                 if swap_order_state == 'canceled':
                     fprint(lang.swap_order_retract, swap_order_state)
                     try:
-                        tick_size = float(self.swap_info['tickSz'])
-                        tick_decimals = num_decimals(self.swap_info['tickSz'])
-                        ask_price = round_to(0.99 * float(ask_price), tick_size)
-                        ask_price = float_str(ask_price, tick_decimals)
+                        ask_price = round_to(0.99 * float(ask_price), self.tick_size)
+                        ask_price = float_str(ask_price, self.tick_decimals)
                         kwargs = dict(instId=self.swap_ID, side='buy', size=ask_size, price=ask_price,
                                       order_type='limit', reduceOnly=True)
                         swap_order = await self.tradeAPI.take_swap_order(**kwargs)
@@ -134,9 +131,9 @@ class ReducePosition(OKExAPI):
             prev_swap_balance = self.swap_balance
             holding = await self.swap_holding(self.swap_ID)
             self.swap_balance = holding['margin']
-            self.swap_position = - holding['pos'] * contract_val
+            self.swap_position = - holding['pos'] * self.contract_val
             spot_filled = float(spot_order_info['accFillSz'])
-            swap_filled = float(swap_order_info['accFillSz']) * contract_val
+            swap_filled = float(swap_order_info['accFillSz']) * self.contract_val
             self.spot_filled_sum += spot_filled
             self.swap_filled_sum += swap_filled
             spot_price = float(spot_order_info['avgPx'])
@@ -153,7 +150,7 @@ class ReducePosition(OKExAPI):
             self.swap_notional -= swap_filled * swap_price
 
             # 对冲检查
-            if abs(spot_filled - swap_filled) < contract_val:
+            if abs(spot_filled - swap_filled) < self.contract_val:
                 target_position_prev = self.target_position
                 self.target_position -= swap_filled
                 fprint(lang.hedge_success, swap_filled, lang.remaining + str(self.target_position))
@@ -181,13 +178,8 @@ class ReducePosition(OKExAPI):
         :return: 释放USDT
         :rtype: float
         """
-        min_size = float(self.spot_info['minSz'])
-        size_increment = float(self.spot_info['lotSz'])
-        size_decimals = num_decimals(self.spot_info['lotSz'])
-        contract_val = float(self.swap_info['ctVal'])
-
         spot_position, holding = await gather(self.spot_position(), self.swap_holding())
-        self.swap_position = - holding['pos'] * contract_val
+        self.swap_position = - holding['pos'] * self.contract_val
         if holding and self.swap_position:
             self.swap_balance = holding['margin']
             upl = holding['upl']
@@ -204,8 +196,8 @@ class ReducePosition(OKExAPI):
         else:
             self.target_position = target_size
 
-        if self.target_position < contract_val:
-            fprint(lang.target_position_text, self.target_position, lang.less_than_ctval, contract_val)
+        if self.target_position < self.contract_val:
+            fprint(lang.target_position_text, self.target_position, lang.less_than_ctval, self.contract_val)
             fprint(lang.abort_text)
             return 0.
         if self.target_position > spot_position or self.target_position > self.swap_position:
@@ -229,7 +221,7 @@ class ReducePosition(OKExAPI):
         self.exitFlag = False
 
         # 如果仍未减仓完毕
-        while self.target_position >= contract_val and not self.exitFlag:
+        while self.target_position >= self.contract_val and not self.exitFlag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels):
                 # 判断是否加速
@@ -271,15 +263,15 @@ class ReducePosition(OKExAPI):
                         # 计算下单数量
                         best_bid_size = float(spot_ticker['bidSz'])
                         best_ask_size = float(swap_ticker['askSz'])
-                        order_size = min(self.target_position, best_bid_size, best_ask_size * contract_val)
-                        order_size = round_to(order_size, min_size)
-                        order_size = round_to(order_size, contract_val)
+                        order_size = min(self.target_position, best_bid_size, best_ask_size * self.contract_val)
+                        order_size = round_to(order_size, self.min_size)
+                        order_size = round_to(order_size, self.contract_val)
                         # print(order_size)
-                        contract_size = round(order_size / contract_val)
+                        contract_size = round(order_size / self.contract_val)
                         contract_size = f'{contract_size:d}'
-                        spot_size = round_to(order_size, size_increment)
-                        spot_size = float_str(spot_size, size_decimals)
-                        # print(contract_size, spot_size, min_size)
+                        spot_size = round_to(order_size, self.size_increment)
+                        spot_size = float_str(spot_size, self.size_decimals)
+                        # print(contract_size, spot_size, self.min_size)
 
                         # 下单，如果资金费不是马上更新
                         if order_size > 0 and not self.funding_settling():
@@ -326,13 +318,8 @@ class ReducePosition(OKExAPI):
         :return: 释放USDT
         :rtype: float
         """
-        min_size = float(self.spot_info['minSz'])
-        size_increment = float(self.spot_info['lotSz'])
-        size_decimals = num_decimals(self.spot_info['lotSz'])
-        contract_val = float(self.swap_info['ctVal'])
-
         spot_position, holding = await gather(self.spot_position(), self.swap_holding())
-        self.swap_position = - holding['pos'] * contract_val
+        self.swap_position = - holding['pos'] * self.contract_val
         if holding and self.swap_position:
             self.swap_balance = holding['margin']
             self.open_price = holding['avgPx']
@@ -341,8 +328,8 @@ class ReducePosition(OKExAPI):
             return 0.
 
         self.target_position = min(spot_position, self.swap_position)
-        if self.target_position < contract_val:
-            fprint(lang.target_position_text, self.target_position, lang.less_than_ctval, contract_val)
+        if self.target_position < self.contract_val:
+            fprint(lang.target_position_text, self.target_position, lang.less_than_ctval, self.contract_val)
             fprint(lang.abort_text)
             return 0.
 
@@ -408,37 +395,37 @@ class ReducePosition(OKExAPI):
                         best_ask_size = float(swap_ticker['askSz'])
 
                         if self.target_position < self.swap_position:  # spot=target=1.9 swap=2.0
-                            order_size = min(self.target_position, round_to(best_bid_size, min_size),
-                                             best_ask_size * contract_val)  # order=1.9 or 1
-                            contract_size = round(order_size / contract_val)  # 2 or 1
-                            spot_size = round_to(order_size, size_increment)  # 1.9 or 1
-                            remnant = (spot_position - spot_size) / min_size
+                            order_size = min(self.target_position, round_to(best_bid_size, self.min_size),
+                                             best_ask_size * self.contract_val)  # order=1.9 or 1
+                            contract_size = round(order_size / self.contract_val)  # 2 or 1
+                            spot_size = round_to(order_size, self.size_increment)  # 1.9 or 1
+                            remnant = (spot_position - spot_size) / self.min_size
                             # print(order_size, contract_size, spot_size, remnant)
                             # 必须一次把现货出完
                             if remnant >= 1:
-                                order_size = contract_size * contract_val
-                                spot_size = round_to(order_size, size_increment)
+                                order_size = contract_size * self.contract_val
+                                spot_size = round_to(order_size, self.size_increment)
                             elif round(remnant) > 0 and remnant < 1:  # 1.9-1=0.9<1
                                 continue
                             else:  # 1.9-1.9=0
                                 pass
                         else:  # spot=2.1 swap=target=2.0
-                            order_size = min(self.target_position, round_to(best_bid_size, min_size),
-                                             best_ask_size * contract_val)  # order=2 or 1, 1.5
-                            contract_size = round(order_size / contract_val)  # 2 or 1
-                            spot_size = round_to(order_size, size_increment)  # 2 or 1, 1.5
-                            remnant = (spot_position - spot_size) / min_size
+                            order_size = min(self.target_position, round_to(best_bid_size, self.min_size),
+                                             best_ask_size * self.contract_val)  # order=2 or 1, 1.5
+                            contract_size = round(order_size / self.contract_val)  # 2 or 1
+                            spot_size = round_to(order_size, self.size_increment)  # 2 or 1, 1.5
+                            remnant = (spot_position - spot_size) / self.min_size
                             # 必须一次把现货出完
                             if remnant >= 1:  # 2.1-1>1
-                                order_size = contract_size * contract_val
-                                spot_size = round_to(order_size, size_increment)
+                                order_size = contract_size * self.contract_val
+                                spot_size = round_to(order_size, self.size_increment)
                             elif remnant < 1:  # 2.1-2=0.1
                                 if spot_position <= best_bid_size:  # 2.1<3
                                     spot_size = spot_position  # 2->2.1
                                 else:
                                     continue
                         contract_size = f'{contract_size:d}'
-                        spot_size = float_str(spot_size, size_decimals)
+                        spot_size = float_str(spot_size, self.size_decimals)
 
                         # 下单，如果资金费不是马上更新
                         if order_size > 0 and not self.funding_settling():

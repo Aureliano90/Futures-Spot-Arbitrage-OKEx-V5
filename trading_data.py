@@ -3,7 +3,6 @@ from config import language
 import record
 from utils import *
 from lang import *
-from asyncio import create_task, gather
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -86,7 +85,6 @@ class Stat:
     """交易数据统计功能类
     """
     publicAPI = public.PublicAPI()
-    sleep = 0.
 
     @property
     def __name__(self):
@@ -98,63 +96,11 @@ class Stat:
             assert isinstance(coin, str)
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
-            self.spot_info = None
-            self.swap_info = None
-            self.exist = True
-        else:
-            self.exist = False
-
-    def __await__(self):
-        """异步构造函数\n
-        await Stat()先召唤__init__()，然后是awaitable __await__()。
-
-        :return: Stat
-        """
-        if self.coin:
-            try:
-                self.spot_info = create_task(self.spot_inst())
-                self.swap_info = create_task(self.swap_inst())
-                yield from gather(self.spot_info, self.swap_info)
-                self.spot_info = self.spot_info.result()
-                self.swap_info = self.swap_info.result()
-            except Exception as e:
-                fprint(f'{self.__name__}__await__({self.coin}) error')
-                fprint(e)
-                self.exist = False
-                fprint(nonexistent_crypto.format(self.coin))
-        else:
-            self.exist = False
-        return self
-        # return self.__async__init__().__await__()
-
-    async def __async__init__(self):
-        if self.coin:
-            try:
-                self.spot_info = create_task(self.spot_inst())
-                self.swap_info = create_task(self.swap_inst())
-                await self.spot_info
-                await self.swap_info
-                self.spot_info = self.spot_info.result()
-                self.swap_info = self.swap_info.result()
-            except Exception as e:
-                fprint(f'{self.__name__}__async__init__({self.coin}) error')
-                fprint(e)
-                self.exist = False
-                fprint(nonexistent_crypto.format(self.coin))
-        else:
-            self.exist = False
-        return self
 
     @staticmethod
     def clean():
         if hasattr(Stat, 'publicAPI'):
             Stat.publicAPI.__del__()
-
-    async def spot_inst(self):
-        return await self.publicAPI.get_specific_instrument('SPOT', self.spot_ID)
-
-    async def swap_inst(self):
-        return await self.publicAPI.get_specific_instrument('SWAP', self.swap_ID)
 
     async def get_candles(self, instId, days, bar='4H') -> List[List]:
         """获取4小时K线
@@ -219,7 +165,7 @@ class Stat:
             task_list = [self.get_candles(n['instrument'] + '-USDT', days, bar) for n in funding_rate_list]
         else:
             task_list = [self.history_candles(n['instrument'] + '-USDT', days, bar) for n in funding_rate_list]
-        gather_result = await gather(*task_list)
+        gather_result = await asyncio.gather(*task_list)
         for n in range(len(funding_rate_list)):
             atr = average_true_range(gather_result[n], days, '4H')
             funding_rate_list[n]['profitability'] = int(funding_rate_list[n]['funding_rate'] / np.sqrt(atr) * 10000)

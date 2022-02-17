@@ -70,7 +70,7 @@ def round_to(number, fraction) -> float:
 
 
 class REST_Semaphore:
-    """A custom semaphore to be used with REST API with velocity limit
+    """A custom semaphore to be used with REST API with velocity limit in asyncio
     """
 
     def __init__(self, value: int, interval: int):
@@ -131,6 +131,50 @@ class REST_Semaphore:
         return None
 
     async def __aexit__(self, exc_type, exc, tb):
+        self.release()
+
+
+class p_Semaphore:
+    """A custom semaphore to be used with REST API with velocity limit by processes
+    """
+
+    def __init__(self, value: int, interval: int):
+        """控制REST API并发连接
+
+        :param value: API limit
+        :param interval: Reset interval
+        """
+        if value <= 0:
+            raise ValueError("Semaphore initial value must be > 0")
+        # Queue of inquiry timestamps
+        self._inquiries = multiprocessing.Queue()
+        self._value = value
+        self._count = multiprocessing.Value('I', lock=True)
+        self._count.value = 0
+        self._interval = interval
+
+    def __repr__(self):
+        return f'API velocity: {self._value} inquiries/{self._interval}s'
+
+    def acquire(self):
+        with self._count.get_lock():
+            if self._count.value < self._value:
+                self._count.value += 1
+                return True
+        timelapse = time.monotonic() - self._inquiries.get()
+        # Wait until interval has passed since the first inquiry in queue returned.
+        if timelapse < self._interval:
+            time.sleep(self._interval - timelapse)
+        return True
+
+    def release(self):
+        self._inquiries.put(time.monotonic())
+
+    def __enter__(self):
+        self.acquire()
+        return None
+
+    def __exit__(self, *args):
         self.release()
 
 

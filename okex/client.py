@@ -91,7 +91,7 @@ class Client(object):
                 except ValueError:
                     raise exceptions.OkexRequestException(f'Invalid Response: {response.text}')
                 # Endpoint request timeout
-                if json_res['code'] == '50004':
+                if hasattr(json_res, 'code') and json_res['code'] == '50004':
                     retry += 1
                     await asyncio.sleep(2)
                     continue

@@ -17,23 +17,22 @@ async def monitor_all(accountid: int):
     """
     coinlist = await get_coinlist(accountid)
     processes = []
-    # /api/v5/account/bills 限速：5次/s
-    psem = multiprocessing.Semaphore(5)
+    sem = dict(get_ledger=p_Semaphore(5, 1), get_trade_fee=p_Semaphore(5, 2))
     for coin in coinlist:
         await print_apy(coin, accountid)
         # 不能直接传Monitor对象
         # AsyncClient has Logger. Logger can't be pickled.
-        process = multiprocessing.Process(target=monitor_one, args=(coin, accountid, psem))
+        process = multiprocessing.Process(target=monitor_one, args=(coin, accountid, sem))
         process.start()
         processes.append(process)
     for p in processes:
         p.join()
 
 
-def monitor_one(coin: str, accountid: int, psem: multiprocessing.Semaphore = None):
+def monitor_one(coin: str, accountid: int, sem=None):
     try:
         mon = monitor.Monitor(coin=coin, accountid=accountid)
-        if psem: mon.set_psemaphore(psem)
+        if sem: mon.set_semaphore(sem)
         mon.watch()
     finally:
         trading_data.Stat.clean()

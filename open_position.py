@@ -139,16 +139,8 @@ class AddPosition(OKExAPI):
             target_position = target_size
         fprint(self.coin, lang.amount_to_add, target_position)
 
-        min_size = float(self.spot_info['minSz'])
-        size_increment = float(self.spot_info['lotSz'])
-        size_decimals = num_decimals(self.spot_info['lotSz'])
-        contract_val = float(self.swap_info['ctVal'])
-
-        # 查询账户余额
-        trade_fee, usdt_balance = await gather(self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID),
-                                               self.usdt_balance())
-        # 现货手续费率
-        trade_fee = float(trade_fee['taker'])
+        # 查询现货手续费率, 账户余额
+        trade_fee, usdt_balance = await gather(self.spot_trade_fee(), self.usdt_balance())
 
         spot_filled_sum = 0.
         swap_filled_sum = 0.
@@ -157,8 +149,8 @@ class AddPosition(OKExAPI):
         swap_notional = 0.
         time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
-        if target_position < contract_val:
-            fprint(lang.target_position_text, target_position, lang.less_than_ctval, contract_val)
+        if target_position < self.contract_val:
+            fprint(lang.target_position_text, target_position, lang.less_than_ctval, self.contract_val)
             fprint(lang.abort_text)
             return 0.
 
@@ -171,7 +163,7 @@ class AddPosition(OKExAPI):
         self.exitFlag = False
 
         # 如果仍未建仓完毕
-        while target_position >= contract_val and not self.exitFlag:
+        while target_position >= self.contract_val and not self.exitFlag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels):
                 # 判断是否加速
@@ -204,8 +196,8 @@ class AddPosition(OKExAPI):
                 else:
                     if usdt_balance < target_position * last * (1 + 1 / leverage):
                         while usdt_balance < target_position * last * (1 + 1 / leverage):
-                            target_position -= min_size
-                        if target_position < min_size:
+                            target_position -= self.min_size
+                        if target_position < self.min_size:
                             fprint(lang.insufficient_USDT)
                             self.exitFlag = True
                             break
@@ -215,18 +207,18 @@ class AddPosition(OKExAPI):
                         best_bid_size = float(swap_ticker['bidSz'])
                         # print(best_ask_size, best_bid_size)
                         # continue
-                        order_size = min(target_position, best_ask_size, best_bid_size * contract_val)
-                        order_size = round_to(order_size, min_size)
-                        order_size = round_to(order_size, contract_val)
+                        order_size = min(target_position, best_ask_size, best_bid_size * self.contract_val)
+                        order_size = round_to(order_size, self.min_size)
+                        order_size = round_to(order_size, self.contract_val)
 
                         # 考虑现货手续费，分别计算现货数量与合约张数
-                        spot_size = round_to(order_size / (1 + trade_fee), size_increment)
+                        spot_size = round_to(order_size / (1 + trade_fee), self.size_increment)
                         if spot_size > best_ask_size:
-                            order_size -= min_size
-                            order_size = round_to(order_size, contract_val)
-                            spot_size = round_to(order_size / (1 + trade_fee), size_increment)
-                        spot_size = float_str(spot_size, size_decimals)
-                        contract_size = round(order_size / contract_val)
+                            order_size -= self.min_size
+                            order_size = round_to(order_size, self.contract_val)
+                            spot_size = round_to(order_size / (1 + trade_fee), self.size_increment)
+                        spot_size = float_str(spot_size, self.size_decimals)
+                        contract_size = round(order_size / self.contract_val)
                         contract_size = f'{contract_size:d}'
                         # print(order_size, contract_size, spot_size)
 
@@ -300,10 +292,8 @@ class AddPosition(OKExAPI):
                                     if swap_order_state == 'canceled':
                                         fprint(lang.swap_order_retract, swap_order_state)
                                         try:
-                                            tick_size = float(self.swap_info['tickSz'])
-                                            tick_decimals = num_decimals(self.swap_info['tickSz'])
-                                            bid_price = round_to(1.01 * best_bid, tick_size)
-                                            bid_price = float_str(bid_price, tick_decimals)
+                                            bid_price = round_to(1.01 * best_bid, self.tick_size)
+                                            bid_price = float_str(bid_price, self.tick_decimals)
                                             kwargs = dict(instId=self.swap_ID, side='sell', size=contract_size,
                                                           price=bid_price, order_type='limit')
                                             swap_order = await self.tradeAPI.take_swap_order(**kwargs)
@@ -343,7 +333,7 @@ class AddPosition(OKExAPI):
                             if spot_order_state == 'filled' and swap_order_state == 'filled':
                                 # 手续费扣币
                                 spot_filled = float(spot_order_info['accFillSz']) + float(spot_order_info['fee'])
-                                swap_filled = float(swap_order_info['accFillSz']) * contract_val
+                                swap_filled = float(swap_order_info['accFillSz']) * self.contract_val
                                 spot_filled_sum += spot_filled
                                 swap_filled_sum += swap_filled
                                 spot_price = float(spot_order_info['avgPx'])
@@ -355,7 +345,7 @@ class AddPosition(OKExAPI):
                                 swap_notional += swap_filled * swap_price
 
                                 # 对冲检查
-                                if abs(spot_filled - swap_filled) < contract_val:
+                                if abs(spot_filled - swap_filled) < self.contract_val:
                                     target_position_prev = target_position
                                     target_position -= swap_filled
                                     fprint(lang.hedge_success, swap_filled, lang.remaining + str(target_position))
