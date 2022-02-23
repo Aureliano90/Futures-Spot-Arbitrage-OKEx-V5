@@ -257,7 +257,7 @@ def crypto_menu(accountid: int):
                     assert leverage > 0
                 except:
                     continue
-                AddPosition = loop.run_until_complete(open_position.AddPosition(coin=coin, accountid=accountid))
+                AddPosition = open_position.AddPosition(coin=coin, accountid=accountid)
                 Stat = trading_data.Stat(coin)
                 hours = 2
                 if recent := Stat.recent_open_stat(hours):
@@ -274,7 +274,7 @@ def crypto_menu(accountid: int):
                     assert usdt >= 0
                 except:
                     continue
-                ReducePosition = loop.run_until_complete(close_position.ReducePosition(coin=coin, accountid=accountid))
+                ReducePosition = close_position.ReducePosition(coin=coin, accountid=accountid)
                 Stat = trading_data.Stat(coin)
                 hours = 2
                 if recent := Stat.recent_close_stat(hours):
@@ -296,7 +296,7 @@ def crypto_menu(accountid: int):
                 AddPosition.adjust_swap_lever(leverage)
                 break
         elif command == '5':
-            ReducePosition = loop.run_until_complete(close_position.ReducePosition(coin=coin, accountid=accountid))
+            ReducePosition = close_position.ReducePosition(coin=coin, accountid=accountid)
             Stat = trading_data.Stat(coin)
             hours = 2
             if recent := Stat.recent_close_stat(hours):

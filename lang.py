@@ -22,8 +22,8 @@ input_leverage = _('Input leverage\n')
 input_crypto = _('Input crypto\n')
 # "输入币种\n"
 
-hedge_success = _('Successfully hedged')
-# "成功对冲"
+hedge_success = _('Successfully hedged {:f} {:s}')
+# "成功对冲{:f} {:s}"
 
 hedge_fail = _('{:s} hedging failed.\n Spot: {:f}\n Swap: {:f}')
 # "{:s}对冲失败。\n 现货：{:f}\n 合约：{:f}"
@@ -198,8 +198,8 @@ transfer_failed = _('Transfer failed')
 amount_to_add = _('amounts to add:')
 # '加仓数量:'
 
-added_amount = _('Added ')
-# '已加仓'
+added_amount = _('Added {:f} {:s}')
+# '已加仓{:f} {:s}'
 
 insufficient_USDT = _('Insufficient USDT')
 # 'USDT余额不足'
@@ -255,8 +255,8 @@ spot_order_state = _('Spot order state:')
 await_status_update = _('Await status update')
 # "等待状态更新"
 
-remaining = _('. Remaining ')
-# "，剩余"
+remaining = _('{:f} remaining')
+# "剩余{:f}"
 
 position_exist = _('{:f} {:s} position exists.')
 # "已有{:f} {:s}仓位。"

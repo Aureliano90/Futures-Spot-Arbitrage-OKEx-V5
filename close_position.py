@@ -90,7 +90,7 @@ class ReducePosition(OKExAPI):
                 if swap_order_state == 'canceled':
                     fprint(lang.swap_order_retract, swap_order_state)
                     try:
-                        ask_price = round_to(0.99 * float(ask_price), self.tick_size)
+                        ask_price = round_to(1.01 * float(ask_price), self.tick_size)
                         ask_price = float_str(ask_price, self.tick_decimals)
                         kwargs = dict(instId=self.swap_ID, side='buy', size=ask_size, price=ask_price,
                                       order_type='limit', reduceOnly=True)
@@ -153,7 +153,7 @@ class ReducePosition(OKExAPI):
             if abs(spot_filled - swap_filled) < self.contract_val:
                 target_position_prev = self.target_position
                 self.target_position -= swap_filled
-                fprint(lang.hedge_success, swap_filled, lang.remaining + str(self.target_position))
+                fprint(lang.hedge_success.format(swap_filled, self.coin), lang.remaining.format(self.target_position))
                 mydict = dict(account=self.accountid, instrument=self.coin, op='reduce',
                               size=target_position_prev)
                 record.Record('OP').mycol.find_one_and_update(mydict, {'$set': {'size': self.target_position}})

@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-02-02 08:12-0600\n"
-"PO-Revision-Date: 2022-02-02 08:14-0600\n"
+"POT-Creation-Date: 2022-02-22 22:36-0600\n"
+"PO-Revision-Date: 2022-02-22 22:37-0600\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -33,8 +33,8 @@ msgid "Input crypto\n"
 msgstr "输入币种\n"
 
 #: lang.py:25
-msgid "Successfully hedged"
-msgstr "成功对冲"
+msgid "Successfully hedged {:f} {:s}"
+msgstr "成功对冲{:f} {:s}"
 
 #: lang.py:28
 msgid ""
@@ -257,8 +257,8 @@ msgid "amounts to add:"
 msgstr "加仓数量:"
 
 #: lang.py:201
-msgid "Added "
-msgstr "已加仓"
+msgid "Added {:f} {:s}"
+msgstr "已加仓{:f} {:s}"
 
 #: lang.py:204
 msgid "Insufficient USDT"
@@ -333,8 +333,8 @@ msgid "Await status update"
 msgstr "等待状态更新"
 
 #: lang.py:258
-msgid ". Remaining "
-msgstr "，剩余"
+msgid "{:f} remaining"
+msgstr "剩余{:f}"
 
 #: lang.py:261
 msgid "{:f} {:s} position exists."
@@ -487,6 +487,9 @@ msgstr "数据库为空。"
 #: lang.py:369
 msgid "Input q to abort\n"
 msgstr "输入q中止\n"
+
+#~ msgid "Added "
+#~ msgstr "已加仓"
 
 #~ msgid "Crypto  30 day funding"
 #~ msgstr "币种     30天资金费"

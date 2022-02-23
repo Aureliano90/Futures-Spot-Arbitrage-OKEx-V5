@@ -292,10 +292,10 @@ class AddPosition(OKExAPI):
                                     if swap_order_state == 'canceled':
                                         fprint(lang.swap_order_retract, swap_order_state)
                                         try:
-                                            bid_price = round_to(1.01 * best_bid, self.tick_size)
-                                            bid_price = float_str(bid_price, self.tick_decimals)
+                                            sell_price = round_to(0.99 * best_bid, self.tick_size)
+                                            sell_price = float_str(sell_price, self.tick_decimals)
                                             kwargs = dict(instId=self.swap_ID, side='sell', size=contract_size,
-                                                          price=bid_price, order_type='limit')
+                                                          price=sell_price, order_type='limit')
                                             swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
@@ -348,7 +348,8 @@ class AddPosition(OKExAPI):
                                 if abs(spot_filled - swap_filled) < self.contract_val:
                                     target_position_prev = target_position
                                     target_position -= swap_filled
-                                    fprint(lang.hedge_success, swap_filled, lang.remaining + str(target_position))
+                                    fprint(lang.hedge_success.format(swap_filled, self.coin),
+                                           lang.remaining.format(target_position))
                                     mydict = dict(account=self.accountid, instrument=self.coin, op='add',
                                                   size=target_position_prev)
                                     OP.mycol.find_one_and_update(mydict, {'$set': {'size': target_position}})
@@ -385,9 +386,9 @@ class AddPosition(OKExAPI):
         mydict = dict(account=self.accountid, instrument=self.coin, op='add')
         OP.delete(mydict)
         await self.update_portfolio()
-        fprint(lang.added_amount, swap_filled_sum, self.coin)
+        fprint(lang.added_amount.format(swap_filled_sum, self.coin))
         if await self.is_hedged():
-            fprint(lang.hedge_success, swap_filled_sum, self.coin)
+            fprint(lang.hedge_success.format(swap_filled_sum, self.coin))
         else:
             fprint(lang.hedge_fail.format(self.coin, spot_filled_sum, swap_filled_sum))
         usdt_size = - spot_notional - fee_total + swap_notional / leverage
