@@ -36,18 +36,16 @@ class OKExAPI(object):
                 OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.publicAPI = public.PublicAPI(test=True)
-                # OKExAPI.public_url = 'wss://wspap.okx.com:8443/ws/v5/public'
-                # OKExAPI.private_url = 'wss://wspap.okx.com:8443/ws/v5/private'
-                OKExAPI.public_url = 'wss://wspap.okex.com:8443/ws/v5/public?brokerId=9999'
-                OKExAPI.private_url = 'wss://wspap.okex.com:8443/ws/v5/private?brokerId=9999'
+                OKExAPI.public_url = 'wss://wspap.okx.com:8443/ws/v5/public?brokerId=9999'
+                OKExAPI.private_url = 'wss://wspap.okx.com:8443/ws/v5/private?brokerId=9999'
             else:
                 OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
                 OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
                 OKExAPI.publicAPI = public.PublicAPI()
-                # OKExAPI.public_url = 'wss://ws.okx.com:8443/ws/v5/public'
-                # OKExAPI.private_url = 'wss://ws.okx.com:8443/ws/v5/private'
-                OKExAPI.public_url = 'wss://ws.okex.com:8443/ws/v5/public'
-                OKExAPI.private_url = 'wss://ws.okex.com:8443/ws/v5/private'
+                OKExAPI.public_url = 'wss://ws.okx.com:8443/ws/v5/public'
+                OKExAPI.private_url = 'wss://ws.okx.com:8443/ws/v5/private'
+                # OKExAPI.public_url = 'wss://wsaws.okx.com:8443/ws/v5/public'
+                # OKExAPI.private_url = 'wss://wsaws.okx.com:8443/ws/v5/private'
             OKExAPI.api_initiated = True
 
         self.coin = coin

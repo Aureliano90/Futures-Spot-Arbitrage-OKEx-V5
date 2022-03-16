@@ -1,6 +1,6 @@
 
-API_URL = 'https://www.okex.com'
-# API_URL = 'https://www.okx.com'
+# API_URL = 'https://aws.okx.com'
+API_URL = 'https://www.okx.com'
 
 CONTENT_TYPE = 'Content-Type'
 OK_ACCESS_KEY = 'OK-ACCESS-KEY'

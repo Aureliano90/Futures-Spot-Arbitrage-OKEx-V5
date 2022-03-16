@@ -15,7 +15,7 @@ def get_timestamp():
 
 
 def get_server_time():
-    url = "https://www.okex.com/api/v5/public/time"
+    url = "https://www.okx.com/api/v5/public/time"
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()['data'][0]['ts']
@@ -189,7 +189,7 @@ async def subscribe_without_login(url, channels, verbose=False):
                     except (asyncio.TimeoutError, websockets.ConnectionClosed) as e:
                         try:
                             await ws.send('ping')
-                            res = await ws.recv()
+                            res = await asyncio.wait_for(ws.recv(), timeout=90)
                             if verbose:
                                 fprint(res)
                             continue
@@ -197,9 +197,9 @@ async def subscribe_without_login(url, channels, verbose=False):
                             fprint("连接关闭，正在重连……")
                             break
 
-                    # if verbose:
-                    #     fprint(get_timestamp() + res)
                     res = eval(res)
+                    if verbose:
+                        fprint(res)
 
                     if 'event' in res:
                         continue
@@ -292,10 +292,10 @@ async def subscribe(url, api_key, passphrase, secret_key, channels, verbose=Fals
                                 fprint("连接关闭，正在重连……")
                             break
 
-                    # if verbose:
-                    #     fprint(get_timestamp() + res)
                     # Generate the latest result
                     res = eval(res)
+                    # if verbose:
+                    #     fprint(res)
                     if 'event' in res:
                         continue
                     # if 'data' in res:
@@ -344,10 +344,10 @@ async def trade(url, api_key, passphrase, secret_key, trade_param, verbose=False
                                 fprint("连接关闭，正在重连……")
                             break
 
-                    # if verbose:
-                    #     fprint(get_timestamp() + res)
                     # Generate the latest result
                     res = eval(res)
+                    # if verbose:
+                    #     fprint(res)
                     yield res
 
         except Exception as e:

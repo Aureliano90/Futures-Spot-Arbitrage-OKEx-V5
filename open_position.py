@@ -165,7 +165,7 @@ class AddPosition(OKExAPI):
         # 如果仍未建仓完毕
         while target_position >= self.contract_val and not self.exitFlag:
             # 下单后重新订阅
-            async for ticker in subscribe_without_login(self.public_url, channels):
+            async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
                     Stat = trading_data.Stat(self.coin)
