@@ -368,3 +368,6 @@ empty_db = _('Database is empty.')
 
 input_q_abort = _('Input q to abort\n')
 # "输入q中止\n"
+
+network_interruption = _('Network interruption')
+# "网络中断"

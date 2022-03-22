@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import math
 import time
 import asyncio
+import httpx
 import lang
 
 logfile = open("log.txt", "a", encoding="utf-8")

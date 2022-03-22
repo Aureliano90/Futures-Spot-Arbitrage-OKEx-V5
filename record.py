@@ -40,7 +40,12 @@ class Record:
 
 def record_ticker():
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(record())
+    while True:
+        try:
+            loop.run_until_complete(record())
+        except httpx.HTTPError:
+            print(lang.network_interruption)
+            time.sleep(30)
 
 
 async def record():

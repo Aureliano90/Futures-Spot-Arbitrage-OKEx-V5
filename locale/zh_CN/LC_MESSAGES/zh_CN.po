@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-02-22 22:36-0600\n"
-"PO-Revision-Date: 2022-02-22 22:37-0600\n"
+"POT-Creation-Date: 2022-03-22 03:31-0500\n"
+"PO-Revision-Date: 2022-03-22 03:31-0500\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -487,6 +487,10 @@ msgstr "数据库为空。"
 #: lang.py:369
 msgid "Input q to abort\n"
 msgstr "输入q中止\n"
+
+#: lang.py:372
+msgid "Network interruption"
+msgstr "网络中断"
 
 #~ msgid "Added "
 #~ msgstr "已加仓"
