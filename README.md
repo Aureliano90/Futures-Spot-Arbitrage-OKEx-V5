@@ -83,6 +83,16 @@ result the APY depends on the market sentiment, ranging from 10% to 100%+.
 
 The author does not assume responsibilities for the use of this program, nor is warranty granted.
 
+## License
+
+This program is licensed under the AGPL-3.0 License. See [LICENSE](https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/blob/main/LICENSE) for full disclosure.
+
+Permissions of this license are conditioned on
+making available complete source code of licensed works and modifications, which include larger works using a licensed
+work, under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of
+patent rights. When a modified version is used to provide a service over a network, the complete source code of the
+modified version must be made available.
+
 ## Reference
 
 [1] [OKEx V5 API](https://www.okex.com/docs-v5/en)
