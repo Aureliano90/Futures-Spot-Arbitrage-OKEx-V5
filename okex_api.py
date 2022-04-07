@@ -172,6 +172,7 @@ class OKExAPI(object):
                 return holding
         return None
 
+    @call_coroutine
     async def swap_position(self, swap_ID=None):
         """获取合约仓位
         """

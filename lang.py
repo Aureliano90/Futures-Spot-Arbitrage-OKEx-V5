@@ -261,8 +261,8 @@ remaining = _('{:f} remaining')
 position_exist = _('{:f} {:s} position exists.')
 # "已有{:f} {:s}仓位。"
 
-delete_anyway = _('Enter y to delete')
-# "输入y删除记录"
+delete_anyway = _('Enter y to delete\n')
+# "输入y删除记录\n"
 
 deleted = _('Deleted {:d} records.')
 # "已删除{:d}条。"

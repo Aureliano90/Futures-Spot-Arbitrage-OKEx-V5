@@ -1,7 +1,7 @@
 requests~=2.27.1
 httpcore~=0.14.7
 httpx[http2]~=0.22.0
-pymongo~=4.0.1
+pymongo~=4.1.0
 matplotlib~=3.5.1
-numpy~=1.22.2
-websockets~=10.1
+numpy~=1.22.3
+websockets~=10.2

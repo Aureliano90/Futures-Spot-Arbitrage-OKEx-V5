@@ -26,13 +26,13 @@ class ReducePosition(OKExAPI):
         """减仓以达到完全对冲
         """
 
-    async def place_close_order(self, bid_price: str, bid_size: str, ask_price: str, ask_size: str):
+    async def place_close_order(self, bid_price: str, spot_size: str, ask_price: str, contract_size: str):
         spot_order_info = swap_order_info = spot_order_state = swap_order_state = dict()
 
         spot_order, swap_order = await gather(
-            self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=bid_size, price=bid_price,
+            self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=spot_size, price=bid_price,
                                           order_type='fok'),
-            self.tradeAPI.take_swap_order(instId=self.swap_ID, side='buy', size=ask_size, price=ask_price,
+            self.tradeAPI.take_swap_order(instId=self.swap_ID, side='buy', size=contract_size, price=ask_price,
                                           order_type='fok', reduceOnly=True),
             return_exceptions=True)
 
@@ -90,9 +90,9 @@ class ReducePosition(OKExAPI):
                 if swap_order_state == 'canceled':
                     fprint(lang.swap_order_retract, swap_order_state)
                     try:
-                        ask_price = round_to(1.01 * float(ask_price), self.tick_size)
-                        ask_price = float_str(ask_price, self.tick_decimals)
-                        kwargs = dict(instId=self.swap_ID, side='buy', size=ask_size, price=ask_price,
+                        buy_price = round_to(1.01 * float(ask_price), self.tick_size)
+                        buy_price = float_str(buy_price, self.tick_decimals)
+                        kwargs = dict(instId=self.swap_ID, side='buy', size=contract_size, price=buy_price,
                                       order_type='limit', reduceOnly=True)
                         swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                     except Exception as e:
@@ -106,8 +106,10 @@ class ReducePosition(OKExAPI):
                 if spot_order_state == 'canceled':
                     fprint(lang.spot_order_retract, spot_order_state)
                     try:
-                        # 市价卖出现货
-                        kwargs = dict(instId=self.spot_ID, side='sell', size=bid_size, order_type='market')
+                        sell_price = round_to(0.99 * float(bid_price), self.tick_size)
+                        sell_price = float_str(sell_price, self.tick_decimals)
+                        kwargs = dict(instId=self.spot_ID, side='sell', size=spot_size, price=sell_price,
+                                      order_type='limit')
                         spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                     except Exception as e:
                         fprint(e)

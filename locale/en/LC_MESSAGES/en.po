@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-03-22 03:30-0500\n"
-"PO-Revision-Date: 2022-03-22 03:30-0500\n"
+"POT-Creation-Date: 2022-04-07 06:29-0500\n"
+"PO-Revision-Date: 2022-04-07 06:29-0500\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: en\n"
@@ -298,7 +298,7 @@ msgid "{:f} {:s} position exists."
 msgstr ""
 
 #: lang.py:264
-msgid "Enter y to delete"
+msgid "Enter y to delete\n"
 msgstr ""
 
 #: lang.py:267

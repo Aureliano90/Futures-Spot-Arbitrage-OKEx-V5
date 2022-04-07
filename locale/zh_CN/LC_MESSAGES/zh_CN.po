@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: main\n"
-"POT-Creation-Date: 2022-03-22 03:31-0500\n"
-"PO-Revision-Date: 2022-03-22 03:31-0500\n"
+"POT-Creation-Date: 2022-04-07 06:28-0500\n"
+"PO-Revision-Date: 2022-04-07 06:29-0500\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: zh_CN\n"
@@ -341,8 +341,8 @@ msgid "{:f} {:s} position exists."
 msgstr "已有{:f} {:s}仓位。"
 
 #: lang.py:264
-msgid "Enter y to delete"
-msgstr "输入y删除记录"
+msgid "Enter y to delete\n"
+msgstr "输入y删除记录\n"
 
 #: lang.py:267
 msgid "Deleted {:d} records."

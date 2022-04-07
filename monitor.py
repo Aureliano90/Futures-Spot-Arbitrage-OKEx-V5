@@ -101,6 +101,7 @@ class Monitor(OKExAPI):
 
         # Obtain leverage
         portfolio = record.Record('Portfolio').mycol.find_one(dict(account=self.accountid, instrument=self.coin))
+        assert portfolio is not None, f"{self.coin}"
         leverage = portfolio['leverage']
         if 'size' not in portfolio:
             portfolio = await self.update_portfolio()

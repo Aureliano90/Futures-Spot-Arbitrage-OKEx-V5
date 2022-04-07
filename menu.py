@@ -393,8 +393,7 @@ def account_menu(accountid: int):
             coin = input(input_crypto).upper()
             Monitor = monitor.Monitor(coin=coin, accountid=accountid)
             if Monitor.exist:
-                existed, swap_position = loop.run_until_complete(
-                    gather(Monitor.position_exist(), Monitor.swap_position()))
+                existed, swap_position = Monitor.position_exist(), Monitor.swap_position()
                 if existed:
                     fprint(position_exist.format(swap_position, coin))
                     command = input(delete_anyway)

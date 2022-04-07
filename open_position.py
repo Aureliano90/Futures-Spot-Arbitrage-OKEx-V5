@@ -308,9 +308,10 @@ class AddPosition(OKExAPI):
                                     if spot_order_state == 'canceled':
                                         fprint(lang.spot_order_retract, spot_order_state)
                                         try:
-                                            # 市价做多现货
+                                            buy_price = round_to(1.01 * best_ask, self.tick_size)
+                                            buy_price = float_str(buy_price, self.tick_decimals)
                                             kwargs = dict(instId=self.spot_ID, side='buy', size=spot_size,
-                                                          tgtCcy='base_ccy', order_type='market')
+                                                          price=buy_price, order_type='limit')
                                             spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
