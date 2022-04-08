@@ -18,6 +18,7 @@ async def monitor_all(accountid: int):
     coinlist = await get_coinlist(accountid)
     processes = []
     sem = dict(get_ledger=p_Semaphore(5, 1), get_trade_fee=p_Semaphore(5, 2))
+    multiprocessing.set_start_method('spawn', True)
     for coin in coinlist:
         await print_apy(coin, accountid)
         # 不能直接传Monitor对象

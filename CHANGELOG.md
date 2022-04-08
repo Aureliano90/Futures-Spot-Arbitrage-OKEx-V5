@@ -4,11 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.96.3] - April 7th, 2022
-OKx has limits on large spot market order, which makes the hedge fail sometimes.
+## [0.96.4] - April 8th, 2022
+
+Set process start method to `spawn` for Linux.
+
 ### Fixed
 
-*  Replaced market order with limit order.
+* `multiprocessing` in Linux
+
+## [0.96.3] - April 7th, 2022
+
+OKx has limits on large spot market order, which makes the hedge fail sometimes.
+
+### Fixed
+
+* Replaced market order with limit order.
 
 ## [0.96.2] - February 22th, 2022
 
