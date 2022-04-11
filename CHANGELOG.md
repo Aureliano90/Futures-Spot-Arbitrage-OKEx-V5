@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.96.5] - April 11th, 2022
+
+### Changed
+
+* Directories
+
 ## [0.96.4] - April 8th, 2022
 
 Set process start method to `spawn` for Linux.

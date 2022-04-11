@@ -8,9 +8,9 @@ import math
 import time
 import asyncio
 import httpx
-import lang
+import src.lang as lang
 
-logfile = open("log.txt", "a", encoding="utf-8")
+logfile = open("./log.txt", "a", encoding="utf-8")
 
 
 def rtruncate(string, n):
@@ -180,8 +180,8 @@ class p_Semaphore:
 
 
 def columned_output(res: List, header: str, ncols: int, form):
-    l = len(res)
-    nrows = l // ncols + 1
+    len1 = len(res)
+    nrows = len1 // ncols + 1
     headers = ''
     for j in range(ncols):
         headers += header
@@ -191,7 +191,7 @@ def columned_output(res: List, header: str, ncols: int, form):
     for i in range(nrows):
         line = ''
         for j in range(ncols):
-            if i + j * nrows < l:
+            if i + j * nrows < len1:
                 n = res[i + j * nrows]
                 line += form(n)
                 if j < ncols - 1:

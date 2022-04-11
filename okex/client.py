@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 from . import consts as c, utils, exceptions
-from codedict import codes
+from src.codedict import codes
 import asyncio
 import requests
 import httpx

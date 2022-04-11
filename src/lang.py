@@ -1,14 +1,14 @@
 import gettext
 import os
-import config
+from src.config import language
 
 APP_NAME = "main"
-LOCALE_DIR = os.path.abspath("locale")
+LOCALE_DIR = os.path.abspath("./locale")
 currentDir = os.path.dirname(os.path.realpath(__file__))
 lang_zh_CN = gettext.translation(APP_NAME, LOCALE_DIR, ["zh_CN"])
 lang_en = gettext.translation(APP_NAME, LOCALE_DIR, ["en"])
 
-if config.language == 'cn':
+if language == 'cn':
     lang_zh_CN.install()
 else:
     lang_en.install()

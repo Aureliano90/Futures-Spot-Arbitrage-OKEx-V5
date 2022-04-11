@@ -1,4 +1,4 @@
-from config import language
+from src.config import language
 
 if language == 'cn':
     codes = {

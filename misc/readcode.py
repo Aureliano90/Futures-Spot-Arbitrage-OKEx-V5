@@ -1,5 +1,5 @@
 def main():
-    with open("codedict.py", 'w', encoding='utf-8') as c:
+    with open("../src/codedict.py", 'w', encoding='utf-8') as c:
         c.write(
             """from config import language
 

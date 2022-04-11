@@ -5,7 +5,7 @@ import json
 import zlib
 import requests
 import websockets
-from utils import *
+from src.utils import *
 
 
 def get_timestamp():

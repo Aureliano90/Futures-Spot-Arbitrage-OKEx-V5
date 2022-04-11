@@ -1,7 +1,7 @@
-import okex.public as public
+from okex.public import PublicAPI
 import pymongo
-from utils import *
-import funding_rate
+import src.funding_rate as funding_rate
+from src.utils import *
 
 
 class Record:
@@ -38,14 +38,20 @@ class Record:
         self.mycol.delete_one(match)
 
 
+recording = False
+
+
 def record_ticker():
-    loop = asyncio.get_event_loop()
-    while True:
-        try:
-            loop.run_until_complete(record())
-        except httpx.HTTPError:
-            print(lang.network_interruption)
-            time.sleep(30)
+    global recording
+    if not recording:
+        recording = True
+        loop = asyncio.get_event_loop()
+        while True:
+            try:
+                loop.run_until_complete(record())
+            except httpx.HTTPError:
+                print(lang.network_interruption)
+                time.sleep(30)
 
 
 async def record():
@@ -54,7 +60,7 @@ async def record():
     funding = Record('Funding')
     fundingRate = funding_rate.FundingRate()
     instrumentsID = await fundingRate.get_instruments_ID()
-    publicAPI = public.PublicAPI()
+    publicAPI = PublicAPI()
 
     while True:
         begin = timestamp = datetime.utcnow()

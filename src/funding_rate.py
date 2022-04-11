@@ -1,10 +1,10 @@
 from typing import List
-import okex.public as public
+from okex.public import PublicAPI
 import statistics
-import record
-import trading_data
-from utils import *
-from lang import *
+import src.record as record
+import src.trading_data as trading_data
+from src.utils import *
+from src.lang import *
 
 
 # @debug_timer
@@ -15,7 +15,7 @@ class FundingRate:
         return 'FundingRate'
 
     def __init__(self):
-        self.publicAPI = public.PublicAPI()
+        self.publicAPI = PublicAPI()
 
     def __del__(self):
         self.publicAPI.__del__()
@@ -151,9 +151,9 @@ class FundingRate:
 
         funding_rate_file = open("Funding Rate.txt", "a", encoding="utf-8")
         funding_rate_file.write(datetime_str(datetime.now()) + '\n')
-        l = len(funding_rate_list)
+        len1 = len(funding_rate_list)
         ncols = 4
-        nrows = l // ncols + 1
+        nrows = len1 // ncols + 1
         header = ''
         for j in range(ncols):
             header += f'{coin_7_30}'
@@ -163,7 +163,7 @@ class FundingRate:
         for i in range(nrows):
             line = ''
             for j in range(ncols):
-                if i + j * nrows < l:
+                if i + j * nrows < len1:
                     n = funding_rate_list[i + j * nrows]
                     instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
                     line += instrumentID.ljust(9)

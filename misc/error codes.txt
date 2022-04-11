@@ -145,19 +145,19 @@ Insufficient balance.	200	51131
 Your position amount is negative and less than the minimum trading amount.	200	51132
 Reduce-only feature is unavailable for the spot transactions by
 multi-currency margin account.	200	51133
-Closing failed. Please check your holdings and pending orders.	200	51134
-Your closing price has triggered the limit price, and the max buy price is {0}.	200	51135
-Your closing price has triggered the limit price, and the min sell price is {0}.	200	51136
-Your opening price has triggered the limit price, and the max buy price is {0}.	200	51137
-Your opening price has triggered the limit price, and the min sell price is {0}.	200	51138
-Reduce-only feature is unavailable for the spot transactions by simple account.	200	51139
-When users transfer the margin by themselves in isolated mode, it¡¯s not supported to place orders in advance	200	51145
-The total value of assets in your Trading account needs to be greater than 50,000 USD to trade options	200	51147
-ReduceOnly cannot increase the position quantity.	200	51148
-Value of per market order cannot exceed 1,000,000 USDT.	200	51201
-Market - order amount exceeds the max amount.	200	51202
-Order amount exceeds the limit {0}.	200	51203
-The price for the limit order can not be empty.	200	51204
+Closing failed. Please check your holdings and pending orders.    200    51134
+Your closing price has triggered the limit price, and the max buy price is {0}.    200    51135
+Your closing price has triggered the limit price, and the min sell price is {0}.    200    51136
+Your opening price has triggered the limit price, and the max buy price is {0}.    200    51137
+Your opening price has triggered the limit price, and the min sell price is {0}.    200    51138
+Reduce-only feature is unavailable for the spot transactions by simple account.    200    51139
+When users transfer the margin by themselves in isolated mode, it¡¯s not supported to place orders in advance    200    51145
+The total value of assets in your Trading account needs to be greater than 50,000 USD to trade options    200    51147
+ReduceOnly cannot increase the position quantity.    200    51148
+Value of per market order cannot exceed 1,000,000 USDT.    200    51201
+Market - order amount exceeds the max amount.    200    51202
+Order amount exceeds the limit {0}.    200    51203
+The price for the limit order can not be empty.    200    51204
 Reduce-Only is not available.	200	51205
 Algo order price is out of the available range.	200	51250
 Algo order type error (when user place an iceberg order).	200	51251

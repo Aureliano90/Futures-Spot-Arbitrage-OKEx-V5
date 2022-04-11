@@ -1,7 +1,7 @@
 from .client import Client
 from .consts import *
-from codedict import codes
-from utils import REST_Semaphore, List
+from src.codedict import codes
+from src.utils import REST_Semaphore, List
 
 
 class AccountAPI(Client):

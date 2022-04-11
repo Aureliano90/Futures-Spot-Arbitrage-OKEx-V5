@@ -1,8 +1,8 @@
-import okex.public as public
-from config import language
-import record
-from utils import *
-from lang import *
+from okex.public import PublicAPI
+from src.config import language
+import src.record as record
+from src.utils import *
+from src.lang import *
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -84,7 +84,7 @@ def average_true_range(candles: List[List], days, bar='4H'):
 class Stat:
     """交易数据统计功能类
     """
-    publicAPI = public.PublicAPI()
+    publicAPI = PublicAPI()
 
     @property
     def __name__(self):
@@ -183,13 +183,13 @@ class Stat:
     def open_dist(self, hours=4):
         """开仓期现差价正态分布统计
         """
-        Record = record.Record('Ticker')
+        Ticker = record.Record('Ticker')
         timestamp = datetime.utcnow() - timedelta(hours=hours)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$open_pd'}, 'std': {'$stdDevSamp': '$open_pd'},
                                 'max': {'$max': '$open_pd'}, 'min': {'$min': '$open_pd'}, 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         avg = result['avg']
         std = result['std']
         total = result['count']
@@ -203,19 +203,19 @@ class Stat:
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p1sigma, '$gt': m1sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         count1 = result['count']
         frequency1 = count1 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p2sigma, '$gt': m2sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         count2 = result['count']
         frequency2 = count2 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'open_pd': {'$lt': p3sigma, '$gt': m3sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         count3 = result['count']
         frequency3 = count3 / total
         return dict(avg=avg, std=std, frequency1=frequency1, frequency2=frequency2, frequency3=frequency3)
@@ -223,13 +223,13 @@ class Stat:
     def close_dist(self, hours=4):
         """平仓期现差价正态分布统计
         """
-        Record = record.Record('Ticker')
+        Ticker = record.Record('Ticker')
         timestamp = datetime.utcnow() - timedelta(hours=hours)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$close_pd'}, 'std': {'$stdDevSamp': '$close_pd'},
                                 'max': {'$max': '$close_pd'}, 'min': {'$min': '$close_pd'}, 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         avg = result['avg']
         std = result['std']
         total = result['count']
@@ -243,28 +243,28 @@ class Stat:
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p1sigma, '$gt': m1sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         count1 = result['count']
         frequency1 = count1 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p2sigma, '$gt': m2sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         count2 = result['count']
         frequency2 = count2 / total
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp},
                                 'close_pd': {'$lt': p3sigma, '$gt': m3sigma}}},
                     {'$group': {'_id': '$instrument', 'count': {'$sum': 1}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)][0]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)][0]
         count3 = result['count']
         frequency3 = count3 / total
         return dict(avg=avg, std=std, frequency1=frequency1, frequency2=frequency2, frequency3=frequency3)
 
     def gaussian_dist(self, hours=4, side='o'):
-        Record = record.Record('Ticker')
+        Ticker = record.Record('Ticker')
         timestamp = datetime.utcnow() - timedelta(hours=hours)
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}}]
-        result = [x for x in Record.mycol.aggregate(pipeline)]
+        result = [x for x in Ticker.mycol.aggregate(pipeline)]
 
         if side == 'o':
             arr = np.asarray([x['open_pd'] for x in result], dtype=float)
@@ -339,14 +339,14 @@ class Stat:
 
         :param hours: 最近几小时
         """
-        Record = record.Record('Ticker')
+        Ticker = record.Record('Ticker')
         timestamp = datetime.utcnow() - timedelta(hours=hours)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}}]
         timelist: List[datetime] = []
         open_pd: List[float] = []
         close_pd: List[float] = []
-        for x in Record.mycol.aggregate(pipeline):
+        for x in Ticker.mycol.aggregate(pipeline):
             utctime: datetime = x['timestamp']
             localtime = utctime.replace(tzinfo=timezone.utc).astimezone(tz=None)
             timelist.append(localtime)
@@ -360,13 +360,13 @@ class Stat:
         :param hours: 最近几小时
         :rtype: dict
         """
-        Record = record.Record('Ticker')
+        Ticker = record.Record('Ticker')
         timestamp = datetime.utcnow() - timedelta(hours=hours)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$open_pd'}, 'std': {'$stdDevSamp': '$open_pd'},
                                 'max': {'$max': '$open_pd'}, 'min': {'$min': '$open_pd'}}}]
-        return result[0] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
+        return result[0] if (result := [x for x in Ticker.mycol.aggregate(pipeline)]) else None
 
     def recent_close_stat(self, hours=4):
         """返回近期平仓期现差价统计值
@@ -374,13 +374,13 @@ class Stat:
         :param hours: 最近几小时
         :rtype: dict
         """
-        Record = record.Record('Ticker')
+        Ticker = record.Record('Ticker')
         timestamp = datetime.utcnow() - timedelta(hours=hours)
 
         pipeline = [{'$match': {'instrument': self.coin, 'timestamp': {'$gt': timestamp}}},
                     {'$group': {'_id': '$instrument', 'avg': {'$avg': '$close_pd'}, 'std': {'$stdDevSamp': '$close_pd'},
                                 'max': {'$max': '$close_pd'}, 'min': {'$min': '$close_pd'}}}]
-        return result[0] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
+        return result[0] if (result := [x for x in Ticker.mycol.aggregate(pipeline)]) else None
 
     def open_time(self, account):
         """返回开仓时间
@@ -388,10 +388,10 @@ class Stat:
         :param account: 账号id
         :rtype: datetime
         """
-        Record = record.Record('Ledger')
+        Ledger = record.Record('Ledger')
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': '开仓'}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
-        open_time = result[0]['timestamp'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
+        open_time = result[0]['timestamp'] if (result := [x for x in Ledger.mycol.aggregate(pipeline)]) else None
         return open_time if open_time else datetime(2021, 4, 1)
 
     def close_time(self, account):
@@ -400,10 +400,10 @@ class Stat:
         :param account: 账号id
         :rtype: datetime
         """
-        Record = record.Record('Ledger')
+        Ledger = record.Record('Ledger')
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'title': '平仓'}},
                     {'$sort': {'_id': -1}}, {'$limit': 1}]
-        close_time = result[0]['timestamp'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else None
+        close_time = result[0]['timestamp'] if (result := [x for x in Ledger.mycol.aggregate(pipeline)]) else None
         return close_time if close_time else datetime.utcnow()
 
     def history_funding(self, account, days=0):
@@ -413,7 +413,7 @@ class Stat:
         :param days: 最近几天，默认开仓算起
         :rtype: float
         """
-        Record = record.Record('Ledger')
+        Ledger = record.Record('Ledger')
         if days == -1:
             open_time = datetime(2021, 4, 1)
         elif days == 0:
@@ -422,7 +422,7 @@ class Stat:
             open_time = datetime.utcnow() - timedelta(days=days)
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'timestamp': {'$gt': open_time}}},
                     {'$group': {'_id': '$instrument', 'sum': {'$sum': '$funding'}}}]
-        return result[0]['sum'] if (result := [x for x in Record.mycol.aggregate(pipeline)]) else 0.
+        return result[0]['sum'] if (result := [x for x in Ledger.mycol.aggregate(pipeline)]) else 0.
 
     def history_cost(self, account, days=0):
         """最近累计成本
@@ -431,7 +431,7 @@ class Stat:
         :param days: 最近几天，默认开仓算起
         :rtype: float
         """
-        Record = record.Record('Ledger')
+        Ledger = record.Record('Ledger')
         if days == -1:
             open_time = datetime(2021, 4, 1)
         elif days == 0:
@@ -441,7 +441,7 @@ class Stat:
         pipeline = [{'$match': {'account': account, 'instrument': self.coin, 'timestamp': {'$gt': open_time}}},
                     {'$group': {'_id': '$instrument', 'spot_notional': {'$sum': '$spot_notional'},
                                 'swap_notional': {'$sum': '$swap_notional'}, 'fee': {'$sum': '$fee'}}}]
-        for x in Record.mycol.aggregate(pipeline):
+        for x in Ledger.mycol.aggregate(pipeline):
             return x['spot_notional'] + x['swap_notional'] + x['fee']
         return 0.
 

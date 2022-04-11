@@ -1,4 +1,4 @@
-from okex_api import *
+from src.okex_api import *
 
 
 class AddPosition(OKExAPI):
@@ -96,8 +96,8 @@ class AddPosition(OKExAPI):
 
             notional_lever = float(f'{notional_lever:.2f}')
             if await self.set_swap_lever(notional_lever):
-                record.Record('Portfolio').mycol.find_one_and_update(dict(account=self.accountid, instrument=self.coin),
-                                                                     {'$set': {'leverage': leverage}}, upsert=True)
+                Record('Portfolio').mycol.find_one_and_update(dict(account=self.accountid, instrument=self.coin),
+                                                              {'$set': {'leverage': leverage}}, upsert=True)
 
             holding = await self.swap_holding()
             margin = holding['margin']
@@ -154,7 +154,7 @@ class AddPosition(OKExAPI):
             fprint(lang.abort_text)
             return 0.
 
-        OP = record.Record('OP')
+        OP = Record('OP')
         mydict = dict(account=self.accountid, instrument=self.coin, op='add', size=target_position)
         OP.insert(mydict)
 
@@ -225,30 +225,33 @@ class AddPosition(OKExAPI):
                         spot_order_info = swap_order_info = spot_order_state = swap_order_state = dict()
                         # 下单，如果资金费不是马上更新
                         if order_size > 0 and not self.funding_settling():
-                            spot_order, swap_order = await gather(
+                            spot_task = create_task(
                                 self.tradeAPI.take_spot_order(instId=self.spot_ID, side='buy', size=spot_size,
-                                                              price=spot_ticker['askPx'], order_type='fok'),
+                                                              price=spot_ticker['askPx'], order_type='fok'))
+                            swap_task = create_task(
                                 self.tradeAPI.take_swap_order(instId=self.swap_ID, side='sell', size=contract_size,
-                                                              price=swap_ticker['bidPx'], order_type='fok'),
-                                return_exceptions=True)
+                                                              price=swap_ticker['bidPx'], order_type='fok'))
+                            spot_res, swap_res = await gather(spot_task, swap_task, return_exceptions=True)
 
-                            if ((not isinstance(spot_order, OkexAPIException)) and
-                                    (not isinstance(swap_order, OkexAPIException))):
-                                pass
+                            if ((not isinstance(spot_res, OkexAPIException)) and
+                                    (not isinstance(swap_res, OkexAPIException))):
+                                spot_order, swap_order = spot_task.result(), swap_task.result()
                             # 下单失败
                             else:
-                                if spot_order is OkexAPIException:
+                                if spot_res is OkexAPIException:
+                                    swap_order = swap_task.result()
                                     kwargs = dict(instId=self.swap_ID, order_id=swap_order['ordId'])
                                     swap_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                     fprint(swap_order_info)
-                                    fprint(spot_order)
-                                elif swap_order is OkexAPIException:
-                                    if swap_order['code'] in ('50026', '51022'):
+                                    fprint(spot_res)
+                                elif swap_res is OkexAPIException:
+                                    spot_order = spot_task.result()
+                                    if swap_res.code in ('50026', '51022'):
                                         fprint(lang.futures_market_down)
                                     kwargs = dict(instId=self.spot_ID, order_id=spot_order['ordId'])
                                     spot_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                     fprint(spot_order_info)
-                                    fprint(swap_order)
+                                    fprint(swap_res)
                                 self.exitFlag = True
                                 break
 
@@ -279,6 +282,8 @@ class AddPosition(OKExAPI):
                                             await self.funding_settled()
                                             swap_order_state = 'canceled'
                                         else:
+                                            if swap_order['code'] in ('50026', '51022'):
+                                                fprint(lang.futures_market_down)
                                             self.exitFlag = True
 
                             await check_order()
@@ -374,7 +379,7 @@ class AddPosition(OKExAPI):
                             pass
 
         if spot_notional:
-            Ledger = record.Record('Ledger')
+            Ledger = Record('Ledger')
             timestamp = datetime.utcnow()
             mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货买入',
                            spot_notional=spot_notional)
@@ -407,7 +412,7 @@ class AddPosition(OKExAPI):
         :return: 建仓金额
         :rtype: float
         """
-        Ledger = record.Record('Ledger')
+        Ledger = Record('Ledger')
         result = Ledger.find_last(dict(account=self.accountid, instrument=self.coin))
         if result and result['title'] != '平仓':
             fprint(lang.position_exist.format(await self.swap_position(), self.coin))
@@ -421,7 +426,7 @@ class AddPosition(OKExAPI):
                 timestamp = datetime.utcnow()
                 mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='开仓')
                 Ledger.insert(mydict)
-                record.Record('Portfolio').mycol.insert_one(
+                Record('Portfolio').mycol.insert_one(
                     dict(account=self.accountid, instrument=self.coin, leverage=leverage))
                 await self.set_swap_lever(leverage)
                 return await self.add(usdt_size=usdt_size, price_diff=price_diff, accelerate_after=accelerate_after)

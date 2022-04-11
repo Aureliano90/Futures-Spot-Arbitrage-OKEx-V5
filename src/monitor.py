@@ -1,8 +1,7 @@
-import funding_rate
-import close_position
-import open_position
-from okex_api import *
-from utils import *
+from src.close_position import ReducePosition
+from src.funding_rate import FundingRate
+from src.open_position import AddPosition
+from src.okex_api import *
 
 
 # 监控一个币种，如果当期资金费+预测资金费小于重新开仓成本（开仓期现差价-平仓期现差价-手续费），进行平仓。
@@ -54,7 +53,7 @@ class Monitor(OKExAPI):
         # /api/v5/account/bills 限速：5次/s
         sem = self.sem['get_ledger'] if 'get_ledger' in self.sem else multiprocessing.Semaphore(1)
         with sem:
-            Ledger = record.Record('Ledger')
+            Ledger = Record('Ledger')
             ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
         realized_rate = 0.
         for item in ledger:
@@ -76,7 +75,7 @@ class Monitor(OKExAPI):
             # fprint(lang.nonexistent_position.format(swap_ID))
             return False
         else:
-            result = record.Record('Ledger').find_last(dict(account=self.accountid, instrument=self.coin))
+            result = Record('Ledger').find_last(dict(account=self.accountid, instrument=self.coin))
             if result and result['title'] == '平仓':
                 fprint(lang.has_closed.format(self.swap_ID))
                 return False
@@ -90,17 +89,17 @@ class Monitor(OKExAPI):
             fprint(lang.nonexistent_position.format(self.swap_ID))
             return
 
-        fundingRate = funding_rate.FundingRate()
-        addPosition: open_position.AddPosition
-        reducePosition: close_position.ReducePosition
+        fundingRate = FundingRate()
+        addPosition: AddPosition
+        reducePosition: ReducePosition
         Stat = trading_data.Stat(self.coin)
-        addPosition, reducePosition = await gather(open_position.AddPosition(self.coin, self.accountid),
-                                                   close_position.ReducePosition(self.coin, self.accountid))
-        Ledger = record.Record('Ledger')
-        # OP = record.Record('OP')
+        addPosition, reducePosition = await gather(AddPosition(self.coin, self.accountid),
+                                                   ReducePosition(self.coin, self.accountid))
+        Ledger = Record('Ledger')
+        # OP = Record('OP')
 
         # Obtain leverage
-        portfolio = record.Record('Portfolio').mycol.find_one(dict(account=self.accountid, instrument=self.coin))
+        portfolio = Record('Portfolio').mycol.find_one(dict(account=self.accountid, instrument=self.coin))
         assert portfolio is not None, f"{self.coin}"
         leverage = portfolio['leverage']
         if 'size' not in portfolio:
@@ -141,7 +140,7 @@ class Monitor(OKExAPI):
                         fprint(lang.has_closed.format(self.swap_ID))
                         mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='平仓')
                         Ledger.mycol.insert_one(mydict)
-                        record.Record('Portfolio').mycol.delete_one(dict(account=self.accountid, instrument=self.coin))
+                        Record('Portfolio').mycol.delete_one(dict(account=self.accountid, instrument=self.coin))
                         return
 
                     assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
@@ -244,9 +243,11 @@ class Monitor(OKExAPI):
                             assert (recent := Stat.recent_close_stat(1)), lang.fetch_ticker_first
                             close_pd = recent['avg'] - 1.5 * recent['std']
 
-                            liquidation_price, swap_position = await gather(self.liquidation_price(), self.swap_position())
+                            liquidation_price, swap_position = await gather(self.liquidation_price(),
+                                                                            self.swap_position())
                             target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
-                            reduce_task = create_task(reducePosition.reduce(target_size=target_size, price_diff=close_pd))
+                            reduce_task = create_task(reducePosition.reduce(target_size=target_size,
+                                                                            price_diff=close_pd))
                             reducing = True
                             accelerated = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
@@ -259,9 +260,11 @@ class Monitor(OKExAPI):
                             assert (recent := Stat.recent_close_stat(2)), lang.fetch_ticker_first
                             close_pd = recent['avg'] - 2 * recent['std']
 
-                            liquidation_price, swap_position = await gather(self.liquidation_price(), self.swap_position())
+                            liquidation_price, swap_position = await gather(self.liquidation_price(),
+                                                                            self.swap_position())
                             target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
-                            reduce_task = create_task(reducePosition.reduce(target_size=target_size, price_diff=close_pd))
+                            reduce_task = create_task(reducePosition.reduce(target_size=target_size,
+                                                                            price_diff=close_pd))
                             reducing = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                     elif adding and not add_task.done():

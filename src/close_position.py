@@ -1,4 +1,4 @@
-from okex_api import *
+from src.okex_api import *
 
 
 class ReducePosition(OKExAPI):
@@ -29,26 +29,29 @@ class ReducePosition(OKExAPI):
     async def place_close_order(self, bid_price: str, spot_size: str, ask_price: str, contract_size: str):
         spot_order_info = swap_order_info = spot_order_state = swap_order_state = dict()
 
-        spot_order, swap_order = await gather(
+        spot_task = create_task(
             self.tradeAPI.take_spot_order(instId=self.spot_ID, side='sell', size=spot_size, price=bid_price,
-                                          order_type='fok'),
+                                          order_type='fok'))
+        swap_task = create_task(
             self.tradeAPI.take_swap_order(instId=self.swap_ID, side='buy', size=contract_size, price=ask_price,
-                                          order_type='fok', reduceOnly=True),
-            return_exceptions=True)
+                                          order_type='fok', reduceOnly=True))
+        spot_res, swap_res = await gather(spot_task, swap_task, return_exceptions=True)
 
-        if (not isinstance(spot_order, OkexAPIException)) and (not isinstance(swap_order, OkexAPIException)):
-            pass
+        if (not isinstance(spot_res, OkexAPIException)) and (not isinstance(swap_res, OkexAPIException)):
+            spot_order, swap_order = spot_task.result(), swap_task.result()
         else:
-            if spot_order is OkexAPIException:
+            if spot_res is OkexAPIException:
+                swap_order = swap_task.result()
                 swap_order_info = await self.tradeAPI.get_order_info(instId=self.swap_ID, order_id=swap_order['ordId'])
                 fprint(swap_order_info)
-                fprint(spot_order)
-            elif swap_order is OkexAPIException:
-                if swap_order['code'] in ('50026', '51022'):
+                fprint(spot_res)
+            elif swap_res is OkexAPIException:
+                spot_order = spot_task.result()
+                if swap_res.code in ('50026', '51022'):
                     fprint(lang.futures_market_down)
                 spot_order_info = await self.tradeAPI.get_order_info(instId=self.spot_ID, order_id=spot_order['ordId'])
                 fprint(spot_order_info)
-                fprint(swap_order)
+                fprint(swap_res)
             self.exitFlag = True
             return
 
@@ -77,6 +80,8 @@ class ReducePosition(OKExAPI):
                         await self.funding_settled()
                         swap_order_state = 'canceled'
                     else:
+                        if swap_order['code'] in ('50026', '51022'):
+                            fprint(lang.futures_market_down)
                         self.exitFlag = True
 
         await check_order()
@@ -158,7 +163,7 @@ class ReducePosition(OKExAPI):
                 fprint(lang.hedge_success.format(swap_filled, self.coin), lang.remaining.format(self.target_position))
                 mydict = dict(account=self.accountid, instrument=self.coin, op='reduce',
                               size=target_position_prev)
-                record.Record('OP').mycol.find_one_and_update(mydict, {'$set': {'size': self.target_position}})
+                Record('OP').mycol.find_one_and_update(mydict, {'$set': {'size': self.target_position}})
             else:
                 fprint(lang.hedge_fail.format(self.coin, spot_filled, swap_filled))
                 self.exitFlag = True
@@ -206,7 +211,7 @@ class ReducePosition(OKExAPI):
             return await self.close(price_diff, accelerate_after)
 
         fprint(lang.amount_to_reduce.format(self.coin, self.target_position))
-        OP = record.Record('OP')
+        OP = Record('OP')
         mydict = dict(account=self.accountid, instrument=self.coin, op='reduce', size=self.target_position)
         OP.insert(mydict)
 
@@ -292,7 +297,7 @@ class ReducePosition(OKExAPI):
                             pass
 
         if self.spot_notional:
-            Ledger = record.Record('Ledger')
+            Ledger = Record('Ledger')
             timestamp = datetime.utcnow()
             mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货卖出',
                            spot_notional=self.spot_notional)
@@ -336,7 +341,7 @@ class ReducePosition(OKExAPI):
             return 0.
 
         fprint(lang.amount_to_close.format(self.coin, self.target_position))
-        OP = record.Record('OP')
+        OP = Record('OP')
         mydict = dict(account=self.accountid, instrument=self.coin, op='close', size=self.target_position)
         OP.insert(mydict)
 
@@ -446,7 +451,7 @@ class ReducePosition(OKExAPI):
                             pass
 
         if self.spot_notional:
-            Ledger = record.Record('Ledger')
+            Ledger = Record('Ledger')
             timestamp = datetime.utcnow()
             mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货卖出',
                            spot_notional=self.spot_notional)
@@ -460,7 +465,7 @@ class ReducePosition(OKExAPI):
 
         mydict = dict(account=self.accountid, instrument=self.coin, op='close')
         OP.delete(mydict)
-        record.Record('Portfolio').mycol.delete_one(dict(account=self.accountid, instrument=self.coin))
+        Record('Portfolio').mycol.delete_one(dict(account=self.accountid, instrument=self.coin))
         fprint(lang.closed_amount.format(self.swap_filled_sum, self.coin))
         if self.usdt_release:
             fprint(lang.spot_recoup.format(self.usdt_release))

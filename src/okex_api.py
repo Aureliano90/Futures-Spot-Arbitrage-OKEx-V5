@@ -1,13 +1,13 @@
-import okex.account as account
-import okex.public as public
-import okex.trade as trade
+from okex.account import AccountAPI
+from okex.public import PublicAPI
+from okex.trade import TradeAPI
 from okex.exceptions import OkexException, OkexAPIException
-import config
-import record
-import trading_data
-from utils import *
+from src.utils import *
+from src.config import Key
+from src.record import Record
+import src.trading_data as trading_data
+from src.websocket import subscribe_without_login
 from asyncio import create_task, gather
-from websocket import subscribe, subscribe_without_login
 
 
 @call_coroutine
@@ -27,21 +27,21 @@ class OKExAPI(object):
         self.accountid = accountid
 
         if not OKExAPI.api_initiated:
-            apikey = config.Key(accountid)
+            apikey = Key(accountid)
             api_key = apikey.api_key
             secret_key = apikey.secret_key
             passphrase = apikey.passphrase
             OKExAPI.__key = dict(api_key=api_key, passphrase=passphrase, secret_key=secret_key)
             if accountid == 3:
-                OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, test=True)
-                OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, test=True)
-                OKExAPI.publicAPI = public.PublicAPI(test=True)
+                OKExAPI.accountAPI = AccountAPI(api_key, secret_key, passphrase, test=True)
+                OKExAPI.tradeAPI = TradeAPI(api_key, secret_key, passphrase, test=True)
+                OKExAPI.publicAPI = PublicAPI(test=True)
                 OKExAPI.public_url = 'wss://wspap.okx.com:8443/ws/v5/public?brokerId=9999'
                 OKExAPI.private_url = 'wss://wspap.okx.com:8443/ws/v5/private?brokerId=9999'
             else:
-                OKExAPI.accountAPI = account.AccountAPI(api_key, secret_key, passphrase, False)
-                OKExAPI.tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False)
-                OKExAPI.publicAPI = public.PublicAPI()
+                OKExAPI.accountAPI = AccountAPI(api_key, secret_key, passphrase, False)
+                OKExAPI.tradeAPI = TradeAPI(api_key, secret_key, passphrase, False)
+                OKExAPI.publicAPI = PublicAPI()
                 OKExAPI.public_url = 'wss://ws.okx.com:8443/ws/v5/public'
                 OKExAPI.private_url = 'wss://ws.okx.com:8443/ws/v5/private'
                 # OKExAPI.public_url = 'wss://wsaws.okx.com:8443/ws/v5/public'
@@ -217,16 +217,16 @@ class OKExAPI(object):
         return float(setting['lever'])
 
     async def update_portfolio(self):
-        Record = record.Record('Portfolio')
+        Portfolio = Record('Portfolio')
         holding = await self.swap_holding()
         margin = holding['margin']
         upl = holding['upl']
         last = holding['last']
         position = - holding['pos'] * float(self.swap_info['ctVal'])
         size = position * last + margin + upl
-        portfolio = Record.mycol.find_one(dict(account=self.accountid, instrument=self.coin))
+        portfolio = Portfolio.mycol.find_one(dict(account=self.accountid, instrument=self.coin))
         portfolio['size'] = size
-        Record.mycol.find_one_and_replace(dict(account=self.accountid, instrument=self.coin), portfolio)
+        Portfolio.mycol.find_one_and_replace(dict(account=self.accountid, instrument=self.coin), portfolio)
         return portfolio
 
     async def add_margin(self, transfer_amount):

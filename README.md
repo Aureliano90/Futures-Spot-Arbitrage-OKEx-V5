@@ -21,7 +21,7 @@ Chinese and English support, completed with annotations and docstrings.
     * Accelerate when a desired premium does not appear by given time;
 
 <p align="center">
-  <img width="800" height="400" src="https://raw.githubusercontent.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/main/gaussian.png" alt='Premium'>
+  <img width="800" height="400" src="https://raw.githubusercontent.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/main/misc/gaussian.png" alt='Premium'>
 </p>
 
 * Close a position by selling spot and closing short on perpetual futures

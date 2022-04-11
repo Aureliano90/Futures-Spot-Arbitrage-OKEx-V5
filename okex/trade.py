@@ -1,7 +1,7 @@
 from .client import Client
 from .consts import *
-from codedict import codes
-from utils import REST_Semaphore, List
+from src.codedict import codes
+from src.utils import REST_Semaphore, List
 import asyncio
 
 
@@ -35,7 +35,8 @@ class TradeAPI(Client):
         if order['code'] == '0':
             return order['data'][0]
         else:
-            return dict(ordId='-1', code=order['data'][0]['sCode'], msg=codes[order['data'][0]['sCode']])
+            code = order['data'][0]['sCode']
+            return dict(ordId='-1', code=code, msg=codes[code])
 
     async def take_margin_order(self, instId, side, order_type, size, price='', client_oid='',
                                 reduceOnly=False) -> dict:
@@ -61,7 +62,8 @@ class TradeAPI(Client):
         if order['code'] == '0':
             return order['data'][0]
         else:
-            return dict(ordId='-1', code=order['data'][0]['sCode'], msg=codes[order['data'][0]['sCode']])
+            code = order['data'][0]['sCode']
+            return dict(ordId='-1', code=code, msg=codes[code])
 
     DERIVATIVE_SEMAPHORE = REST_Semaphore(60, 2)
 
@@ -88,7 +90,8 @@ class TradeAPI(Client):
         if order['code'] == '0':
             return order['data'][0]
         else:
-            return dict(ordId='-1', code=order['data'][0]['sCode'], msg=codes[order['data'][0]['sCode']])
+            code = order['data'][0]['sCode']
+            return dict(ordId='-1', code=code, msg=codes[code])
 
     BATCH_ORDER_SEMAPHORE = REST_Semaphore(15, 2)
 
@@ -173,7 +176,8 @@ class TradeAPI(Client):
         if order['code'] == '0':
             return order['data'][0]
         else:
-            return dict(ordId='-1', code=order['data'][0]['sCode'], msg=codes[order['data'][0]['sCode']])
+            code = order['data'][0]['sCode']
+            return dict(ordId='-1', code=code, msg=codes[code])
 
     BATCH_CANCEL_SEMAPHORE = REST_Semaphore(15, 2)
 

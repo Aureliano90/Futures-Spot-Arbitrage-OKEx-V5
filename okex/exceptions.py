@@ -1,4 +1,4 @@
-from codedict import codes
+from src.codedict import codes
 # coding=utf-8
 
 
