@@ -34,9 +34,10 @@ def utc_to_local(d: datetime) -> datetime:
     return d.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
 
 
-def fprint(*args):
-    print(*args)
-    print(datetime_str(datetime.now()), *args, file=logfile, flush=True)
+def fprint(*args, **kwargs):
+    print(*args, **kwargs)
+    kwargs['file'], kwargs['flush'] = logfile, True
+    print(datetime_str(datetime.now()), *args, **kwargs)
 
 
 def apy(apr: float):

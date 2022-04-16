@@ -183,6 +183,24 @@ def close_one(coin: str, accountid: int):
 
 
 @call_coroutine
+async def import_position(accountid: int, coin: str):
+    while True:
+        try:
+            leverage = float(input(input_leverage))
+            assert leverage > 0
+        except:
+            continue
+        timestamp = datetime.utcnow()
+        mydict = dict(account=accountid, instrument=coin, timestamp=timestamp, title='开仓')
+        record.Record('Ledger').insert(mydict)
+        record.Record('Portfolio').mycol.insert_one(dict(account=accountid, instrument=coin, leverage=leverage))
+        addPosition = await AddPosition(coin=coin, accountid=accountid)
+        await addPosition.adjust_swap_lever(leverage)
+        fprint(imported)
+        break
+
+
+@call_coroutine
 async def get_coinlist(accountid: int):
     """当前持仓币种
 
@@ -193,7 +211,16 @@ async def get_coinlist(accountid: int):
     pipeline = [{'$match': {'account': accountid}},
                 {'$group': {'_id': '$instrument'}}]
     coinlist = [x['_id'] for x in Record.mycol.aggregate(pipeline)]
-    assert coinlist, empty_db
+    if not coinlist:
+        fprint(empty_db, end='')
+        while True:
+            command = input(import_or_not)
+            if command == 'y':
+                coin, _ = await get_crypto(accountid)
+                await import_position(accountid, coin)
+            else:
+                break
+
     mon = await Monitor(accountid=accountid)
     task_list = [mon.position_exist(n + '-USDT-SWAP') for n in coinlist]
     gather_result = await gather(*task_list)
@@ -235,16 +262,21 @@ def main_menu(accountid: int):
         Monitor.clean()
 
 
-def crypto_menu(accountid: int):
-    loop = asyncio.get_event_loop()
+@call_coroutine
+async def get_crypto(accountid: int) -> tuple[str, Monitor]:
     while True:
         coin = input(input_crypto).upper()
-        mon = Monitor(coin=coin, accountid=accountid)
+        mon = await Monitor(coin=coin, accountid=accountid)
         if mon.exist:
             break
         else:
             continue
+    return coin, mon
 
+
+def crypto_menu(accountid: int):
+    coin, mon = get_crypto(accountid)
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(gather(mon.check_account_level(), mon.check_position_mode()))
     while (command := minput(crypto_menu_text)) != 'b':
         if command == '1':
@@ -335,6 +367,8 @@ def crypto_menu(accountid: int):
                 else:
                     fprint(fetch_ticker_first)
                 break
+        elif command == '8':
+            import_position(accountid, coin)
         elif command == 'b':
             pass
         else:
@@ -394,7 +428,10 @@ def account_menu(accountid: int):
             coin = input(input_crypto).upper()
             mon = Monitor(coin=coin, accountid=accountid)
             if mon.exist:
-                existed, swap_position = mon.position_exist(), mon.swap_position()
+                async def _():
+                    return await gather(mon.position_exist(), mon.swap_position())
+
+                existed, swap_position = asyncio.get_event_loop().run_until_complete(_())
                 if existed:
                     fprint(position_exist.format(swap_position, coin))
                     command = input(delete_anyway)

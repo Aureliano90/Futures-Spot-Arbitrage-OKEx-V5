@@ -82,6 +82,7 @@ crypto_menu_text = _("""
 5   Close
 6   PnL
 7   Premium/discount statistics
+8   Import position
 b   Back
 """)
 # """
@@ -92,6 +93,7 @@ b   Back
 # 5   平仓
 # 6   收益统计
 # 7   期现差价统计
+# 8   导入仓位
 # b   返回
 # """
 
@@ -365,6 +367,12 @@ no_margin_reduce = _('Margin cannot be reduced.')
 
 empty_db = _('Database is empty.')
 # "数据库为空。"
+
+import_or_not = _('Import? (y/n)\n')
+# "是否导入？(y/n)\n"
+
+imported = _('Imported.')
+# "导入完毕。"
 
 input_q_abort = _('Input q to abort\n')
 # "输入q中止\n"
