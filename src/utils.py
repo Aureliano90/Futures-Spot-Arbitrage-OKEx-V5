@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, ContextManager
 import collections
 import functools
 import inspect
@@ -71,52 +71,28 @@ def round_to(number, fraction) -> float:
         return round(number / fraction // 1 * fraction)
 
 
-class REST_Semaphore:
-    """A custom semaphore to be used with REST API with velocity limit in asyncio
+class REST_Semaphore(asyncio.Semaphore):
+    """A custom semaphore to be used with REST API with velocity limit under asyncio
     """
 
     def __init__(self, value: int, interval: int):
-        """控制REST API并发连接
+        """控制REST API访问速率
 
         :param value: API limit
         :param interval: Reset interval
         """
-        if value <= 0:
-            raise ValueError("Semaphore initial value must be > 0")
+        super().__init__(value)
         # Queue of inquiry timestamps
         self._inquiries = collections.deque(maxlen=value)
-        self._value = value
-        self._waiters = collections.deque()
         self._loop = asyncio.get_event_loop()
-        self._count = 0
         self._interval = interval
 
     def __repr__(self):
-        return f'API velocity: {self._value} inquiries/{self._interval}s'
-
-    def _wake_up_next(self):
-        while self._waiters:
-            waiter = self._waiters.popleft()
-            if not waiter.done():
-                waiter.set_result(None)
-                return
+        return f'API velocity: {self._inquiries.maxlen} inquiries/{self._interval}s'
 
     async def acquire(self):
-        if self._count < self._value:
-            self._count += 1
-        else:
-            # Reached max inquiries during interval. But none of them have returned.
-            # See the similar code in asyncio.Semaphore.
-            while not self._inquiries:
-                fut = self._loop.create_future()
-                self._waiters.append(fut)
-                try:
-                    await fut
-                except:
-                    fut.cancel()
-                    if self._inquiries and not fut.cancelled():
-                        self._wake_up_next()
-                    raise
+        await super().acquire()
+        if self._inquiries:
             timelapse = time.monotonic() - self._inquiries.popleft()
             # Wait until interval has passed since the first inquiry in queue returned.
             if timelapse < self._interval:
@@ -125,18 +101,10 @@ class REST_Semaphore:
 
     def release(self):
         self._inquiries.append(time.monotonic())
-        if self._waiters:
-            self._wake_up_next()
-
-    async def __aenter__(self):
-        await self.acquire()
-        return None
-
-    async def __aexit__(self, exc_type, exc, tb):
-        self.release()
+        super().release()
 
 
-class p_Semaphore:
+class p_Semaphore(ContextManager):
     """A custom semaphore to be used with REST API with velocity limit by processes
     """
 
@@ -146,38 +114,23 @@ class p_Semaphore:
         :param value: API limit
         :param interval: Reset interval
         """
-        if value <= 0:
-            raise ValueError("Semaphore initial value must be > 0")
+        self._interval = interval
+        self._sem = multiprocessing.Semaphore(value)
         # Queue of inquiry timestamps
         self._inquiries = multiprocessing.Queue()
-        self._value = value
-        self._count = multiprocessing.Value('I', lock=True)
-        self._count.value = 0
-        self._interval = interval
-
-    def __repr__(self):
-        return f'API velocity: {self._value} inquiries/{self._interval}s'
-
-    def acquire(self):
-        with self._count.get_lock():
-            if self._count.value < self._value:
-                self._count.value += 1
-                return True
-        timelapse = time.monotonic() - self._inquiries.get()
-        # Wait until interval has passed since the first inquiry in queue returned.
-        if timelapse < self._interval:
-            time.sleep(self._interval - timelapse)
-        return True
-
-    def release(self):
-        self._inquiries.put(time.monotonic())
 
     def __enter__(self):
-        self.acquire()
-        return None
+        self._sem.acquire()
+        if self._inquiries.qsize():
+            timelapse = time.monotonic() - self._inquiries.get()
+            # Wait until interval has passed since the first inquiry in queue returned.
+            if timelapse < self._interval:
+                time.sleep(self._interval - timelapse)
+        return True
 
     def __exit__(self, *args):
-        self.release()
+        self._inquiries.put(time.monotonic())
+        self._sem.release()
 
 
 def columned_output(res: List, header: str, ncols: int, form):

@@ -70,15 +70,25 @@ async def record():
             if timestamp.minute == 1:
                 if timestamp.second < 10:
                     funding_rate_list = []
-                    for m in instrumentsID:
-                        historical_funding_rate = await publicAPI.get_historical_funding_rate(instId=m, limit='1')
+                    tasks = [publicAPI.get_historical_funding_rate(instId=m) for m in instrumentsID]
+                    res = await asyncio.gather(*tasks)
+                    for m, historical_funding_rate in zip(instrumentsID, res):
+                        instrument = m[:m.find('-')]
+                        pipeline = [{'$match': {'instrument': instrument}}]
+                        # Results in DB
+                        db_funding = [n for n in funding.mycol.aggregate(pipeline)]
                         for n in historical_funding_rate:
                             timestamp = funding_rate.utcfrommillisecs(n['fundingTime'])
-                            mydict = {'instrument': m[:m.find('-')], 'timestamp': timestamp,
-                                      'funding': float(n['realizedRate'])}
-                            funding_rate_list.append(mydict)
+                            realized_rate = float(n['realizedRate'])
+                            for item in db_funding:
+                                if item['funding'] == realized_rate:
+                                    if item['timestamp'] == timestamp:
+                                        break
+                            else:
+                                mydict = {'instrument': instrument, 'timestamp': timestamp,
+                                          'funding': realized_rate}
+                                funding_rate_list.append(mydict)
                     funding.mycol.insert_many(funding_rate_list)
-
                     myquery = {'timestamp': {'$lt': timestamp - timedelta(hours=48)}}
                     ticker.mycol.delete_many(myquery)
 
