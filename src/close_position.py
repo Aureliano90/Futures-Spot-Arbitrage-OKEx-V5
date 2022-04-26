@@ -5,10 +5,6 @@ class ReducePosition(OKExAPI):
     """平仓、减仓功能类
     """
 
-    @property
-    def __name__(self):
-        return 'ReducePosition'
-
     def __init__(self, coin=None, accountid=3):
         super().__init__(coin=coin, accountid=accountid)
         self.open_price = 0.
@@ -174,7 +170,7 @@ class ReducePosition(OKExAPI):
             self.exitFlag = True
             return
 
-    @run_with_cancel
+    @manager.submit
     async def reduce(self, usdt_size=0.0, target_size=0.0, price_diff=0.002, accelerate_after=0):
         """减仓期现组合
 
@@ -316,7 +312,7 @@ class ReducePosition(OKExAPI):
             await self.add_margin(self.usdt_release)
         return self.usdt_release
 
-    @run_with_cancel
+    @manager.submit
     async def close(self, price_diff=0.002, accelerate_after=0):
         """平仓期现组合
 

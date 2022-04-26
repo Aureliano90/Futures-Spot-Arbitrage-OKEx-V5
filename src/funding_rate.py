@@ -9,16 +9,11 @@ from src.lang import *
 
 # @debug_timer
 class FundingRate:
+    publicAPI = PublicAPI()
 
-    @property
-    def __name__(self):
-        return 'FundingRate'
-
-    def __init__(self):
-        self.publicAPI = PublicAPI()
-
-    def __del__(self):
-        self.publicAPI.__del__()
+    @staticmethod
+    async def aclose():
+        await FundingRate.publicAPI.aclose()
 
     async def get_instruments_ID(self):
         """获取合约币种列表
@@ -27,7 +22,6 @@ class FundingRate:
         """
         return [n['instId'] for n in await self.publicAPI.get_instruments('SWAP') if n['instId'].find('USDT') != -1]
 
-    @call_coroutine
     async def current(self, instrument_id=''):
         """当期资金费
 
@@ -54,7 +48,6 @@ class FundingRate:
         next_rate = float(m) if (m := funding_rate['nextFundingRate']) else 0.
         return current_rate, next_rate
 
-    @call_coroutine
     # @debug_timer
     async def show_current_rate(self):
         """显示当前资金费
@@ -104,7 +97,6 @@ class FundingRate:
             funding_rate_list.append(dict(instrument=instrumentID, funding_rate=statistics.mean(realized_rate)))
         return funding_rate_list
 
-    @call_coroutine
     # @debug_timer
     async def show_nday_rate(self, days: int):
         """显示最近n天平均资金费
@@ -120,7 +112,6 @@ class FundingRate:
 
         columned_output(funding_rate_list, funding_day, 5, form)
 
-    @call_coroutine
     # @debug_timer
     async def print_30day_rate(self):
         """输出最近30天平均资金费到文件
@@ -204,7 +195,6 @@ class FundingRate:
                     inserted += 1
         print(f"Found: {found}, Inserted: {inserted}")
 
-    @call_coroutine
     # @debug_timer
     async def show_profitable_rate(self, days=7):
         """显示收益最高十个币种资金费
@@ -216,7 +206,6 @@ class FundingRate:
         funding_rate_list = [n['instrument'] for n in await trading_data.Stat().profitability(funding_rate_list, days)]
         await self.show_selected_rate(funding_rate_list)
 
-    @call_coroutine
     async def show_selected_rate(self, coinlist):
         """显示列表币种当前资金费
         """

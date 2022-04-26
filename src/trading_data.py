@@ -1,42 +1,9 @@
 from okex.public import PublicAPI
-from src.config import language
 import src.record as record
 from src.utils import *
 from src.lang import *
 import matplotlib.pyplot as plt
 import numpy as np
-
-
-def open(candle: np.ndarray):
-    """开盘价
-
-    :param candle: K线
-    """
-    return candle.T[1]
-
-
-def high(candle: np.ndarray):
-    """最高价
-
-    :param candle: K线
-    """
-    return candle.T[2]
-
-
-def low(candle: np.ndarray):
-    """最低价
-
-    :param candle: K线
-    """
-    return candle.T[3]
-
-
-def close(candle: np.ndarray):
-    """收盘价
-
-    :param candle: K线
-    """
-    return candle.T[4]
 
 
 def true_range(candle: np.ndarray, previous: np.ndarray) -> np.ndarray:
@@ -45,13 +12,13 @@ def true_range(candle: np.ndarray, previous: np.ndarray) -> np.ndarray:
     :param candle: 当前K线
     :param previous: 上一K线
     """
-    h = high(candle)
-    l = low(candle)
-    c = close(previous)
-    hl = h - l
-    hc = np.abs(h - c)
-    lc = np.abs(l - c)
-    return np.max([hl, hc, lc], axis=0) / c
+    high = candle.T[2]
+    low = candle.T[3]
+    close = previous.T[4]
+    hl = high - low
+    hc = np.abs(high - close)
+    lc = np.abs(low - close)
+    return np.max([hl, hc, lc], axis=0) / close
 
 
 def average_true_range(candles: List[List], days, bar='4H'):
@@ -79,16 +46,10 @@ def average_true_range(candles: List[List], days, bar='4H'):
     return np.mean(tr)
 
 
-# @call_coroutine
-# @debug_timer
 class Stat:
     """交易数据统计功能类
     """
     publicAPI = PublicAPI()
-
-    @property
-    def __name__(self):
-        return 'Stat'
 
     def __init__(self, coin: str = None):
         self.coin = coin
@@ -98,9 +59,8 @@ class Stat:
             self.swap_ID = coin + '-USDT-SWAP'
 
     @staticmethod
-    def clean():
-        if hasattr(Stat, 'publicAPI'):
-            Stat.publicAPI.__del__()
+    async def aclose():
+        await Stat.publicAPI.aclose()
 
     async def get_candles(self, instId, days, bar='4H') -> List[List]:
         """获取4小时K线

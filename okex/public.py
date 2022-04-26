@@ -7,9 +7,8 @@ import asyncio
 
 
 class PublicAPI(Client):
-
     def __init__(self, use_server_time=False, test=False):
-        Client.__init__(self, '', '', '', use_server_time, test)
+        super(PublicAPI, self).__init__('', '', '', use_server_time, test)
 
     GET_INSTRUMENTS_SEMAPHORE = dict()
 

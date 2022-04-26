@@ -1,4 +1,4 @@
-from typing import List, ContextManager
+from typing import List, ContextManager, Optional
 import collections
 import functools
 import inspect
@@ -204,24 +204,24 @@ def debug_timer(cls):
 
         @functools.wraps(old_init)
         def __init__(self, *args, **kwargs):
-            print(f"{self.__name__} init started")
+            print(f"{cls.__name__} init started")
             begin = time.monotonic()
             old_init(self, *args, **kwargs)
-            print(f"{self.__name__}({self.coin}) init finished")
+            print(f"{cls.__name__}({self.coin}) init finished")
             end = time.monotonic()
-            print(f"{self.__name__} init takes {end - begin} s")
+            print(f"{cls.__name__} init takes {end - begin} s")
 
         cls.__init__ = __init__
 
         if old_await := getattr(cls, '__await__', False):
             @functools.wraps(old_await)
             def __await__(self):
-                print(f"{self.__name__}__await__ started")
+                print(f"{cls.__name__}__await__ started")
                 begin = time.monotonic()
                 result = yield from old_await(self)
-                print(f"{self.__name__}__await__ finished")
+                print(f"{cls.__name__}__await__ finished")
                 end = time.monotonic()
-                print(f"{self.__name__}__await__ takes {end - begin} s")
+                print(f"{cls.__name__}__await__ takes {end - begin} s")
                 return result
 
             cls.__await__ = __await__
@@ -229,9 +229,9 @@ def debug_timer(cls):
         if old_del := getattr(cls, '__del__', False):
             @functools.wraps(old_del)
             def __del__(self):
-                print(f"{self.__name__} del started")
+                print(f"{cls.__name__} del started")
                 old_del(self)
-                print(f"{self.__name__} del finished")
+                print(f"{cls.__name__} del finished")
 
             cls.__del__ = __del__
         return cls
@@ -321,135 +321,5 @@ def call_coroutine(cls):
     return cls
 
 
-waiting_input = False
-written = False
-input_buffer = None
-input_future = None
-future_cancelled = False
-
-
-def minput(*args):
-    global waiting_input, written
-    if waiting_input:
-        print(*args, end='')
-        while not written:
-            time.sleep(1)
-        return input_buffer
-    else:
-        return input(*args)
-
-
-def sinput(*args):
-    global written, waiting_input, input_buffer
-    written = False
-    if waiting_input:
-        print(*args, end='')
-        # Do not iterate stdin while it is still waiting.
-        while not written:
-            # print('sinput waiting_input')
-            time.sleep(1)
-        # print('leaving sinput', input_buffer, 'received')
-        return input_buffer
-    else:
-        waiting_input = True
-        try:
-            # Read from stdin
-            input_buffer = input(*args)
-        except EOFError:
-            # Handle exception in child processes
-            input_buffer = ''
-    # Received stdin
-    waiting_input = False
-    written = True
-    # print('leaving sinput', input_buffer, 'written')
-    return input_buffer
-
-
-def ainput(*args):
-    """Return a future to wait for stdin asynchronously.
-    """
-    global input_future, future_cancelled
-    if waiting_input:
-        # Previous input future was cancelled by a completed task but stdin is still waiting.
-        # Schedule a new future for a new task to capture the last stdin.
-        if future_cancelled:
-            loop = asyncio.get_event_loop()
-            input_future = asyncio.ensure_future(loop.run_in_executor(None, functools.partial(sinput, *args)))
-            future_cancelled = False
-    else:
-        # Schedule a future to wait for stdin asynchronously.
-        loop = asyncio.get_event_loop()
-        input_future = asyncio.ensure_future(loop.run_in_executor(None, functools.partial(sinput, *args)))
-        future_cancelled = False
-    return input_future
-
-
-def input_cancel(t: asyncio.Task, r, c: asyncio.Task):
-    """Cancel task `t` if the result of `c` is `r`
-    """
-    try:
-        if not t.done():
-            if r:
-                # Input future cancels the running task.
-                if not c.cancelled():
-                    if c.result() == r:
-                        t.cancel()
-                        # print(f'{r=}', c)
-            else:
-                # Completed task cancels the input future.
-                t.cancel()
-                global future_cancelled
-                future_cancelled = True
-                # print(f'{r=}', c)
-    except asyncio.exceptions.CancelledError:
-        pass
-
-
-def run_with_cancel(cls):
-    """Decorator to run a function and schedule a future to interrupt it
-    by waiting for stdin signal asynchronously.
-    """
-    if asyncio.iscoroutinefunction(cls):
-        # cls is a coroutine function.
-        @functools.wraps(cls)
-        def wrapper(*args, **kwargs):
-            loop = asyncio.get_event_loop()
-            # coro is a coroutine object.
-            coro = cls(*args, **kwargs)
-            # print(f'{cls.__name__} {asyncio.iscoroutine(coro)=}')
-            if loop.is_running():
-                # print("loop is running")
-                # Return the coroutine object to be awaited.
-                async def _coro():
-                    _t = loop.create_task(coro)
-                    _c = ainput(lang.input_q_abort)
-                    _g = asyncio.gather(_t, _c, return_exceptions=True)
-                    _t.add_done_callback(functools.partial(input_cancel, _c, ''))
-                    _c.add_done_callback(functools.partial(input_cancel, _t, 'q'))
-                    try:
-                        await _g
-                    except asyncio.exceptions.CancelledError:
-                        pass
-                    finally:
-                        if not _t.cancelled():
-                            return _t.result()
-
-                return _coro()
-            else:
-                # print("loop is not running")
-                # Execute the coroutine object and return its result.
-                t = loop.create_task(coro)
-                c = ainput(lang.input_q_abort)
-                g = asyncio.gather(t, c, return_exceptions=True)
-                t.add_done_callback(functools.partial(input_cancel, c, ''))
-                c.add_done_callback(functools.partial(input_cancel, t, 'q'))
-                try:
-                    loop.run_until_complete(g)
-                except asyncio.exceptions.CancelledError:
-                    pass
-                finally:
-                    if not t.cancelled():
-                        return t.result()
-
-        return wrapper
-    return cls
+async def ainput(loop, *args):
+    return await asyncio.ensure_future(loop.run_in_executor(None, functools.partial(input, *args)))

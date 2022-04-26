@@ -5,9 +5,8 @@ from src.utils import REST_Semaphore, List
 
 
 class AccountAPI(Client):
-
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
-        Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
+        super(AccountAPI, self).__init__(api_key, api_secret_key, passphrase, use_server_time, test)
 
     ACCOUNT_CONFIG_SEMAPHORE = REST_Semaphore(5, 2)
 

@@ -5,23 +5,8 @@ class AddPosition(OKExAPI):
     """建仓、加仓功能类
     """
 
-    @property
-    def __name__(self):
-        return 'AddPosition'
-
     def __init__(self, coin=None, accountid=3):
         super().__init__(coin=coin, accountid=accountid)
-
-    async def is_hedged(self):
-        """判断合约现货是否对冲
-        """
-        contract_val = float(self.swap_info['ctVal'])
-        long, short = await gather(self.spot_position(), self.swap_position())
-        if abs(long - short) < contract_val:
-            return True
-        else:
-            fprint(self.coin, lang.spot_text, long, lang.swap_text, short)
-            return False
 
     async def hedge(self):
         """加仓以达到完全对冲
@@ -47,7 +32,6 @@ class AddPosition(OKExAPI):
             return False
         return True
 
-    @call_coroutine
     async def adjust_swap_lever(self, leverage: float):
         """调整实际杠杆
 
@@ -119,7 +103,7 @@ class AddPosition(OKExAPI):
                 fprint(lang.added_margin.format(margin - prev_margin))
             return 0
 
-    @run_with_cancel
+    @manager.submit
     async def add(self, usdt_size=0.0, target_size=0.0, leverage=0, price_diff=0.002, accelerate_after=0):
         """加仓期现组合
 

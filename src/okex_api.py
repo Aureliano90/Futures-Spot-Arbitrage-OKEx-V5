@@ -2,12 +2,14 @@ from okex.account import AccountAPI
 from okex.public import PublicAPI
 from okex.trade import TradeAPI
 from okex.exceptions import OkexException, OkexAPIException
-from src.utils import *
 from src.config import Key
 from src.record import Record
 import src.trading_data as trading_data
 from src.websocket import subscribe_without_login
+from src.manager import *
 from asyncio import create_task, gather
+
+manager = Manager()
 
 
 @call_coroutine
@@ -16,12 +18,7 @@ class OKExAPI(object):
     """基本OKEx功能类
     """
     api_initiated = False
-    sem = dict()
     __key = None
-
-    @property
-    def __name__(self):
-        return 'OKExAPI'
 
     def __init__(self, coin: str = None, accountid=3):
         self.accountid = accountid
@@ -55,7 +52,6 @@ class OKExAPI(object):
             self.swap_ID = coin + '-USDT-SWAP'
             self.spot_info = None
             self.swap_info = None
-            self.holding = None
             self.exitFlag = False
             self.exist = True
         else:
@@ -90,23 +86,17 @@ class OKExAPI(object):
         return self
 
     @staticmethod
-    def clean():
+    async def aclose():
         if hasattr(OKExAPI, 'accountAPI'):
-            OKExAPI.accountAPI.__del__()
+            await OKExAPI.accountAPI.aclose()
         if hasattr(OKExAPI, 'tradeAPI'):
-            OKExAPI.tradeAPI.__del__()
+            await OKExAPI.tradeAPI.aclose()
         if hasattr(OKExAPI, 'publicAPI'):
-            OKExAPI.publicAPI.__del__()
+            await OKExAPI.publicAPI.aclose()
 
     @staticmethod
     def _key():
         return OKExAPI.__key
-
-    @staticmethod
-    def set_semaphore(sem):
-        """控制并发连接
-        """
-        OKExAPI.sem = sem
 
     async def spot_inst(self):
         return await self.publicAPI.get_specific_instrument('SPOT', self.spot_ID)
@@ -131,6 +121,16 @@ class OKExAPI(object):
             fprint(lang.change_net_mode)
         mode = (await self.accountAPI.get_account_config())['posMode']
         assert mode == 'net_mode', lang.set_mode_fail
+
+    async def is_hedged(self):
+        """判断合约现货是否对冲
+        """
+        long, short = await gather(self.spot_position(), self.swap_position())
+        if abs(long - short) < self.contract_val:
+            return True
+        else:
+            fprint(self.coin, lang.spot_text, long, lang.swap_text, short)
+            return False
 
     async def usdt_balance(self):
         """获取USDT保证金
@@ -172,7 +172,6 @@ class OKExAPI(object):
                 return holding
         return None
 
-    @call_coroutine
     async def swap_position(self, swap_ID=None):
         """获取合约仓位
         """
@@ -201,15 +200,11 @@ class OKExAPI(object):
         return holding['liqPx'] if holding else 0.
 
     async def spot_trade_fee(self):
-        sem = self.sem['get_trade_fee'] if 'get_trade_fee' in self.sem else multiprocessing.Semaphore(1)
-        with sem:
-            spot_trade_fee = await self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID)
+        spot_trade_fee = await self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID)
         return float(spot_trade_fee['taker'])
 
     async def swap_trade_fee(self):
-        sem = self.sem['get_trade_fee'] if 'get_trade_fee' in self.sem else multiprocessing.Semaphore(1)
-        with sem:
-            swap_trade_fee = await self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID)
+        swap_trade_fee = await self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID)
         return float(swap_trade_fee['taker'])
 
     async def get_lever(self):

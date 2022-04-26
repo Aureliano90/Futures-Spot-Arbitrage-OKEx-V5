@@ -11,10 +11,6 @@ class Monitor(OKExAPI):
     """监控功能类
     """
 
-    @property
-    def __name__(self):
-        return 'Monitor'
-
     def __init__(self, coin=None, accountid=3):
         super().__init__(coin=coin, accountid=accountid)
 
@@ -50,11 +46,8 @@ class Monitor(OKExAPI):
     async def record_funding(self):
         """记录最近一次资金费
         """
-        # /api/v5/account/bills 限速：5次/s
-        sem = self.sem['get_ledger'] if 'get_ledger' in self.sem else multiprocessing.Semaphore(1)
-        with sem:
-            Ledger = Record('Ledger')
-            ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
+        Ledger = Record('Ledger')
+        ledger = await self.accountAPI.get_ledger(instType='SWAP', ccy='USDT', type='8')
         realized_rate = 0.
         for item in ledger:
             if item['instId'] == self.swap_ID:
@@ -66,7 +59,6 @@ class Monitor(OKExAPI):
                 break
         fprint(lang.received_funding.format(self.coin, realized_rate))
 
-    @call_coroutine
     async def position_exist(self, swap_ID=None):
         """判断是否有仓位
         """
@@ -81,7 +73,7 @@ class Monitor(OKExAPI):
                 return False
         return True
 
-    @run_with_cancel
+    @manager.submit
     async def watch(self):
         """监控仓位，自动加仓、减仓
         """
@@ -90,11 +82,9 @@ class Monitor(OKExAPI):
             return
 
         fundingRate = FundingRate()
-        addPosition: AddPosition
-        reducePosition: ReducePosition
+        addPosition: Optional[AddPosition] = None
+        reducePosition: Optional[ReducePosition] = None
         Stat = trading_data.Stat(self.coin)
-        addPosition, reducePosition = await gather(AddPosition(self.coin, self.accountid),
-                                                   ReducePosition(self.coin, self.accountid))
         Ledger = Record('Ledger')
         # OP = Record('OP')
 
@@ -116,11 +106,10 @@ class Monitor(OKExAPI):
         task_started = False
         time_to_accelerate = None
         accelerated = False
-        adding = False
-        add_task = None
+        adding = reducing = False
+        add_task: Optional[asyncio.Task] = None
+        reduce_task = add_task
         usdt_size = 0
-        reducing = False
-        reduce_task = None
         margin_reducible = True
         self.exitFlag = False
 
@@ -154,6 +143,8 @@ class Monitor(OKExAPI):
                         fprint(f'{self.coin:6s}{current_rate:9.3%}{next_rate:11.3%}')
                         fprint(lang.cost_to_close.format(cost))
                         fprint(lang.closing.format(self.coin))
+                        if not reducePosition:
+                            reducePosition = await ReducePosition(self.coin, self.accountid)
                         await reducePosition.close(price_diff=close_pd)
                         return
 
@@ -169,14 +160,7 @@ class Monitor(OKExAPI):
                 if not task_started:
                     # 接近强平价，现货减仓
                     if liquidation_price < last * (1 + 1 / (leverage + 1)):
-                        # 等待上一操作完成
-                        # if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
-                        #     timestamp = datetime.utcnow()
-                        #     delta = (timestamp - begin).total_seconds()
-                        #     if delta < 10:
-                        #         await asyncio.sleep(10 - delta)
-                        #     continue
-                        if not await addPosition.is_hedged():
+                        if not await self.is_hedged():
                             spot, swap = await gather(self.spot_position(), self.swap_position())
                             fprint(lang.hedge_fail.format(self.coin, spot, swap))
                             exit()
@@ -191,21 +175,16 @@ class Monitor(OKExAPI):
                         swap_position = await self.swap_position()
                         target_size = swap_position / (leverage + 1) ** 2
 
-                        reduce_task = create_task(reducePosition.reduce(target_size=target_size, price_diff=close_pd))
+                        if not reducePosition:
+                            reducePosition = await ReducePosition(self.coin, self.accountid)
+                        reduce_task = await reducePosition.reduce(target_size=target_size, price_diff=close_pd)
                         task_started = True
                         reducing = True
                         time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
 
                     # 保证金过多，现货加仓
                     if margin_reducible and liquidation_price > last * (1 + 1 / (leverage - 1)):
-                        # 等待上一操作完成
-                        # if OP.find_last({'account': self.accountid, 'instrument': self.coin}):
-                        #     timestamp = datetime.utcnow()
-                        #     delta = (timestamp - begin).total_seconds()
-                        #     if delta < 10:
-                        #         await asyncio.sleep(10 - delta)
-                        #     continue
-                        if not await addPosition.is_hedged():
+                        if not await self.is_hedged():
                             spot, swap = await gather(self.spot_position(), self.swap_position())
                             fprint(lang.hedge_fail.format(self.coin, spot, swap))
                             exit()
@@ -217,11 +196,13 @@ class Monitor(OKExAPI):
                         assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
                         open_pd = recent['avg'] + 2 * recent['std']
 
+                        if not addPosition:
+                            addPosition = await AddPosition(self.coin, self.accountid)
                         # swap_position = await self.swap_position()
                         # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
                         usdt_size = await addPosition.adjust_swap_lever(leverage)
                         if usdt_size:
-                            add_task = create_task(addPosition.add(usdt_size=usdt_size, price_diff=open_pd))
+                            add_task = await addPosition.add(usdt_size=usdt_size, price_diff=open_pd)
                             task_started = True
                             adding = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
@@ -238,7 +219,7 @@ class Monitor(OKExAPI):
                             # 已加速就不另开线程
                             reducePosition.exitFlag = True
                             while not reduce_task.done():
-                                await asyncio.sleep(1)
+                                await asyncio.sleep(0.1)
 
                             assert (recent := Stat.recent_close_stat(1)), lang.fetch_ticker_first
                             close_pd = recent['avg'] - 1.5 * recent['std']
@@ -246,8 +227,7 @@ class Monitor(OKExAPI):
                             liquidation_price, swap_position = await gather(self.liquidation_price(),
                                                                             self.swap_position())
                             target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
-                            reduce_task = create_task(reducePosition.reduce(target_size=target_size,
-                                                                            price_diff=close_pd))
+                            reduce_task = await reducePosition.reduce(target_size=target_size, price_diff=close_pd)
                             reducing = True
                             accelerated = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
@@ -255,7 +235,7 @@ class Monitor(OKExAPI):
                         if timestamp > time_to_accelerate:
                             reducePosition.exitFlag = True
                             while not reduce_task.done():
-                                await asyncio.sleep(1)
+                                await asyncio.sleep(0.1)
 
                             assert (recent := Stat.recent_close_stat(2)), lang.fetch_ticker_first
                             close_pd = recent['avg'] - 2 * recent['std']
@@ -263,15 +243,14 @@ class Monitor(OKExAPI):
                             liquidation_price, swap_position = await gather(self.liquidation_price(),
                                                                             self.swap_position())
                             target_size = swap_position * (1 - liquidation_price / last / (1 + 1 / leverage))
-                            reduce_task = create_task(reducePosition.reduce(target_size=target_size,
-                                                                            price_diff=close_pd))
+                            reduce_task = await reducePosition.reduce(target_size=target_size, price_diff=close_pd)
                             reducing = True
                             time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                     elif adding and not add_task.done():
                         if timestamp > time_to_accelerate:
                             addPosition.exitFlag = True
                             while not add_task.done():
-                                await asyncio.sleep(1)
+                                await asyncio.sleep(0.1)
 
                             assert (recent := Stat.recent_open_stat(2)), lang.fetch_ticker_first
                             open_pd = recent['avg'] + 2 * recent['std']

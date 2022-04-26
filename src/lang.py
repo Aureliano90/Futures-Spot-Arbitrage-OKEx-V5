@@ -59,10 +59,11 @@ how_many_hours = _('How many hours?\n')
 
 main_menu_text = _("""
 1   Monitor existing positions
-2   Manipulate given crypto
+2   Manipulate individual crypto
 3   Funding rates
 4   Portfolio related
 5   Fetch ticker
+6   Task manager
 q   Quit
 """)
 # """
@@ -71,6 +72,7 @@ q   Quit
 # 3   资金费数据
 # 4   账户数据
 # 5   记录行情
+# 6   任务管理器
 # q   退出
 # """
 
@@ -132,6 +134,26 @@ b   Back
 # 5   删除记录
 # b   返回
 # """
+
+manager_menu = _("""
+1   Task list
+2   Remove completed tasks
+3   Stop all
+b   Back""")
+# """
+# 1   任务列表
+# 2   清理已完成
+# 3   全部停止
+# b   返回"""
+
+manager_sub_menu = _("""
+1   Cancel
+2   Modify attribute
+b   Back""")
+# """
+# 1   取消
+# 2   更改属性
+# b   返回"""
 
 coin_current_next = _('Crypto    Current  Predicted')
 # '币种      当期资金费   预测资金费'

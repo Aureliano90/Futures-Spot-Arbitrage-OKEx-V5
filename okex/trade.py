@@ -6,9 +6,8 @@ import asyncio
 
 
 class TradeAPI(Client):
-
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
-        Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
+        super(TradeAPI, self).__init__(api_key, api_secret_key, passphrase, use_server_time, test)
 
     SPOT_MARGIN_SEMAPHORE = REST_Semaphore(60, 2)
 

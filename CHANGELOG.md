@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.97.0] - April 26th, 2022
+
+### Added
+
+* Task manager
+
+### Changed
+
+* From `multiprocessing` to `asyncio`
+
 ## [0.96.6] - April 19th, 2022
 
 ### Changed

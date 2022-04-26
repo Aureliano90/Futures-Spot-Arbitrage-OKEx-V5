@@ -5,9 +5,8 @@ from src.utils import REST_Semaphore
 
 
 class AssetAPI(Client):
-
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
-        Client.__init__(self, api_key, api_secret_key, passphrase, use_server_time, test)
+        super(AssetAPI, self).__init__(api_key, api_secret_key, passphrase, use_server_time, test)
 
     ASSET_BALANCE_SEMAPHORE = REST_Semaphore(6, 1)
 
