@@ -13,10 +13,10 @@ setup(
     install_requires=['requests~=2.27.1',
                       'httpcore~=0.14.7',
                       'httpx[http2]~=0.22.0',
-                      'pymongo~=4.1.0',
+                      'pymongo~=4.1.1',
                       'matplotlib~=3.5.1',
                       'numpy~=1.22.3',
-                      'websockets~=10.2'],
+                      'websockets~=10.3'],
     entry_points={
         'console_scripts':
             'ok = main:main'

@@ -3,13 +3,11 @@ from src.codedict import codes
 
 
 class OkexException(Exception):
-
     def __init__(self):
         super().__init__(self)
 
 
 class OkexAPIException(OkexException):
-
     def __init__(self, response):
         print(f'{response.text}, {response.status_code}')
         self.code = 0
@@ -34,7 +32,6 @@ class OkexAPIException(OkexException):
 
 
 class OkexRequestException(OkexException):
-
     def __init__(self, message):
         self.message = message
 
@@ -43,7 +40,6 @@ class OkexRequestException(OkexException):
 
 
 class OkexParamsException(OkexException):
-
     def __init__(self, message):
         self.message = message
 

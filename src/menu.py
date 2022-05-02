@@ -3,9 +3,12 @@ from src.funding_rate import FundingRate
 from src.monitor import Monitor
 from src.open_position import AddPosition
 from src.trading_data import Stat
+from src.okex_api import *
 from src.lang import *
 from src.utils import *
 import src.record as record
+
+loop = asyncio.get_event_loop()
 
 
 async def monitor_all(accountid: int):
@@ -190,11 +193,6 @@ async def get_coinlist(accountid: int):
     return [coinlist[n] for n in range(len(coinlist)) if gather_result[n]]
 
 
-loop = asyncio.get_event_loop()
-
-from src.okex_api import *
-
-
 @call_coroutine
 async def main_menu(accountid: int):
     """主菜单
@@ -208,7 +206,6 @@ async def main_menu(accountid: int):
             if command == '1':
                 _ = await Monitor(coin='BTC', accountid=accountid)
                 await gather(_.check_account_level(), _.check_position_mode())
-                # print('monitor_all')
                 await monitor_all(accountid)
                 await asyncio.sleep(2)
             elif command == '2':

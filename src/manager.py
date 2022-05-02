@@ -9,9 +9,10 @@ class Manager:
 
     def submit(self, coro):
         @functools.wraps(coro)
-        def wrapper(api, *args):
+        def wrapper(api, *args, **kwargs):
             async def create_task():
-                task = self.loop.create_task(coro(api, *args), name=f"{type(api).__name__}({api.coin}).{coro.__name__}")
+                task = self.loop.create_task(coro(api, *args, **kwargs),
+                                             name=f"{type(api).__name__}({api.coin}).{coro.__name__}")
                 self.tasks[task] = api
                 return task
 
@@ -62,9 +63,12 @@ class Manager:
                     command = await ainput(self.loop)
                     if command == 'b':
                         break
-                    idx = int(command)
-                    if idx - 1 in range(len(self.tasks)):
-                        await self.sub_menu(idx)
+                    try:
+                        idx = int(command)
+                        if idx - 1 in range(len(self.tasks)):
+                            await self.sub_menu(idx)
+                    except:
+                        pass
             elif command == '2':
                 await self.clear()
             elif command == '3':
@@ -84,7 +88,10 @@ class Manager:
                 await self.cancel(idx)
                 return
             elif command == '2':
-                pass
+                try:
+                    raise NotImplemented('Modify attribute')
+                except Exception as exc:
+                    print(exc)
             elif command == 'b':
                 return
             else:

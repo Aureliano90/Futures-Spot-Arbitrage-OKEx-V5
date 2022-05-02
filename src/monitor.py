@@ -107,7 +107,7 @@ class Monitor(OKExAPI):
         time_to_accelerate = None
         accelerated = False
         adding = reducing = False
-        add_task: Optional[asyncio.Task] = None
+        add_task: Any = None
         reduce_task = add_task
         usdt_size = 0
         margin_reducible = True
@@ -163,7 +163,8 @@ class Monitor(OKExAPI):
                         if not await self.is_hedged():
                             spot, swap = await gather(self.spot_position(), self.swap_position())
                             fprint(lang.hedge_fail.format(self.coin, spot, swap))
-                            exit()
+                            self.exitFlag = True
+                            continue
                         fprint(lang.approaching_liquidation)
                         mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='自动减仓')
                         Ledger.mycol.insert_one(mydict)
@@ -187,7 +188,8 @@ class Monitor(OKExAPI):
                         if not await self.is_hedged():
                             spot, swap = await gather(self.spot_position(), self.swap_position())
                             fprint(lang.hedge_fail.format(self.coin, spot, swap))
-                            exit()
+                            self.exitFlag = True
+                            continue
                         fprint(lang.too_much_margin)
                         mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='自动加仓')
                         Ledger.mycol.insert_one(mydict)
@@ -259,7 +261,7 @@ class Monitor(OKExAPI):
                             # swap_position = await self.swap_position()
                             # target_size = swap_position * (liquidation_price / last / (1 + 1 / leverage) - 1)
                             if (usdt_size := usdt_size - add_task.result()) > 0:
-                                add_task = create_task(addPosition.add(usdt_size=usdt_size, price_diff=open_pd))
+                                add_task = await addPosition.add(usdt_size=usdt_size, price_diff=open_pd)
                                 adding = True
                                 time_to_accelerate = datetime.utcnow() + timedelta(hours=2)
                     else:

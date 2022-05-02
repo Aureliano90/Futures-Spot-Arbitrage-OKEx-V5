@@ -77,7 +77,7 @@ class OKExAPI(object):
                 self.tick_size = float(self.swap_info['tickSz'])
                 self.tick_decimals = num_decimals(self.swap_info['tickSz'])
             except Exception as e:
-                fprint(f'{self.__name__}__await__({self.coin}) error')
+                fprint(f'{type(self).__name__}__await__({self.coin}) error')
                 fprint(e)
                 self.exist = False
                 fprint(lang.nonexistent_crypto.format(self.coin))

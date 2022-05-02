@@ -86,6 +86,10 @@ class Client(object):
                 try:
                     json_res = response.json()
                 except ValueError:
+                    if 'cloudflare' in response.text:
+                        retry += 1
+                        await asyncio.sleep(30)
+                        continue
                     raise exceptions.OkexRequestException(f'Invalid Response: {response.text}')
                 # Endpoint request timeout
                 if hasattr(json_res, 'code') and json_res['code'] == '50004':
