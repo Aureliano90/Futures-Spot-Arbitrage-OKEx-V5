@@ -215,6 +215,7 @@ async def main_menu(accountid: int):
             elif command == '4':
                 await account_menu(accountid)
             elif command == '5':
+                multiprocessing.set_start_method('spawn', True)
                 process = multiprocessing.Process(target=record.record_ticker)
                 process.start()
                 process.join(0.2)
@@ -233,7 +234,7 @@ async def main_menu(accountid: int):
         await FundingRate.aclose()
 
 
-async def get_crypto(accountid: int) -> tuple[str, Monitor]:
+async def get_crypto(accountid: int):
     while True:
         coin = (await ainput(loop, input_crypto)).upper()
         mon = await Monitor(coin=coin, accountid=accountid)
