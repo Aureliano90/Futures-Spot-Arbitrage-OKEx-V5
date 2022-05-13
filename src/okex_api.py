@@ -201,11 +201,21 @@ class OKExAPI(object):
 
     async def spot_trade_fee(self):
         spot_trade_fee = await self.accountAPI.get_trade_fee(instType='SPOT', instId=self.spot_ID)
-        return float(spot_trade_fee['taker'])
+        if spot_trade_fee['taker']:
+            return float(spot_trade_fee['taker'])
+        elif spot_trade_fee['takerU']:
+            return float(spot_trade_fee['takerU'])
+        else:
+            raise ValueError
 
     async def swap_trade_fee(self):
         swap_trade_fee = await self.accountAPI.get_trade_fee(instType='SWAP', uly=self.spot_ID)
-        return float(swap_trade_fee['taker'])
+        if swap_trade_fee['taker']:
+            return float(swap_trade_fee['taker'])
+        elif swap_trade_fee['takerU']:
+            return float(swap_trade_fee['takerU'])
+        else:
+            raise ValueError
 
     async def get_lever(self):
         setting = await self.accountAPI.get_leverage(self.swap_ID, 'isolated')
