@@ -8,24 +8,17 @@ class OkexException(Exception):
 
 
 class OkexAPIException(OkexException):
-    def __init__(self, response):
-        print(f'{response.text}, {response.status_code}')
+    def __init__(self, status, text, json):
+        print(f'{text}, {status}')
         self.code = 0
-        try:
-            json_res = response.json()
-        except ValueError:
-            self.message = f'Invalid JSON error message from OKEx: {response.text}'
+        if 'code' in json.keys():
+            self.code = json['code']
+            self.message = codes[self.code]
         else:
-            if 'code' in json_res.keys():
-                self.code = json_res['code']
-                self.message = codes[self.code]
-            else:
-                self.code = 'None'
-                self.message = 'System error'
+            self.code = 'None'
+            self.message = 'System error'
 
-        self.status_code = response.status_code
-        self.response = response
-        self.request = getattr(response, 'request', None)
+        self.status_code = status
 
     def __str__(self):  # pragma: no cover
         return f'API Request Error(error_code={self.code}): {self.message}'

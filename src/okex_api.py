@@ -20,16 +20,16 @@ class OKExAPI(object):
     api_initiated = False
     __key = None
 
-    def __init__(self, coin: str = None, accountid=3):
-        self.accountid = accountid
+    def __init__(self, coin: str = None, account=3):
+        self.account = account
 
         if not OKExAPI.api_initiated:
-            apikey = Key(accountid)
+            apikey = Key(account)
             api_key = apikey.api_key
             secret_key = apikey.secret_key
             passphrase = apikey.passphrase
             OKExAPI.__key = dict(api_key=api_key, passphrase=passphrase, secret_key=secret_key)
-            if accountid == 3:
+            if account == 3:
                 OKExAPI.accountAPI = AccountAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.tradeAPI = TradeAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.publicAPI = PublicAPI(test=True)
@@ -229,9 +229,9 @@ class OKExAPI(object):
         last = holding['last']
         position = - holding['pos'] * float(self.swap_info['ctVal'])
         size = position * last + margin + upl
-        portfolio = Portfolio.mycol.find_one(dict(account=self.accountid, instrument=self.coin))
+        portfolio = Portfolio.mycol.find_one(dict(account=self.account, instrument=self.coin))
         portfolio['size'] = size
-        Portfolio.mycol.find_one_and_replace(dict(account=self.accountid, instrument=self.coin), portfolio)
+        Portfolio.mycol.find_one_and_replace(dict(account=self.account, instrument=self.coin), portfolio)
         return portfolio
 
     async def add_margin(self, transfer_amount):

@@ -65,7 +65,7 @@ or
 
 Install [MongoDB](https://www.mongodb.com/try/download/community).
 
-Paste API keys in `config.py` (use account 3 for demo trading).
+Store API keys according to environment variables in `config.py` (use account 3 for demo trading).
 
 Set `language='cn'` for Chinese and `language='en'` for English in `config.py`.
 
@@ -85,7 +85,8 @@ The author does not assume responsibilities for the use of this program, nor is 
 
 ## License
 
-This program is licensed under the AGPL-3.0 License. See [LICENSE](https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/blob/main/LICENSE) for full disclosure.
+This program is licensed under the AGPL-3.0 License.
+See [LICENSE](https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/blob/main/LICENSE) for full disclosure.
 
 Permissions of this license are conditioned on
 making available complete source code of licensed works and modifications, which include larger works using a licensed

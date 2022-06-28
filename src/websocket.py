@@ -308,8 +308,13 @@ async def subscribe(url, api_key, passphrase, secret_key, channels, verbose=Fals
     await unsubscribe(url, api_key, passphrase, secret_key, channels)
 
 
+loop = asyncio.get_event_loop()
+trade_param = loop.create_future()
+
+
 # trade
-async def trade(url, api_key, passphrase, secret_key, trade_param, verbose=False):
+async def trade(url, api_key, passphrase, secret_key, verbose=False):
+    global trade_param
     while True:
         try:
             async with websockets.connect(url) as ws:
@@ -323,13 +328,15 @@ async def trade(url, api_key, passphrase, secret_key, trade_param, verbose=False
                 if verbose:
                     fprint(res)
 
-                # trade
-                sub_str = json.dumps(trade_param)
-                await ws.send(sub_str)
-                if verbose:
-                    fprint(f"send: {sub_str}")
-
                 while True:
+                    # trade
+                    await trade_param
+                    sub_str = json.dumps(trade_param.result())
+                    trade_param = loop.create_future()
+                    await ws.send(sub_str)
+                    if verbose:
+                        fprint(f"send: {sub_str}")
+
                     try:
                         res = await asyncio.wait_for(ws.recv(), timeout=25)
                     except (asyncio.TimeoutError, websockets.ConnectionClosed) as e:
@@ -403,15 +410,15 @@ passphrase = ''
 
 # WebSocket公共频道 public channels
 # 实盘 real trading
-url = "wss://ws.okex.com:8443/ws/v5/public"
+url = "wss://ws.okx.com:8443/ws/v5/public"
 # 模拟盘 demo trading
-# url = "wss://ws.okex.com:8443/ws/v5/public?brokerId=9999"
+# url = "wss://ws.okx.com:8443/ws/v5/public?brokerId=9999"
 
 # WebSocket私有频道 private channels
 # 实盘 real trading
-# url = "wss://ws.okex.com:8443/ws/v5/private"
+# url = "wss://ws.okx.com:8443/ws/v5/private"
 # 模拟盘 demo trading
-# url = "wss://ws.okex.com:8443/ws/v5/private?brokerId=9999"
+# url = "wss://ws.okx.com:8443/ws/v5/private?brokerId=9999"
 
 '''
 公共频道 public channel
@@ -524,7 +531,6 @@ if __name__ == '__main__':
     loop.run_until_complete(print_yield(subscribe, url, api_key, passphrase, secret_key, channels, True))
 
     # 交易（下单，撤单，改单等）trade
-    trade_param = {}
-    loop.run_until_complete(print_yield(trade, url, api_key, passphrase, secret_key, trade_param, True))
+    loop.run_until_complete(print_yield(trade, url, api_key, passphrase, secret_key, True))
 
     loop.close()

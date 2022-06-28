@@ -5,8 +5,8 @@ class ReducePosition(OKExAPI):
     """平仓、减仓功能类
     """
 
-    def __init__(self, coin=None, accountid=3):
-        super().__init__(coin=coin, accountid=accountid)
+    def __init__(self, coin=None, account=3):
+        super().__init__(coin=coin, account=account)
         self.open_price = 0.
         self.swap_balance = 0.
         self.swap_position = 0.
@@ -157,7 +157,7 @@ class ReducePosition(OKExAPI):
                 target_position_prev = self.target_position
                 self.target_position -= swap_filled
                 fprint(lang.hedge_success.format(swap_filled, self.coin), lang.remaining.format(self.target_position))
-                mydict = dict(account=self.accountid, instrument=self.coin, op='reduce',
+                mydict = dict(account=self.account, instrument=self.coin, op='reduce',
                               size=target_position_prev)
                 Record('OP').mycol.find_one_and_update(mydict, {'$set': {'size': self.target_position}})
             else:
@@ -208,7 +208,7 @@ class ReducePosition(OKExAPI):
 
         fprint(lang.amount_to_reduce.format(self.coin, self.target_position))
         OP = Record('OP')
-        mydict = dict(account=self.accountid, instrument=self.coin, op='reduce', size=self.target_position)
+        mydict = dict(account=self.account, instrument=self.coin, op='reduce', size=self.target_position)
         OP.insert(mydict)
 
         self.spot_filled_sum = 0.
@@ -295,15 +295,15 @@ class ReducePosition(OKExAPI):
         if self.spot_notional:
             Ledger = Record('Ledger')
             timestamp = datetime.utcnow()
-            mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货卖出',
+            mydict1 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='现货卖出',
                            spot_notional=self.spot_notional)
-            mydict2 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='合约平空',
+            mydict2 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='合约平空',
                            swap_notional=self.swap_notional)
-            mydict3 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='手续费',
+            mydict3 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='手续费',
                            fee=self.fee_total)
             Ledger.mycol.insert_many([mydict1, mydict2, mydict3])
 
-        mydict = dict(account=self.accountid, instrument=self.coin, op='reduce')
+        mydict = dict(account=self.account, instrument=self.coin, op='reduce')
         OP.delete(mydict)
         await self.update_portfolio()
         fprint(lang.reduced_amount.format(self.swap_filled_sum, self.coin))
@@ -338,7 +338,7 @@ class ReducePosition(OKExAPI):
 
         fprint(lang.amount_to_close.format(self.coin, self.target_position))
         OP = Record('OP')
-        mydict = dict(account=self.accountid, instrument=self.coin, op='close', size=self.target_position)
+        mydict = dict(account=self.account, instrument=self.coin, op='close', size=self.target_position)
         OP.insert(mydict)
 
         self.spot_filled_sum = 0.
@@ -449,19 +449,19 @@ class ReducePosition(OKExAPI):
         if self.spot_notional:
             Ledger = Record('Ledger')
             timestamp = datetime.utcnow()
-            mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货卖出',
+            mydict1 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='现货卖出',
                            spot_notional=self.spot_notional)
-            mydict2 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='合约平空',
+            mydict2 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='合约平空',
                            swap_notional=self.swap_notional)
-            mydict3 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='手续费',
+            mydict3 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='手续费',
                            fee=self.fee_total)
-            mydict4 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='平仓',
+            mydict4 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='平仓',
                            position=self.usdt_release)
             Ledger.mycol.insert_many([mydict1, mydict2, mydict3, mydict4])
 
-        mydict = dict(account=self.accountid, instrument=self.coin, op='close')
+        mydict = dict(account=self.account, instrument=self.coin, op='close')
         OP.delete(mydict)
-        Record('Portfolio').mycol.delete_one(dict(account=self.accountid, instrument=self.coin))
+        Record('Portfolio').mycol.delete_one(dict(account=self.account, instrument=self.coin))
         fprint(lang.closed_amount.format(self.swap_filled_sum, self.coin))
         if self.usdt_release:
             fprint(lang.spot_recoup.format(self.usdt_release))

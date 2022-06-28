@@ -18,12 +18,12 @@ async def monitor_all(accountid: int):
     """
     for coin in await get_coinlist(accountid):
         await print_apy(coin, accountid)
-        mon = await Monitor(coin=coin, accountid=accountid)
+        mon = await Monitor(coin=coin, account=accountid)
         await mon.watch()
 
 
 async def print_apy(coin: str, accountid: int):
-    mon = await Monitor(coin=coin, accountid=accountid)
+    mon = await Monitor(coin=coin, account=accountid)
     fundingRate = FundingRate()
     aprs = gather(mon.apr(1), mon.apr(7), mon.apr())
     (current_rate, next_rate), aprs = await gather(fundingRate.current_next(mon.swap_ID), aprs)
@@ -43,7 +43,7 @@ async def profit_all(accountid: int):
     coinlist = await get_coinlist(accountid)
     for coin in coinlist:
         stat = Stat(coin)
-        mon = await Monitor(coin=coin, accountid=accountid)
+        mon = await Monitor(coin=coin, account=accountid)
         gather_result = await gather(mon.apr(1), mon.apr(7), mon.apr())
         fprint(apr_message.format(coin, *gather_result))
         funding = stat.history_funding(accountid)
@@ -106,7 +106,7 @@ async def back_track_all(accountid: int):
     """
     Ledger = record.Record('Ledger')
     coinlist = await get_coinlist(accountid)
-    mon = await Monitor(accountid=accountid)
+    mon = await Monitor(account=accountid)
     # API results
     api_ledger = await get_with_limit(mon.accountAPI.get_archive_ledger, tag='billId', max=100, limit=0,
                                       instType='SWAP', ccy='USDT', type='8')
@@ -144,7 +144,7 @@ async def close_all(accountid: int):
             close_pd = recent['avg'] - 2 * recent['std']
             fprint(funding_close.format(coin, await fundingRate.current(coin + '-USDT-SWAP'),
                                         recent['avg'], recent['std'], recent['min'], close_pd))
-            reducePosition = await ReducePosition(coin=coin, accountid=accountid)
+            reducePosition = await ReducePosition(coin=coin, account=accountid)
             await reducePosition.close(close_pd, 2)
         else:
             fprint(fetch_ticker_first)
@@ -161,7 +161,7 @@ async def import_position(accountid: int, coin: str):
         mydict = dict(account=accountid, instrument=coin, timestamp=timestamp, title='开仓')
         record.Record('Ledger').insert(mydict)
         record.Record('Portfolio').mycol.insert_one(dict(account=accountid, instrument=coin, leverage=leverage))
-        addPosition = await AddPosition(coin=coin, accountid=accountid)
+        addPosition = await AddPosition(coin=coin, account=accountid)
         await addPosition.adjust_swap_lever(leverage)
         fprint(imported)
         break
@@ -187,7 +187,7 @@ async def get_coinlist(accountid: int):
             else:
                 break
 
-    mon = await Monitor(accountid=accountid)
+    mon = await Monitor(account=accountid)
     task_list = [mon.position_exist(n + '-USDT-SWAP') for n in coinlist]
     gather_result = await gather(*task_list)
     return [coinlist[n] for n in range(len(coinlist)) if gather_result[n]]
@@ -204,7 +204,7 @@ async def main_menu(accountid: int):
         fprint(f'{accountid=}')
         while (command := await ainput(loop, main_menu_text)) != 'q':
             if command == '1':
-                _ = await Monitor(coin='BTC', accountid=accountid)
+                _ = await Monitor(coin='BTC', account=accountid)
                 await gather(_.check_account_level(), _.check_position_mode())
                 await monitor_all(accountid)
                 await asyncio.sleep(2)
@@ -237,7 +237,7 @@ async def main_menu(accountid: int):
 async def get_crypto(accountid: int):
     while True:
         coin = (await ainput(loop, input_crypto)).upper()
-        mon = await Monitor(coin=coin, accountid=accountid)
+        mon = await Monitor(coin=coin, account=accountid)
         if mon.exist:
             break
         else:
@@ -261,7 +261,7 @@ async def crypto_menu(accountid: int):
                     assert leverage > 0
                 except:
                     continue
-                addPosition = await AddPosition(coin=coin, accountid=accountid)
+                addPosition = await AddPosition(coin=coin, account=accountid)
                 stat = Stat(coin)
                 hours = 2
                 if recent := stat.recent_open_stat(hours):
@@ -279,7 +279,7 @@ async def crypto_menu(accountid: int):
                     assert usdt >= 0
                 except:
                     continue
-                reducePosition = await ReducePosition(coin=coin, accountid=accountid)
+                reducePosition = await ReducePosition(coin=coin, account=accountid)
                 stat = Stat(coin)
                 hours = 2
                 if recent := stat.recent_close_stat(hours):
@@ -297,11 +297,11 @@ async def crypto_menu(accountid: int):
                     assert leverage > 0
                 except:
                     continue
-                addPosition = await AddPosition(coin=coin, accountid=accountid)
+                addPosition = await AddPosition(coin=coin, account=accountid)
                 await addPosition.adjust_swap_lever(leverage)
                 break
         elif command == '5':
-            reducePosition = await ReducePosition(coin=coin, accountid=accountid)
+            reducePosition = await ReducePosition(coin=coin, account=accountid)
             stat = Stat(coin)
             hours = 2
             if recent := stat.recent_close_stat(hours):
@@ -396,7 +396,7 @@ async def account_menu(accountid: int):
             await cumulative_profit(accountid=accountid)
         elif command == '5':
             coin = (await ainput(loop, input_crypto)).upper()
-            mon = await Monitor(coin=coin, accountid=accountid)
+            mon = await Monitor(coin=coin, account=accountid)
             if mon.exist:
                 existed, swap_position = await gather(mon.position_exist(), mon.swap_position())
                 if existed:

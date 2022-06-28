@@ -5,8 +5,8 @@ class AddPosition(OKExAPI):
     """建仓、加仓功能类
     """
 
-    def __init__(self, coin=None, accountid=3):
-        super().__init__(coin=coin, accountid=accountid)
+    def __init__(self, coin=None, account=3):
+        super().__init__(coin=coin, account=account)
 
     async def hedge(self):
         """加仓以达到完全对冲
@@ -80,7 +80,7 @@ class AddPosition(OKExAPI):
 
             notional_lever = float(f'{notional_lever:.2f}')
             if await self.set_swap_lever(notional_lever):
-                Record('Portfolio').mycol.find_one_and_update(dict(account=self.accountid, instrument=self.coin),
+                Record('Portfolio').mycol.find_one_and_update(dict(account=self.account, instrument=self.coin),
                                                               {'$set': {'leverage': leverage}}, upsert=True)
 
             holding = await self.swap_holding()
@@ -139,7 +139,7 @@ class AddPosition(OKExAPI):
             return 0.
 
         OP = Record('OP')
-        mydict = dict(account=self.accountid, instrument=self.coin, op='add', size=target_position)
+        mydict = dict(account=self.account, instrument=self.coin, op='add', size=target_position)
         OP.insert(mydict)
 
         channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
@@ -340,7 +340,7 @@ class AddPosition(OKExAPI):
                                     target_position -= swap_filled
                                     fprint(lang.hedge_success.format(swap_filled, self.coin),
                                            lang.remaining.format(target_position))
-                                    mydict = dict(account=self.accountid, instrument=self.coin, op='add',
+                                    mydict = dict(account=self.account, instrument=self.coin, op='add',
                                                   size=target_position_prev)
                                     OP.mycol.find_one_and_update(mydict, {'$set': {'size': target_position}})
                                 else:
@@ -365,15 +365,15 @@ class AddPosition(OKExAPI):
         if spot_notional:
             Ledger = Record('Ledger')
             timestamp = datetime.utcnow()
-            mydict1 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='现货买入',
+            mydict1 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='现货买入',
                            spot_notional=spot_notional)
-            mydict2 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='合约开空',
+            mydict2 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='合约开空',
                            swap_notional=swap_notional)
-            mydict3 = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='手续费',
+            mydict3 = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='手续费',
                            fee=fee_total)
             Ledger.mycol.insert_many([mydict1, mydict2, mydict3])
 
-        mydict = dict(account=self.accountid, instrument=self.coin, op='add')
+        mydict = dict(account=self.account, instrument=self.coin, op='add')
         OP.delete(mydict)
         await self.update_portfolio()
         fprint(lang.added_amount.format(swap_filled_sum, self.coin))
@@ -397,7 +397,7 @@ class AddPosition(OKExAPI):
         :rtype: float
         """
         Ledger = Record('Ledger')
-        result = Ledger.find_last(dict(account=self.accountid, instrument=self.coin))
+        result = Ledger.find_last(dict(account=self.account, instrument=self.coin))
         if result and result['title'] != '平仓':
             fprint(lang.position_exist.format(await self.swap_position(), self.coin))
             return await self.add(usdt_size=usdt_size, price_diff=price_diff, accelerate_after=accelerate_after)
@@ -408,10 +408,10 @@ class AddPosition(OKExAPI):
                 usdt_size = last * target_size * (1 + 1 / leverage)
             if usdt_balance >= usdt_size:
                 timestamp = datetime.utcnow()
-                mydict = dict(account=self.accountid, instrument=self.coin, timestamp=timestamp, title='开仓')
+                mydict = dict(account=self.account, instrument=self.coin, timestamp=timestamp, title='开仓')
                 Ledger.insert(mydict)
                 Record('Portfolio').mycol.insert_one(
-                    dict(account=self.accountid, instrument=self.coin, leverage=leverage))
+                    dict(account=self.account, instrument=self.coin, leverage=leverage))
                 await self.set_swap_lever(leverage)
                 return await self.add(usdt_size=usdt_size, price_diff=price_diff, accelerate_after=accelerate_after)
             else:

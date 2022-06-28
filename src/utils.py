@@ -6,8 +6,8 @@ import multiprocessing
 from datetime import datetime, timedelta, timezone
 import math
 import time
-import asyncio
-import httpx
+import aiohttp
+from src.looper import *
 import src.lang as lang
 
 logfile = open("./log.txt", "a", encoding="utf-8")
