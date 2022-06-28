@@ -14,11 +14,14 @@ manager = Manager()
 
 @call_coroutine
 # @debug_timer
-class OKExAPI(object):
+class OKExAPI:
     """基本OKEx功能类
     """
     api_initiated = False
     __key = None
+    accountAPI: AccountAPI
+    tradeAPI: TradeAPI
+    publicAPI: PublicAPI
 
     def __init__(self, coin: str = None, account=3):
         self.account = account

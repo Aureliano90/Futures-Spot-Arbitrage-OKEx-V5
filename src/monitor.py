@@ -119,7 +119,8 @@ class Monitor(OKExAPI):
         funding_time = FundingTime()
 
         async for event in EventChain(ten_seconds, one_hour, funding_time):
-            if self.exitFlag: break
+            if self.exitFlag:
+                break
             try:
                 timestamp = datetime.utcnow()
                 # Record funding fees

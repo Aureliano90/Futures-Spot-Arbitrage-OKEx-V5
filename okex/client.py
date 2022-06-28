@@ -52,7 +52,7 @@ class Client:
 
                 body = json.dumps(params) if method == c.POST else ""
                 sign = utils.sign(utils.pre_hash(timestamp, method, request_path, str(body)), self.API_SECRET_KEY)
-                header = utils.get_header(self.API_KEY, str(sign), timestamp, self.PASSPHRASE)
+                header = utils.get_header(self.API_KEY, sign.decode('utf8'), timestamp, self.PASSPHRASE)
 
                 if self.test:
                     header['x-simulated-trading'] = '1'
@@ -85,9 +85,10 @@ class Client:
                         await asyncio.sleep(30)
                         continue
                     try:
+                        text = await response.text()
                         json_res = await response.json()
                     except ValueError:
-                        if 'cloudflare' in (text := await response.text()):
+                        if 'cloudflare' in text:
                             await asyncio.sleep(backoff)
                             retry += 1
                             backoff *= multiplier
@@ -108,8 +109,7 @@ class Client:
 
                     # exception handle
                     if not str(status).startswith('2'):
-                        print(f'Client error: {request_path}')
-                        print(f'{status=}')
+                        print(f'Client error {status}: {request_path}')
                         raise exceptions.OkexAPIException(status, text, json_res)
 
         return json_res

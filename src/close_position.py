@@ -227,6 +227,8 @@ class ReducePosition(OKExAPI):
         while self.target_position >= self.contract_val and not self.exitFlag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels):
+                if self.exitFlag:
+                    break
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
                     Stat = trading_data.Stat(self.coin)
@@ -357,6 +359,8 @@ class ReducePosition(OKExAPI):
         while self.target_position > 0 and not self.exitFlag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
+                if self.exitFlag:
+                    break
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
                     Stat = trading_data.Stat(self.coin)

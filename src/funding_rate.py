@@ -9,7 +9,13 @@ from src.lang import *
 
 # @debug_timer
 class FundingRate:
-    publicAPI = PublicAPI()
+    publicAPI: PublicAPI
+
+    def __init__(self, account=3):
+        if account == 3:
+            FundingRate.publicAPI = PublicAPI(test=True)
+        else:
+            FundingRate.publicAPI = PublicAPI()
 
     @staticmethod
     async def aclose():

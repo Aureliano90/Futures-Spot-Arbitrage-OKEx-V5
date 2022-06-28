@@ -11,9 +11,15 @@ class Manager:
         @functools.wraps(coro)
         def wrapper(api, *args, **kwargs):
             async def create_task():
-                task = self.loop.create_task(coro(api, *args, **kwargs),
-                                             name=f"{type(api).__name__}({api.coin}).{coro.__name__}")
+                name = f"{type(api).__name__}({api.coin}).{coro.__name__}"
+                for t in self.tasks:
+                    if t.get_name() == name:
+                        task = self.loop.create_future()
+                        task.set_result(None)
+                        return task
+                task = self.loop.create_task(coro(api, *args, **kwargs), name=name)
                 self.tasks[task] = api
+                task.add_done_callback(self.clear)
                 return task
 
             return create_task()
@@ -39,7 +45,7 @@ class Manager:
                     self.tasks[task].exitFlag = True
             await asyncio.sleep(0.01)
 
-    async def clear(self):
+    def clear(self, _task: asyncio.Task):
         keys = list(self.tasks.keys())
         for task in keys:
             if task.done():
@@ -70,7 +76,7 @@ class Manager:
                     except:
                         pass
             elif command == '2':
-                await self.clear()
+                self.clear()
             elif command == '3':
                 await self.stop()
             elif command == 'b':

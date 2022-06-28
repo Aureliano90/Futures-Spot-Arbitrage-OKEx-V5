@@ -266,9 +266,14 @@ async def crypto_menu(accountid: int):
                 hours = 2
                 if recent := stat.recent_open_stat(hours):
                     open_pd = recent['avg'] + 2 * recent['std']
-                    await addPosition.open(usdt_size=usdt, leverage=leverage, price_diff=open_pd,
-                                           accelerate_after=hours)
-                    await mon.watch()
+                    add_task = await addPosition.open(usdt_size=usdt, leverage=leverage, price_diff=open_pd,
+                                                      accelerate_after=hours)
+
+                    async def _():
+                        await add_task
+                        await mon.watch()
+
+                    loop.create_task(_())
                 else:
                     fprint(fetch_ticker_first)
                 break
