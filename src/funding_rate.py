@@ -19,7 +19,8 @@ class FundingRate:
 
     @staticmethod
     async def aclose():
-        await FundingRate.publicAPI.aclose()
+        if hasattr(FundingRate, 'publicAPI'):
+            await FundingRate.publicAPI.aclose()
 
     async def get_instruments_ID(self):
         """获取合约币种列表

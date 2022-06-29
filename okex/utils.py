@@ -5,7 +5,7 @@ from . import consts as c
 
 
 def sign(message, secret_key):
-    mac = hmac.new(bytes(secret_key, encoding='utf8'), bytes(message, encoding='utf-8'), digestmod='sha256')
+    mac = hmac.new(bytes(secret_key, encoding='utf8'), bytes(message, encoding='utf8'), digestmod='sha256')
     d = mac.digest()
     return base64.b64encode(d)
 
@@ -25,7 +25,7 @@ def get_header(api_key, header_sign, timestamp, passphrase):
 
 
 def parse_params_to_str(params):
-    return '?' + '&'.join([f'{key}={value}' for key, value in params.items()])
+    return '' if not params else '?' + '&'.join([f'{key}={value}' for key, value in params.items()])
 
 
 def get_timestamp():
