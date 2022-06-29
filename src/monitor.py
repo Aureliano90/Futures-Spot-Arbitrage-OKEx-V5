@@ -102,7 +102,6 @@ class Monitor(OKExAPI):
                                                                          self.liquidation_price())
         trade_fee = spot_trade_fee + swap_trade_fee
 
-        updated = False
         task_started = False
         time_to_accelerate = None
         accelerated = False

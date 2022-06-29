@@ -18,7 +18,8 @@ class Looper:
         self.waiter = self.loop.create_future()
 
     def awake(self):
-        self.waiter.set_result(None)
+        if not self.waiter.done():
+            self.waiter.set_result(None)
 
     async def __aiter__(self):
         self.loop.call_at(self.when, self.awake)

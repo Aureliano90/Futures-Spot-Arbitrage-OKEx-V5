@@ -7,7 +7,7 @@ import json
 
 
 class Client:
-    client = aiohttp.ClientSession(base_url=c.API_URL)
+    client = aiohttp.ClientSession(base_url=c.API_URL, timeout=aiohttp.ClientTimeout(5))
 
     def __init__(self, api_key, api_secret_key, passphrase, use_server_time=False, test=False):
         self.API_KEY = api_key
@@ -25,15 +25,14 @@ class Client:
             res_json = await response.json()
             if response.status == 200:
                 t = datetime.utcfromtimestamp(int(res_json['data'][0]['ts']) / 1000)
-                t = t.isoformat("T", "milliseconds")
-                return t + "Z"
+                t = t.isoformat('T', 'milliseconds')
+                return t + 'Z'
             else:
-                return ""
+                return ''
 
     async def _request(self, method, request_path, params):
         if method == c.GET:
-            request_path = request_path + utils.parse_params_to_str(params)
-        url = request_path
+            request_path += utils.parse_params_to_str(params)
 
         success = False
         retry = 0
@@ -50,7 +49,7 @@ class Client:
                     # 获取本地时间
                     timestamp = utils.get_timestamp()
 
-                body = json.dumps(params) if method == c.POST else ""
+                body = json.dumps(params) if method == c.POST else ''
                 sign = utils.sign(utils.pre_hash(timestamp, method, request_path, str(body)), self.API_SECRET_KEY)
                 header = utils.get_header(self.API_KEY, sign.decode('utf8'), timestamp, self.PASSPHRASE)
 
@@ -60,13 +59,13 @@ class Client:
                 # send request
                 if method == c.GET:
                     try:
-                        response = await self.client.get(url, headers=header)
+                        response = await self.client.get(request_path, headers=header)
                     except aiohttp.ClientTimeout:
                         continue
                 elif method == c.POST:
-                    response = await self.client.post(url, data=body, headers=header)
+                    response = await self.client.post(request_path, data=body, headers=header)
                 elif method == c.DELETE:
-                    response = await self.client.delete(url, headers=header)
+                    response = await self.client.delete(request_path, headers=header)
                 else:
                     raise ValueError
             except aiohttp.ClientError as e:
