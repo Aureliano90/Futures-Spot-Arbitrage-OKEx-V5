@@ -60,7 +60,7 @@ class Client:
                 if method == c.GET:
                     try:
                         response = await self.client.get(request_path, headers=header)
-                    except aiohttp.ClientTimeout:
+                    except aiohttp.ClientError:
                         continue
                 elif method == c.POST:
                     response = await self.client.post(request_path, data=body, headers=header)
