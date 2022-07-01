@@ -60,7 +60,7 @@ class Client:
                 if method == c.GET:
                     try:
                         response = await self.client.get(request_path, headers=header)
-                    except aiohttp.ClientError:
+                    except (aiohttp.ClientError, asyncio.TimeoutError):
                         continue
                 elif method == c.POST:
                     response = await self.client.post(request_path, data=body, headers=header)
@@ -68,7 +68,7 @@ class Client:
                     response = await self.client.delete(request_path, headers=header)
                 else:
                     raise ValueError
-            except aiohttp.ClientError as e:
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 print(e)
                 await asyncio.sleep(backoff)
                 retry += 1

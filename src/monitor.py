@@ -114,7 +114,7 @@ class Monitor(OKExAPI):
 
         ten_seconds = Looper(interval=10)
         now = datetime.utcnow()
-        one_hour = UTCLooper(datetime(now.year, now.month, now.day, now.hour + 1), interval=timedelta(hours=1))
+        one_hour = UTCLooper(datetime(now.year, now.month, now.day, (now.hour + 1) % 24), interval=timedelta(hours=1))
         funding_time = FundingTime()
 
         async for event in EventChain(ten_seconds, one_hour, funding_time):

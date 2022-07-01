@@ -400,8 +400,8 @@ class AddPosition(OKExAPI):
         """
         Ledger = Record('Ledger')
         result = Ledger.find_last(dict(account=self.account, instrument=self.coin))
-        if result and result['title'] != '平仓':
-            fprint(lang.position_exist.format(await self.swap_position(), self.coin))
+        if result and result['title'] != '平仓' and (swap_position := await self.swap_position()):
+            fprint(lang.position_exist.format(swap_position, self.coin))
             return await self.add(usdt_size=usdt_size, price_diff=price_diff, accelerate_after=accelerate_after)
         else:
             usdt_balance = await self.usdt_balance()
