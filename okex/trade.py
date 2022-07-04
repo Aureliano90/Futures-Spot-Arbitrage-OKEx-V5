@@ -29,7 +29,7 @@ class TradeAPI(Client):
         """
         params = dict(instId=instId, tdMode='cash', side=side, ordType=order_type, sz=size, px=price, tgtCcy=tgtCcy,
                       clOrdId=client_oid)
-        async with TradeAPI.SPOT_MARGIN_SEMAPHORE:
+        async with self.SPOT_MARGIN_SEMAPHORE:
             order = await self._request_with_params(POST, TRADE_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
@@ -56,7 +56,7 @@ class TradeAPI(Client):
         """
         params = dict(instId=instId, tdMode='cross', ccy='USDT', side=side, ordType=order_type, sz=size, px=price,
                       clOrdId=client_oid, reduceOnly=reduceOnly)
-        async with TradeAPI.SPOT_MARGIN_SEMAPHORE:
+        async with self.SPOT_MARGIN_SEMAPHORE:
             order = await self._request_with_params(POST, TRADE_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
@@ -84,7 +84,7 @@ class TradeAPI(Client):
         """
         params = dict(instId=instId, tdMode='isolated', ccy='USDT', side=side, ordType=order_type, sz=size, px=price,
                       clOrdId=client_oid, reduceOnly=reduceOnly)
-        async with TradeAPI.DERIVATIVE_SEMAPHORE:
+        async with self.DERIVATIVE_SEMAPHORE:
             order = await self._request_with_params(POST, TRADE_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
@@ -127,7 +127,7 @@ class TradeAPI(Client):
             batches.append(batch)
         tasks = []
         for batch in batches:
-            async with TradeAPI.BATCH_ORDER_SEMAPHORE:
+            async with self.BATCH_ORDER_SEMAPHORE:
                 tasks.append(asyncio.create_task(batch))
         orders = []
         for task in tasks:
@@ -152,7 +152,7 @@ class TradeAPI(Client):
         """
         assert order_id or client_oid
         params = dict(ordId=order_id, instId=instId) if order_id else dict(clOrdId=client_oid, instId=instId)
-        async with TradeAPI.ORDER_INFO_SEMAPHORE:
+        async with self.ORDER_INFO_SEMAPHORE:
             res = await self._request_with_params(GET, TRADE_ORDER, params)
         assert res['code'] == '0', f"{TRADE_ORDER}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -170,7 +170,7 @@ class TradeAPI(Client):
         """
         assert order_id or client_oid
         params = dict(ordId=order_id, instId=instId) if order_id else dict(clOrdId=client_oid, instId=instId)
-        async with TradeAPI.CANCEL_ORDER_SEMAPHORE:
+        async with self.CANCEL_ORDER_SEMAPHORE:
             order = await self._request_with_params(POST, CANCEL_ORDER, params)
         if order['code'] == '0':
             return order['data'][0]
@@ -202,7 +202,7 @@ class TradeAPI(Client):
             batches.append(batch)
         tasks = []
         for batch in batches:
-            async with TradeAPI.BATCH_CANCEL_SEMAPHORE:
+            async with self.BATCH_CANCEL_SEMAPHORE:
                 tasks.append(asyncio.create_task(batch))
         orders = []
         for task in tasks:
@@ -229,14 +229,14 @@ class TradeAPI(Client):
         # :param before: 请求此ID之后（更新的数据）的分页内容，传的值为对应接口的ordId
         # :param limit: 返回结果的数量，默认100条
         params = dict(instType=instType, uly=uly, instId=instId, ordType=ordType, state=state)
-        async with TradeAPI.PENDING_ORDER_SEMAPHORE:
+        async with self.PENDING_ORDER_SEMAPHORE:
             temp = await self._request_with_params(GET, PENDING_ORDER, params)
         assert temp['code'] == '0', f"{PENDING_ORDER}, msg={codes[temp['code']]}"
         res = temp['data']
         while len(temp) == 100:
             params = dict(instType=instType, uly=uly, instId=instId, ordType=ordType, state=state,
                           after=temp[100 - 1]['ordId'])
-            async with TradeAPI.PENDING_ORDER_SEMAPHORE:
+            async with self.PENDING_ORDER_SEMAPHORE:
                 temp = await self._request_with_params(GET, PENDING_ORDER, params)
             assert temp['code'] == '0', f"{PENDING_ORDER}, msg={codes[temp['code']]}"
             res.extend(temp['data'])

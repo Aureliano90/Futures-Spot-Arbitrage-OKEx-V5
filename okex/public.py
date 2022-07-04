@@ -99,7 +99,7 @@ class PublicAPI(Client):
             params = dict(instType=instType)
         while True:
             try:
-                async with PublicAPI.GET_TICKERS_SEMAPHORE:
+                async with self.GET_TICKERS_SEMAPHORE:
                     return (await self._request_with_params(GET, GET_TICKERS, params))['data']
             except OkexAPIException:
                 await asyncio.sleep(10)
@@ -116,7 +116,7 @@ class PublicAPI(Client):
         params = dict(instId=instId)
         while True:
             try:
-                async with PublicAPI.GET_TICKER_SEMAPHORE:
+                async with self.GET_TICKER_SEMAPHORE:
                     return (await self._request_with_params(GET, GET_TICKER, params))['data'][0]
             except OkexAPIException:
                 await asyncio.sleep(10)
@@ -135,7 +135,7 @@ class PublicAPI(Client):
         :param limit: 分页返回的结果集数量，最大为300，不填默认返回100条
         """
         params = dict(instId=instId, bar=bar, after=after, before=before, limit=limit)
-        async with PublicAPI.GET_CANDLES_SEMAPHORE:
+        async with self.GET_CANDLES_SEMAPHORE:
             res = await self._request_with_params(GET, GET_CANDLES, params)
         assert res['code'] == '0', f"{GET_CANDLES}, msg={codes[res['code']]}"
         return res['data']
@@ -154,7 +154,7 @@ class PublicAPI(Client):
         :param limit: 分页返回的结果集数量，最大为100，不填默认返回100条
         """
         params = dict(instId=instId, bar=bar, after=after, before=before, limit=limit)
-        async with PublicAPI.HISTORY_CANDLES_SEMAPHORE:
+        async with self.HISTORY_CANDLES_SEMAPHORE:
             res = await self._request_with_params(GET, HISTORY_CANDLES, params)
         assert res['code'] == '0', f"{HISTORY_CANDLES}, msg={codes[res['code']]}"
         return res['data']

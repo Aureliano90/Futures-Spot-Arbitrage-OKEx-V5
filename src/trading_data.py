@@ -81,7 +81,8 @@ class Stat:
             limit = days // (30 * int(rtruncate(bar, 1))) + 1
         else:
             limit = days // 365 + 1
-        return await get_with_limit(self.publicAPI.get_kline, tag=0, max=300, limit=limit, instId=instId, bar=bar)
+        return await query_with_pagination(self.publicAPI.get_kline, tag=0, page_size=300, limit=limit, instId=instId,
+                                           bar=bar)
 
     async def history_candles(self, instId, days, bar='4H') -> List[List]:
         """获取4小时K线
@@ -102,7 +103,8 @@ class Stat:
             limit = days // (30 * int(rtruncate(bar, 1))) + 1
         else:
             limit = days // 365 + 1
-        return await get_with_limit(self.publicAPI.history_kline, tag=0, max=100, limit=limit, instId=instId, bar=bar)
+        return await query_with_pagination(self.publicAPI.history_kline, tag=0, page_size=100, limit=limit,
+                                           instId=instId, bar=bar)
 
     # @debug_timer
     async def profitability(self, funding_rate_list, days=7) -> List[dict]:

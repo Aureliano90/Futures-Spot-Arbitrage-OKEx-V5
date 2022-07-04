@@ -94,7 +94,7 @@ class Client:
                             continue
                         raise exceptions.OkexRequestException(f'Invalid Response: {text}')
                     # Endpoint request timeout
-                    if hasattr(json_res, 'code') and json_res['code'] == '50004':
+                    if json_res.get('code') == '50004':
                         retry += 1
                         await asyncio.sleep(2)
                         continue
@@ -108,6 +108,7 @@ class Client:
 
                     # exception handle
                     if not str(status).startswith('2'):
+                        print(type(json_res['code']), json_res['code'])
                         print(f'Client error {status}: {request_path}')
                         raise exceptions.OkexAPIException(status, text, json_res)
 

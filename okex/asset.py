@@ -21,7 +21,7 @@ class AssetAPI(Client):
             assert len(ccy) <= 10
             ccy = ','.join(ccy)
         params = dict(ccy=ccy)
-        async with AssetAPI.ASSET_BALANCE_SEMAPHORE:
+        async with self.ASSET_BALANCE_SEMAPHORE:
             res = await self._request_with_params(GET, ASSET_BALANCE, params)
         assert res['code'] == '0', f"{ASSET_BALANCE}, msg={codes[res['code']]}"
         return res['data'][0]

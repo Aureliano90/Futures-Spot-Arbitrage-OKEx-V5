@@ -15,7 +15,7 @@ class AccountAPI(Client):
 
         GET /api/v5/account/config 限速：5次/2s
         """
-        async with AccountAPI.ACCOUNT_CONFIG_SEMAPHORE:
+        async with self.ACCOUNT_CONFIG_SEMAPHORE:
             res = await self._request_without_params(GET, ACCOUNT_CONFIG)
         assert res['code'] == '0', f"{ACCOUNT_CONFIG}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -30,7 +30,7 @@ class AccountAPI(Client):
         :param posMode: 持仓方式 long_short_mode：双向持仓 net_mode：单向持仓
         """
         params = dict(posMode=posMode)
-        async with AccountAPI.POSITION_MODE_SEMAPHORE:
+        async with self.POSITION_MODE_SEMAPHORE:
             res = await self._request_with_params(POST, POSITION_MODE, params)
         assert res['code'] == '0', f"{POSITION_MODE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -58,7 +58,7 @@ class AccountAPI(Client):
                 assert len(posId) <= 20
                 posId = ','.join(posId)
             params = dict(posId=posId)
-        async with AccountAPI.ACCOUNT_POSITION_SEMAPHORE:
+        async with self.ACCOUNT_POSITION_SEMAPHORE:
             res = await self._request_with_params(GET, ACCOUNT_POSITION, params)
         assert res['code'] == '0', f"{ACCOUNT_POSITION}, msg={codes[res['code']]}"
         return res['data']
@@ -72,7 +72,7 @@ class AccountAPI(Client):
         :param posId: 持仓ID
         """
         params = dict(instId=instId) if instId else dict(posId=posId)
-        async with AccountAPI.ACCOUNT_POSITION_SEMAPHORE:
+        async with self.ACCOUNT_POSITION_SEMAPHORE:
             res = await self._request_with_params(GET, ACCOUNT_POSITION, params)
         assert res['code'] == '0', f"{ACCOUNT_POSITION}, msg={codes[res['code']]}"
         return res['data']
@@ -84,7 +84,7 @@ class AccountAPI(Client):
 
         GET /api/v5/account/balance 限速： 10次/2s
         """
-        async with AccountAPI.ACCOUNT_BALANCE_SEMAPHORE:
+        async with self.ACCOUNT_BALANCE_SEMAPHORE:
             res = await self._request_without_params(GET, ACCOUNT_BALANCE)
         assert res['code'] == '0', f"{ACCOUNT_BALANCE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -100,7 +100,7 @@ class AccountAPI(Client):
             assert len(ccy) <= 20
             ccy = ','.join(ccy)
         params = dict(ccy=ccy)
-        async with AccountAPI.ACCOUNT_BALANCE_SEMAPHORE:
+        async with self.ACCOUNT_BALANCE_SEMAPHORE:
             res = await self._request_with_params(GET, ACCOUNT_BALANCE, params)
         assert res['code'] == '0', f"{ACCOUNT_BALANCE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -119,7 +119,7 @@ class AccountAPI(Client):
         """
         params = dict(instId=instId) if instId else dict(uly=uly) if uly else dict(category=category)
         params['instType'] = instType
-        async with AccountAPI.TRADE_FEE_SEMAPHORE:
+        async with self.TRADE_FEE_SEMAPHORE:
             res = await self._request_with_params(GET, TRADE_FEE, params)
         assert res['code'] == '0', f"{TRADE_FEE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -135,7 +135,7 @@ class AccountAPI(Client):
         :param mgnMode: 保证金模式 isolated：逐仓 cross：全仓
         """
         params = dict(instId=instId, mgnMode=mgnMode)
-        async with AccountAPI.GET_LEVERAGE_SEMAPHORE:
+        async with self.GET_LEVERAGE_SEMAPHORE:
             res = await self._request_with_params(GET, GET_LEVERAGE, params)
         assert res['code'] == '0', f"{GET_LEVERAGE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -158,7 +158,7 @@ class AccountAPI(Client):
         else:
             params = dict(lever=lever, mgnMode=mgnMode, ccy=ccy)
         if posSide: params['posSide'] = posSide
-        async with AccountAPI.SET_LEVERAGE_SEMAPHORE:
+        async with self.SET_LEVERAGE_SEMAPHORE:
             res = await self._request_with_params(POST, SET_LEVERAGE, params)
         assert res['code'] == '0', f"{SET_LEVERAGE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -180,7 +180,7 @@ class AccountAPI(Client):
         if ccy: params['ccy'] = ccy
         if ccy: params['px'] = px
         if ccy: params['leverage'] = leverage
-        async with AccountAPI.MAX_SIZE_SEMAPHORE:
+        async with self.MAX_SIZE_SEMAPHORE:
             res = await self._request_with_params(GET, MAX_SIZE, params)
         assert res['code'] == '0', f"{MAX_SIZE}, msg={codes[res['code']]}"
         return res['data'][0]
@@ -206,7 +206,7 @@ class AccountAPI(Client):
         """
         params = dict(instType=instType, ccy=ccy, mgnMode=mgnMode, ctType=ctType, type=type, subType=subType,
                       after=after, before=before, limit=limit)
-        async with AccountAPI.GET_LEDGER_SEMAPHORE:
+        async with self.GET_LEDGER_SEMAPHORE:
             res = await self._request_with_params(GET, GET_LEDGER, params)
         assert res['code'] == '0', f"{GET_LEDGER}, msg={codes[res['code']]}"
         return res['data']
@@ -232,7 +232,7 @@ class AccountAPI(Client):
         """
         params = dict(instType=instType, ccy=ccy, mgnMode=mgnMode, ctType=ctType, type=type, subType=subType,
                       after=after, before=before, limit=limit)
-        async with AccountAPI.ARCHIVE_LEDGER_SEMAPHORE:
+        async with self.ARCHIVE_LEDGER_SEMAPHORE:
             res = await self._request_with_params(GET, GET_ARCHIVE_LEDGER, params)
         assert res['code'] == '0', f"{GET_ARCHIVE_LEDGER}, msg={codes[res['code']]}"
         return res['data']
@@ -251,7 +251,7 @@ class AccountAPI(Client):
         :rtype: bool
         """
         params = dict(instId=instId, posSide=posSide, type=type, amt=amt)
-        async with AccountAPI.MARGIN_BALANCE_SEMAPHORE:
+        async with self.MARGIN_BALANCE_SEMAPHORE:
             res = await self._request_with_params(POST, MARGIN_BALANCE, params)
         if res['code'] == '0':
             return True

@@ -60,15 +60,15 @@ def float_str(f: float, decimals: int):
     return f'{f:.{decimals}f}'
 
 
-def round_to(number, fraction) -> float:
-    """Return the quotient of `number` and `fraction`
+def round_to(number, divider) -> float:
+    """Return the quotient of `number` and `divider`
     """
-    fs = f'{fraction:.18f}'.rstrip('0')
+    fs = f'{divider:.18f}'.rstrip('0')
     decimals = num_decimals(fs)
     if decimals > 0:
-        return round(number / fraction // 1 * fraction, decimals)
+        return round(number / divider // 1 * divider, decimals)
     else:
-        return round(number / fraction // 1 * fraction)
+        return round(number / divider // 1 * divider)
 
 
 class REST_Semaphore(asyncio.Semaphore):
@@ -133,7 +133,14 @@ class p_Semaphore(ContextManager):
         self._sem.release()
 
 
-def columned_output(res: List, header: str, ncols: int, form):
+def columned_output(res: List, header: str, ncols: int, format):
+    """Print list in `ncols` columns
+
+    :param res:
+    :param header:
+    :param ncols:
+    :param format: callable to format each dict
+    """
     len1 = len(res)
     nrows = len1 // ncols + 1
     headers = ''
@@ -147,18 +154,18 @@ def columned_output(res: List, header: str, ncols: int, form):
         for j in range(ncols):
             if i + j * nrows < len1:
                 n = res[i + j * nrows]
-                line += form(n)
+                line += format(n)
                 if j < ncols - 1:
                     line += '\t'
         fprint(line)
 
 
-async def get_with_limit(api, tag, max, limit=0, **kwargs):
+async def query_with_pagination(query_api, tag, page_size, limit=0, **kwargs):
     """Loop `api` until `limit` is reached
 
-    :param api: api coroutine
-    :param tag: tag used by after argument
-    :param max: max number of results in a single request
+    :param query_api: api coroutine with `after` and `limit` keyword arguments
+    :param tag: tag used by `after` argument
+    :param page_size: max number of results in a single request
     :param limit: number of entries
     :param kwargs: other arguments
     :return: List
@@ -167,30 +174,28 @@ async def get_with_limit(api, tag, max, limit=0, **kwargs):
     if limit > 0:
         res = temp = []
         while limit > 0:
-            if limit <= max:
-                if len(temp) == max:
+            if limit <= page_size:
+                if len(temp) == page_size:
                     # Last time
-                    temp = await api(**kwargs, after=temp[max - 1][tag], limit=limit)
+                    temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=limit)
                 else:
                     # First time
-                    temp = await api(**kwargs, limit=limit)
+                    temp = await query_api(**kwargs, limit=limit)
             else:
-                if len(temp) == max:
+                if len(temp) == page_size:
                     # Last time
-                    temp = await api(**kwargs, after=temp[max - 1][tag], limit=max)
+                    temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=page_size)
                 else:
                     # First time
-                    temp = await api(**kwargs, limit=max)
+                    temp = await query_api(**kwargs, limit=page_size)
             res.extend(temp)
-            limit -= max
+            limit -= page_size
     else:
         # First time
-        res = temp = await api(**kwargs)
-        # print(datetime_str(datetime.now()))
+        res = temp = await query_api(**kwargs)
         # Results not exhausted
-        while len(temp) == max:
-            temp = await api(**kwargs, after=temp[max - 1][tag])
-            # print(datetime_str(datetime.now()))
+        while len(temp) == page_size:
+            temp = await query_api(**kwargs, after=temp[page_size - 1][tag])
             res.extend(temp)
     return res
 
@@ -289,22 +294,6 @@ def call_coroutine(cls):
     elif isinstance(cls, type):
         # cls is a class.
         if hasattr(cls, '__await__'):
-            # Decorate the class into a construction function which cannot be inherited.
-            # @functools.wraps(cls)
-            # def wrapper(*args, **kwargs):
-            #     # class instance
-            #     ins = cls(*args, **kwargs)
-            #
-            #     loop = asyncio.get_event_loop()
-            #     if loop.is_running():
-            #         # Return the class instance to be awaited.
-            #         pass
-            #     else:
-            #         # Initiate the class instance asynchronously.
-            #         loop.run_until_complete(ins.__await__())
-            #     return ins
-            # return wrapper
-
             # Decorate the class into a class.
             old_init = getattr(cls, '__init__')
 

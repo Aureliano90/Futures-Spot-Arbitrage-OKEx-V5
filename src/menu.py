@@ -108,8 +108,8 @@ async def back_track_all(accountid: int):
     coinlist = await get_coinlist(accountid)
     mon = await Monitor(account=accountid)
     # API results
-    api_ledger = await get_with_limit(mon.accountAPI.get_archive_ledger, tag='billId', max=100, limit=0,
-                                      instType='SWAP', ccy='USDT', type='8')
+    api_ledger = await query_with_pagination(mon.accountAPI.get_archive_ledger, tag='billId', page_size=100, limit=0,
+                                             instType='SWAP', ccy='USDT', type='8')
     for coin in coinlist:
         pipeline = [{'$match': {'account': accountid, 'instrument': coin, 'title': '资金费'}}]
         # Results in DB

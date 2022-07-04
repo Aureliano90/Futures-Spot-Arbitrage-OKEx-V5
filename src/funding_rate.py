@@ -69,21 +69,21 @@ class FundingRate:
                 dict(instrument_id=instId, current_rate=current_rate, estimated_rate=estimated_rate))
         funding_rate_list.sort(key=lambda x: x['current_rate'], reverse=True)
 
-        def form(n: dict):
+        def format(n: dict):
             instrumentID = n['instrument_id'][:n['instrument_id'].find('-')]
             current_rate = n['current_rate']
             estimated_rate = n['estimated_rate']
             return f'{instrumentID:8s}{current_rate:9.3%}{estimated_rate:11.3%}'
 
-        columned_output(funding_rate_list, coin_current_next, 3, form)
+        columned_output(funding_rate_list, coin_current_next, 3, format)
         # 50 s without asyncio
         # 1.6 s with asyncio
 
     async def funding_history(self, instId, limit=270):
         """下载最近3个月资金费率
         """
-        return await get_with_limit(self.publicAPI.get_historical_funding_rate, tag='fundingTime',
-                                    max=100, limit=limit, instId=instId)
+        return await query_with_pagination(self.publicAPI.get_historical_funding_rate, tag='fundingTime',
+                                           page_size=100, limit=limit, instId=instId)
 
     async def get_recent_rate(self, days=7):
         """返回最近资金费列表
@@ -114,10 +114,10 @@ class FundingRate:
         funding_rate_list = await self.get_recent_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
 
-        def form(n: dict):
+        def format(n: dict):
             return f"{n['instrument']:8s}{n['funding_rate']:8.3%}"
 
-        columned_output(funding_rate_list, funding_day, 5, form)
+        columned_output(funding_rate_list, funding_day, 5, format)
 
     # @debug_timer
     async def print_30day_rate(self):
