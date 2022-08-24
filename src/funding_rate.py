@@ -1,6 +1,5 @@
-from typing import List
 from okex.public import PublicAPI
-import statistics
+import numpy as np
 import src.record as record
 import src.trading_data as trading_data
 from src.utils import *
@@ -29,22 +28,6 @@ class FundingRate:
         """
         return [n['instId'] for n in await self.publicAPI.get_instruments('SWAP') if n['instId'].find('USDT') != -1]
 
-    async def current(self, instrument_id=''):
-        """当期资金费
-
-        :param instrument_id: 币种合约
-        """
-        current_rate = (await self.publicAPI.get_funding_time(instId=instrument_id))['fundingRate']
-        return float(current_rate) if current_rate else 0.
-
-    async def next(self, instrument_id=''):
-        """预测资金费
-
-        :param instrument_id: 币种合约
-        """
-        next_rate = (await self.publicAPI.get_funding_time(instId=instrument_id))['nextFundingRate']
-        return float(next_rate) if next_rate else 0.
-
     async def current_next(self, instrument_id=''):
         """当期和预测资金费
 
@@ -54,6 +37,20 @@ class FundingRate:
         current_rate = float(m) if (m := funding_rate['fundingRate']) else 0.
         next_rate = float(m) if (m := funding_rate['nextFundingRate']) else 0.
         return current_rate, next_rate
+
+    async def current(self, instrument_id):
+        """当期资金费
+
+        :param instrument_id: 币种合约
+        """
+        return (await self.current_next(instrument_id))[0]
+
+    async def next(self, instrument_id):
+        """预测资金费
+
+        :param instrument_id: 币种合约
+        """
+        return (await self.current_next(instrument_id))[1]
 
     # @debug_timer
     async def show_current_rate(self):
@@ -79,11 +76,11 @@ class FundingRate:
         # 50 s without asyncio
         # 1.6 s with asyncio
 
-    async def funding_history(self, instId, limit=270):
+    async def funding_history(self, instId, count=270):
         """下载最近3个月资金费率
         """
         return await query_with_pagination(self.publicAPI.get_historical_funding_rate, tag='fundingTime',
-                                           page_size=100, limit=limit, instId=instId)
+                                           page_size=100, count=count, instId=instId)
 
     async def get_recent_rate(self, days=7):
         """返回最近资金费列表
@@ -92,16 +89,16 @@ class FundingRate:
         :rtype: List[dict]
         """
         assert isinstance(days, int) and 0 < days <= 90
-        limit = days * 3
-        task_list = [self.funding_history(instId=m, limit=limit) for m in await self.get_instruments_ID()]
+        count = days * 3
+        task_list = [self.funding_history(instId=m, count=count) for m in await self.get_instruments_ID()]
         funding_rate_list = []
         for historical_funding_rate in await asyncio.gather(*task_list):
             instId = historical_funding_rate[0]['instId']
-            if len(historical_funding_rate) < limit:
+            if len(historical_funding_rate) < count:
                 continue
             realized_rate = [float(n['realizedRate']) for n in historical_funding_rate]
             instrumentID = instId[:instId.find('-')]
-            funding_rate_list.append(dict(instrument=instrumentID, funding_rate=statistics.mean(realized_rate)))
+            funding_rate_list.append(dict(instrument=instrumentID, funding_rate=np.mean(realized_rate)))
         return funding_rate_list
 
     # @debug_timer
@@ -123,11 +120,10 @@ class FundingRate:
     async def print_30day_rate(self):
         """输出最近30天平均资金费到文件
         """
-        task_list = [self.funding_history(instId=m, limit=90) for m in await self.get_instruments_ID()]
+        task_list = [self.funding_history(instId=m, count=90) for m in await self.get_instruments_ID()]
         funding_rate_list = []
         for historical_funding_rate in await asyncio.gather(*task_list):
             instId = historical_funding_rate[0]['instId']
-            # pprint(historical_funding_rate)
             # 永续合约上线不一定有30天
             if len(historical_funding_rate) < 21:
                 # print(m + "上线不到7天。")
@@ -136,13 +132,13 @@ class FundingRate:
                 # print(m + "上线不到30天。")
                 realized_rate = [float(n['realizedRate']) for n in historical_funding_rate]
                 funding_rate_list.append(
-                    {'instrument_id': instId, '7day_funding_rate': statistics.mean(realized_rate[:21]),
+                    {'instrument_id': instId, '7day_funding_rate': np.mean(realized_rate[:21]),
                      '30day_funding_rate': 0})
             else:
                 realized_rate = [float(n['realizedRate']) for n in historical_funding_rate]
                 funding_rate_list.append(
-                    {'instrument_id': instId, '7day_funding_rate': statistics.mean(realized_rate[:21]),
-                     '30day_funding_rate': statistics.mean(realized_rate[:90])})
+                    {'instrument_id': instId, '7day_funding_rate': np.mean(realized_rate[:21]),
+                     '30day_funding_rate': np.mean(realized_rate[:90])})
 
         funding_rate_list.sort(key=lambda x: x['30day_funding_rate'], reverse=True)
         funding_rate_list.sort(key=lambda x: x['7day_funding_rate'], reverse=True)

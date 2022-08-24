@@ -160,36 +160,46 @@ def columned_output(res: List, header: str, ncols: int, format):
         fprint(line)
 
 
-async def query_with_pagination(query_api, tag, page_size, limit=0, **kwargs):
+async def query_with_pagination(query_api, tag, page_size, count=0, interval=0, **kwargs):
     """Loop `api` until `limit` is reached
 
     :param query_api: api coroutine with `after` and `limit` keyword arguments
     :param tag: tag used by `after` argument
     :param page_size: max number of results in a single request
-    :param limit: number of entries
+    :param count: number of entries
+    :param interval: time interval between entries
     :param kwargs: other arguments
     :return: List
     """
     # Number of entries is known.
-    if limit > 0:
-        res = temp = []
-        while limit > 0:
-            if limit <= page_size:
-                if len(temp) == page_size:
-                    # Last time
-                    temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=limit)
+    if count > 0:
+        # First time
+        if count < page_size:
+            return await query_api(**kwargs, limit=count)
+        else:
+            res = temp = await query_api(**kwargs, limit=page_size)
+            count -= page_size
+        # Parallelize if time interval is known
+        if interval:
+            after = int(temp[page_size - 1][tag])
+            tasks = []
+            while count > 0:
+                if count < page_size:
+                    tasks.append(query_api(**kwargs, after=after, limit=count))
                 else:
-                    # First time
-                    temp = await query_api(**kwargs, limit=limit)
-            else:
-                if len(temp) == page_size:
-                    # Last time
+                    tasks.append(query_api(**kwargs, after=after, limit=page_size))
+                after -= page_size * interval
+                count -= page_size
+            for temp in await asyncio.gather(*tasks):
+                res.extend(temp)
+        else:
+            while count > 0:
+                if count < page_size:
+                    temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=count)
+                else:
                     temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=page_size)
-                else:
-                    # First time
-                    temp = await query_api(**kwargs, limit=page_size)
-            res.extend(temp)
-            limit -= page_size
+                res.extend(temp)
+                count -= page_size
     else:
         # First time
         res = temp = await query_api(**kwargs)

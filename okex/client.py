@@ -86,6 +86,8 @@ class Client:
                     try:
                         text = await response.text()
                         json_res = await response.json()
+                    except asyncio.TimeoutError:
+                        continue
                     except ValueError:
                         if 'cloudflare' in text:
                             await asyncio.sleep(backoff)
