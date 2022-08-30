@@ -10,7 +10,7 @@ import aiohttp
 from src.looper import *
 import src.lang as lang
 
-logfile = open("./log.txt", "a", encoding="utf-8")
+logfile = open("../log.txt", "a", encoding="utf-8")
 
 
 def rtruncate(string, n):

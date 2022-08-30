@@ -41,24 +41,24 @@ class Record:
 recording = False
 
 
-def record_ticker():
+def record_ticker(accountid=3):
     global recording
     if not recording:
         recording = True
         loop = asyncio.get_event_loop()
         while True:
             try:
-                loop.run_until_complete(record())
+                loop.run_until_complete(record(accountid))
             except aiohttp.ClientError:
                 print(lang.network_interruption)
                 time.sleep(30)
 
 
-async def record():
+async def record(accountid=3):
     print(lang.record_ticker)
     ticker = Record('Ticker')
     funding = Record('Funding')
-    fundingRate = funding_rate.FundingRate()
+    fundingRate = funding_rate.FundingRate(accountid)
     instrumentsID = await fundingRate.get_instruments_ID()
     publicAPI = PublicAPI()
     ten_seconds = Looper(interval=10)

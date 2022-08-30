@@ -24,7 +24,7 @@ async def monitor_all(accountid: int):
 
 async def print_apy(coin: str, accountid: int):
     mon = await Monitor(coin=coin, account=accountid)
-    fundingRate = FundingRate()
+    fundingRate = FundingRate(accountid)
     aprs = gather(mon.apr(1), mon.apr(7), mon.apr())
     (current_rate, next_rate), aprs = await gather(fundingRate.current_next(mon.swap_ID), aprs)
     apys = map(apy, aprs)
@@ -137,7 +137,7 @@ async def close_all(accountid: int):
 
     :param accountid: 账号id
     """
-    fundingRate = FundingRate()
+    fundingRate = FundingRate(accountid)
     for coin in await get_coinlist(accountid):
         stat = Stat(coin=coin)
         if recent := stat.recent_close_stat(4):
@@ -216,7 +216,7 @@ async def main_menu(accountid: int):
                 await account_menu(accountid)
             elif command == '5':
                 multiprocessing.set_start_method('spawn', True)
-                process = multiprocessing.Process(target=record.record_ticker)
+                process = multiprocessing.Process(target=record.record_ticker, args=(accountid,))
                 process.start()
                 process.join(0.2)
             elif command == '6':
@@ -352,7 +352,7 @@ async def crypto_menu(accountid: int):
 
 
 async def funding_menu(accountid: int):
-    fundingRate = FundingRate()
+    fundingRate = FundingRate(accountid)
     while (command := await ainput(loop, funding_menu_text)) != 'b':
         if command == '1':
             while True:

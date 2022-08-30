@@ -81,7 +81,7 @@ class Monitor(OKExAPI):
             fprint(lang.nonexistent_position.format(self.swap_ID))
             return
 
-        fundingRate = FundingRate()
+        fundingRate = FundingRate(self.account)
         addPosition: Optional[AddPosition] = None
         reducePosition: Optional[ReducePosition] = None
         Stat = trading_data.Stat(self.coin)
