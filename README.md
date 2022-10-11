@@ -65,7 +65,7 @@ or
 
 Install [MongoDB](https://www.mongodb.com/try/download/community).
 
-Store API keys according to environment variables in `config.py` (use account 3 for demo trading).
+Store API keys in `.env` (use account 3 for demo trading).
 
 Set `language='cn'` for Chinese and `language='en'` for English in `config.py`.
 

@@ -29,27 +29,27 @@ class Manager:
     async def cancel(self, idx: int):
         if idx - 1 in range(len(self.tasks)):
             task, api = list(self.tasks.items())[idx - 1]
-            self.tasks[task].exitFlag = True
+            self.tasks[task].exit_flag = True
             while not task.done():
                 await asyncio.sleep(0.01)
             self.tasks.pop(task)
             print(f"{task.get_name()} cancelled.")
 
     async def stop(self):
-        while self.tasks:
+        if self.tasks:
+            self.clear()
+            for task in self.tasks:
+                self.tasks[task].exit_flag = True
+            await asyncio.gather(*[api.fut for api in self.tasks.values()])
+
+    def clear(self, _task: Optional[asyncio.Task] = None):
+        if _task:
+            self.tasks.pop(_task)
+        else:
             keys = list(self.tasks.keys())
             for task in keys:
                 if task.done():
                     self.tasks.pop(task)
-                else:
-                    self.tasks[task].exitFlag = True
-            await asyncio.sleep(0.01)
-
-    def clear(self, _task: asyncio.Task):
-        keys = list(self.tasks.keys())
-        for task in keys:
-            if task.done():
-                self.tasks.pop(task)
 
     def show(self):
         for i, task in enumerate(self.tasks.keys()):

@@ -121,12 +121,12 @@ class PublicAPI(Client):
             except OkexAPIException:
                 await asyncio.sleep(10)
 
-    GET_CANDLES_SEMAPHORE = REST_Semaphore(20, 2)
+    GET_CANDLES_SEMAPHORE = REST_Semaphore(40, 2)
 
     async def get_kline(self, instId: str, bar='4H', after='', before='', limit='') -> List[List]:
         """获取K线数据。K线数据按请求的粒度分组返回，K线数据每个粒度最多可获取最近1440条
 
-        GET /api/v5/market/candles 限速： 20次/2s
+        GET /api/v5/market/candles 限速： 40次/2s
 
         :param instId: 产品ID
         :param bar: 时间粒度, [1m/3m/5m/15m/30m/1H/2H/4H/6H/12H/1D/1W/1M/3M/6M/1Y]

@@ -1,9 +1,4 @@
-from okex.public import PublicAPI
-import numpy as np
-import src.record as record
-import src.trading_data as trading_data
-from src.utils import *
-from src.lang import *
+from src.trading_data import *
 
 
 # @debug_timer
@@ -80,7 +75,7 @@ class FundingRate:
         """下载最近3个月资金费率
         """
         return await query_with_pagination(self.publicAPI.get_historical_funding_rate, tag='fundingTime',
-                                           page_size=100, count=count, instId=instId)
+                                           page_size=100, count=count, interval=28800, instId=instId)
 
     async def get_recent_rate(self, days=7):
         """返回最近资金费列表
@@ -206,7 +201,7 @@ class FundingRate:
         funding_rate_list = await self.get_recent_rate(days)
         funding_rate_list.sort(key=lambda x: x['funding_rate'], reverse=True)
         funding_rate_list = funding_rate_list[:20]
-        funding_rate_list = [n['instrument'] for n in await trading_data.Stat().profitability(funding_rate_list, days)]
+        funding_rate_list = [n['instrument'] for n in await Stat().profitability(funding_rate_list, days)]
         await self.show_selected_rate(funding_rate_list)
 
     async def show_selected_rate(self, coinlist):

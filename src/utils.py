@@ -54,6 +54,10 @@ def num_decimals(f: str):
     return len(f[f.find('.'):]) - 1
 
 
+def safe_float(n: str):
+    return float(n) if n else 0.
+
+
 def float_str(f: float, decimals: int):
     """String of float up to certain decimals
     """
@@ -181,7 +185,7 @@ async def query_with_pagination(query_api, tag, page_size, count=0, interval=0, 
             count -= page_size
         # Parallelize if time interval is known
         if interval:
-            after = int(temp[page_size - 1][tag])
+            after = int(temp[-1][tag])
             tasks = []
             while count > 0:
                 if count < page_size:

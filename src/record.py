@@ -60,7 +60,7 @@ async def record(accountid=3):
     funding = Record('Funding')
     fundingRate = funding_rate.FundingRate(accountid)
     instrumentsID = await fundingRate.get_instruments_ID()
-    publicAPI = PublicAPI()
+    publicAPI = fundingRate.publicAPI
     ten_seconds = Looper(interval=10)
     funding_time = FundingTime()
     async for event in EventChain(ten_seconds, funding_time):
@@ -68,16 +68,17 @@ async def record(accountid=3):
         # 每8小时记录资金费
         if event == funding_time:
             funding_rate_list = []
-            tasks = [publicAPI.get_historical_funding_rate(instId=m) for m in instrumentsID]
+            instrumentsID = await fundingRate.get_instruments_ID()
+            tasks = [publicAPI.get_historical_funding_rate(instId=swap_ID) for swap_ID in instrumentsID]
             res = await asyncio.gather(*tasks)
-            for m, historical_funding_rate in zip(instrumentsID, res):
-                instrument = m[:m.find('-')]
+            for swap_ID, historical_funding_rate in zip(instrumentsID, res):
+                instrument = swap_ID[:swap_ID.find('-')]
                 pipeline = [{'$match': {'instrument': instrument}}]
                 # Results in DB
                 db_funding = [n for n in funding.mycol.aggregate(pipeline)]
                 for n in historical_funding_rate:
-                    timestamp = funding_rate.utcfrommillisecs(n['fundingTime'])
-                    realized_rate = float(n['realizedRate'])
+                    timestamp = utcfrommillisecs(n['fundingTime'])
+                    realized_rate = safe_float(n['realizedRate'])
                     for item in db_funding:
                         if item['funding'] == realized_rate:
                             if item['timestamp'] == timestamp:
@@ -93,22 +94,21 @@ async def record(accountid=3):
             assert (spot_ticker := await publicAPI.get_tickers('SPOT'))
             assert (swap_ticker := await publicAPI.get_tickers('SWAP'))
             mylist = []
-            for m in instrumentsID:
-                swap_ID = m
+            for swap_ID in instrumentsID:
                 spot_ID = swap_ID[:swap_ID.find('-SWAP')]
                 coin = spot_ID[:spot_ID.find('-USDT')]
                 spot_ask = spot_bid = swap_bid = swap_ask = 0.
                 for i, n in enumerate(spot_ticker):
                     if n['instId'] == spot_ID:
-                        timestamp = funding_rate.utcfrommillisecs(n['ts'])
-                        spot_ask = float(n['askPx'])
-                        spot_bid = float(n['bidPx'])
+                        timestamp = utcfrommillisecs(n['ts'])
+                        spot_ask = safe_float(n['askPx'])
+                        spot_bid = safe_float(n['bidPx'])
                         spot_ticker.pop(i)
                         break
                 for i, n in enumerate(swap_ticker):
                     if n['instId'] == swap_ID:
-                        swap_ask = float(n['askPx'])
-                        swap_bid = float(n['bidPx'])
+                        swap_ask = safe_float(n['askPx'])
+                        swap_bid = safe_float(n['bidPx'])
                         swap_ticker.pop(i)
                         break
                 if spot_ask and spot_bid:

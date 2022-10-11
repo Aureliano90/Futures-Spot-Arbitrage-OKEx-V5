@@ -3,8 +3,8 @@ from okex.public import PublicAPI
 from okex.trade import TradeAPI
 from okex.exceptions import OkexException, OkexAPIException
 from src.config import Key
+from src.funding_rate import FundingRate, Stat
 from src.record import Record
-import src.trading_data as trading_data
 from src.websocket import subscribe_without_login
 from src.manager import *
 from asyncio import create_task, gather
@@ -55,7 +55,8 @@ class OKExAPI:
             self.swap_ID = coin + '-USDT-SWAP'
             self.spot_info = None
             self.swap_info = None
-            self.exitFlag = False
+            self.exit_flag = False
+            self.fut = manager.loop.create_future()
             self.exist = True
         else:
             self.exist = False

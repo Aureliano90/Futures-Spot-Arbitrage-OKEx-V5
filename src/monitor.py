@@ -1,5 +1,4 @@
 from src.close_position import ReducePosition
-from src.funding_rate import FundingRate
 from src.open_position import AddPosition
 from src.okex_api import *
 
@@ -20,7 +19,7 @@ class Monitor(OKExAPI):
         :param days: 最近几天，默认开仓算起
         :rtype: float
         """
-        Stat = trading_data.Stat(self.coin)
+        stat = Stat(self.coin)
         holding = await self.swap_holding()
         margin = holding['margin']
         upl = holding['upl']
@@ -30,14 +29,14 @@ class Monitor(OKExAPI):
 
         if size > 10:
             if days == 0:
-                open_time = Stat.open_time(self.account)
+                open_time = stat.open_time(self.account)
                 delta = (datetime.utcnow() - open_time).total_seconds()
-                funding = Stat.history_funding(self.account)
-                cost = Stat.history_cost(self.account)
+                funding = stat.history_funding(self.account)
+                cost = stat.history_cost(self.account)
                 apr = (funding + cost) / size / delta * 86400 * 365
             else:
-                funding = Stat.history_funding(self.account, days)
-                cost = Stat.history_cost(self.account, days)
+                funding = stat.history_funding(self.account, days)
+                cost = stat.history_cost(self.account, days)
                 apr = (funding + cost) / size / days * 365
         else:
             apr = 0.
@@ -84,7 +83,7 @@ class Monitor(OKExAPI):
         fundingRate = FundingRate(self.account)
         addPosition: Optional[AddPosition] = None
         reducePosition: Optional[ReducePosition] = None
-        Stat = trading_data.Stat(self.coin)
+        stat = Stat(self.coin)
         Ledger = Record('Ledger')
         # OP = Record('OP')
 
@@ -110,7 +109,7 @@ class Monitor(OKExAPI):
         reduce_task = add_task
         usdt_size = 0
         margin_reducible = True
-        self.exitFlag = False
+        self.exit_flag = False
 
         ten_seconds = Looper(interval=10)
         now = datetime.utcnow()
@@ -118,7 +117,7 @@ class Monitor(OKExAPI):
         funding_time = FundingTime()
 
         async for event in EventChain(ten_seconds, one_hour, funding_time):
-            if self.exitFlag:
+            if self.exit_flag:
                 break
             try:
                 timestamp = datetime.utcnow()
@@ -140,9 +139,9 @@ class Monitor(OKExAPI):
                         Record('Portfolio').mycol.delete_one(dict(account=self.account, instrument=self.coin))
                         return
 
-                    assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
+                    assert (recent := stat.recent_open_stat()), lang.fetch_ticker_first
                     open_pd = recent['avg'] + recent['std']
-                    recent = Stat.recent_close_stat()
+                    recent = stat.recent_close_stat()
                     close_pd = recent['avg'] - recent['std']
                     cost = open_pd - close_pd + 2 * trade_fee
                     # Expected funding rates too low.
@@ -166,7 +165,7 @@ class Monitor(OKExAPI):
                             if not await self.is_hedged():
                                 spot, swap = await gather(self.spot_position(), self.swap_position())
                                 fprint(lang.hedge_fail.format(self.coin, spot, swap))
-                                self.exitFlag = True
+                                self.exit_flag = True
                                 continue
                             fprint(lang.approaching_liquidation)
                             mydict = dict(account=self.account, instrument=self.coin, timestamp=timestamp,
@@ -174,7 +173,7 @@ class Monitor(OKExAPI):
                             Ledger.mycol.insert_one(mydict)
 
                             # 期现差价控制在2个标准差
-                            assert (recent := Stat.recent_close_stat()), lang.fetch_ticker_first
+                            assert (recent := stat.recent_close_stat()), lang.fetch_ticker_first
                             close_pd = recent['avg'] - 2 * recent['std']
 
                             swap_position = await self.swap_position()
@@ -192,7 +191,7 @@ class Monitor(OKExAPI):
                             if not await self.is_hedged():
                                 spot, swap = await gather(self.spot_position(), self.swap_position())
                                 fprint(lang.hedge_fail.format(self.coin, spot, swap))
-                                self.exitFlag = True
+                                self.exit_flag = True
                                 continue
                             fprint(lang.too_much_margin)
                             mydict = dict(account=self.account, instrument=self.coin, timestamp=timestamp,
@@ -200,7 +199,7 @@ class Monitor(OKExAPI):
                             Ledger.mycol.insert_one(mydict)
 
                             # 期现差价控制在2个标准差
-                            assert (recent := Stat.recent_open_stat()), lang.fetch_ticker_first
+                            assert (recent := stat.recent_open_stat()), lang.fetch_ticker_first
                             open_pd = recent['avg'] + 2 * recent['std']
 
                             if not addPosition:
@@ -228,7 +227,7 @@ class Monitor(OKExAPI):
                                 while not reduce_task.done():
                                     await asyncio.sleep(0.1)
 
-                                assert (recent := Stat.recent_close_stat(1)), lang.fetch_ticker_first
+                                assert (recent := stat.recent_close_stat(1)), lang.fetch_ticker_first
                                 close_pd = recent['avg'] - 1.5 * recent['std']
 
                                 liquidation_price, swap_position = await gather(self.liquidation_price(),
@@ -244,7 +243,7 @@ class Monitor(OKExAPI):
                                 while not reduce_task.done():
                                     await asyncio.sleep(0.1)
 
-                                assert (recent := Stat.recent_close_stat(2)), lang.fetch_ticker_first
+                                assert (recent := stat.recent_close_stat(2)), lang.fetch_ticker_first
                                 close_pd = recent['avg'] - 2 * recent['std']
 
                                 liquidation_price, swap_position = await gather(self.liquidation_price(),
@@ -259,7 +258,7 @@ class Monitor(OKExAPI):
                                 while not add_task.done():
                                     await asyncio.sleep(0.1)
 
-                                assert (recent := Stat.recent_open_stat(2)), lang.fetch_ticker_first
+                                assert (recent := stat.recent_open_stat(2)), lang.fetch_ticker_first
                                 open_pd = recent['avg'] + 2 * recent['std']
 
                                 # liquidation_price = await self.liquidation_price()
@@ -277,3 +276,4 @@ class Monitor(OKExAPI):
             except aiohttp.ClientError:
                 print(lang.network_interruption)
                 await asyncio.sleep(30)
+        self.fut.set_result(None)

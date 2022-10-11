@@ -144,18 +144,18 @@ class AddPosition(OKExAPI):
 
         channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
         spot_ticker = swap_ticker = None
-        self.exitFlag = False
+        self.exit_flag = False
 
         # 如果仍未建仓完毕
-        while target_position >= self.contract_val and not self.exitFlag:
+        while target_position >= self.contract_val and not self.exit_flag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
-                if self.exitFlag:
+                if self.exit_flag:
                     break
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
-                    Stat = trading_data.Stat(self.coin)
-                    assert (recent := Stat.recent_open_stat(accelerate_after)), lang.fetch_ticker_first
+                    stat = Stat(self.coin)
+                    assert (recent := stat.recent_open_stat(accelerate_after)), lang.fetch_ticker_first
                     price_diff = recent['avg'] + 2 * recent['std']
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
@@ -185,7 +185,7 @@ class AddPosition(OKExAPI):
                             target_position -= self.min_size
                         if target_position < self.min_size:
                             fprint(lang.insufficient_USDT)
-                            self.exitFlag = True
+                            self.exit_flag = True
                             break
                     else:
                         # 计算下单数量
@@ -238,7 +238,7 @@ class AddPosition(OKExAPI):
                                     spot_order_info = await self.tradeAPI.get_order_info(**kwargs)
                                     fprint(spot_order_info)
                                     fprint(swap_res)
-                                self.exitFlag = True
+                                self.exit_flag = True
                                 break
 
                             swap_order_info = dict()
@@ -257,7 +257,7 @@ class AddPosition(OKExAPI):
                                     if spot_order['ordId'] == '-1':
                                         fprint(lang.spot_order_failed)
                                         fprint(spot_order)
-                                        self.exitFlag = True
+                                        self.exit_flag = True
                                     else:
                                         fprint(lang.swap_order_failed)
                                         fprint(swap_order)
@@ -270,10 +270,10 @@ class AddPosition(OKExAPI):
                                         else:
                                             if swap_order['code'] in ('50026', '51022'):
                                                 fprint(lang.futures_market_down)
-                                            self.exitFlag = True
+                                            self.exit_flag = True
 
                             await check_order()
-                            if self.exitFlag:
+                            if self.exit_flag:
                                 break
 
                             # 其中一单撤销
@@ -290,7 +290,7 @@ class AddPosition(OKExAPI):
                                             swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
-                                            self.exitFlag = True
+                                            self.exit_flag = True
                                             break
                                     else:
                                         fprint(lang.swap_order_state, swap_order_state)
@@ -306,7 +306,7 @@ class AddPosition(OKExAPI):
                                             spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                                         except OkexAPIException as e:
                                             fprint(e)
-                                            self.exitFlag = True
+                                            self.exit_flag = True
                                             break
                                     else:
                                         fprint(lang.spot_order_state, spot_order_state)
@@ -318,7 +318,7 @@ class AddPosition(OKExAPI):
                                     fprint(lang.await_status_update)
 
                                 await check_order()
-                                if self.exitFlag:
+                                if self.exit_flag:
                                     break
 
                             # 下单成功
@@ -347,12 +347,12 @@ class AddPosition(OKExAPI):
                                     OP.mycol.find_one_and_update(mydict, {'$set': {'size': target_position}})
                                 else:
                                     fprint(lang.hedge_fail.format(self.coin, spot_filled, swap_filled))
-                                    self.exitFlag = True
+                                    self.exit_flag = True
                                     break
                             elif spot_order_state == 'canceled' and swap_order_state == 'canceled':
                                 break
                             else:
-                                self.exitFlag = True
+                                self.exit_flag = True
                                 break
 
                             usdt_balance = await self.usdt_balance()
@@ -384,6 +384,7 @@ class AddPosition(OKExAPI):
         else:
             fprint(lang.hedge_fail.format(self.coin, spot_filled_sum, swap_filled_sum))
         usdt_size = - spot_notional - fee_total + swap_notional / leverage
+        self.fut.set_result(usdt_size)
         return usdt_size
 
     @call_coroutine

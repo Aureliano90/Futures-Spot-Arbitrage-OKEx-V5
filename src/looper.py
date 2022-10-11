@@ -25,7 +25,7 @@ class Looper:
         self.loop.call_at(self.when, self.awake)
         while self.interval:
             await self.waiter
-            if self.when - self.loop.time() >= 0 or self.loop.time() - self.when < self.interval:
+            if self.when <= self.loop.time() < self.when + self.interval:
                 yield self
             self.waiter = self.loop.create_future()
             self.when = self.when + self.interval

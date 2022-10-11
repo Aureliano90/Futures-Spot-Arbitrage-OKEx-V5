@@ -48,7 +48,7 @@ class ReducePosition(OKExAPI):
                 spot_order_info = await self.tradeAPI.get_order_info(instId=self.spot_ID, order_id=spot_order['ordId'])
                 fprint(spot_order_info)
                 fprint(swap_res)
-            self.exitFlag = True
+            self.exit_flag = True
             return
 
         async def check_order():
@@ -65,7 +65,7 @@ class ReducePosition(OKExAPI):
                 if spot_order['ordId'] == '-1':
                     fprint(lang.spot_order_failed)
                     fprint(spot_order)
-                    self.exitFlag = True
+                    self.exit_flag = True
                 else:
                     fprint(lang.swap_order_failed)
                     fprint(swap_order)
@@ -78,10 +78,10 @@ class ReducePosition(OKExAPI):
                     else:
                         if swap_order['code'] in ('50026', '51022'):
                             fprint(lang.futures_market_down)
-                        self.exitFlag = True
+                        self.exit_flag = True
 
         await check_order()
-        if self.exitFlag:
+        if self.exit_flag:
             return
 
         # 其中一单撤销
@@ -98,7 +98,7 @@ class ReducePosition(OKExAPI):
                         swap_order = await self.tradeAPI.take_swap_order(**kwargs)
                     except Exception as e:
                         fprint(e)
-                        self.exitFlag = True
+                        self.exit_flag = True
                         break
                 else:
                     fprint(lang.swap_order_state, swap_order_state)
@@ -114,7 +114,7 @@ class ReducePosition(OKExAPI):
                         spot_order = await self.tradeAPI.take_spot_order(**kwargs)
                     except Exception as e:
                         fprint(e)
-                        self.exitFlag = True
+                        self.exit_flag = True
                         break
                 else:
                     fprint(lang.spot_order_state, spot_order_state)
@@ -126,7 +126,7 @@ class ReducePosition(OKExAPI):
                 fprint(lang.await_status_update)
 
             await check_order()
-            if self.exitFlag:
+            if self.exit_flag:
                 break
 
         # 下单成功
@@ -162,12 +162,12 @@ class ReducePosition(OKExAPI):
                 Record('OP').mycol.find_one_and_update(mydict, {'$set': {'size': self.target_position}})
             else:
                 fprint(lang.hedge_fail.format(self.coin, spot_filled, swap_filled))
-                self.exitFlag = True
+                self.exit_flag = True
                 return
         elif spot_order_state == 'canceled' and swap_order_state == 'canceled':
             return
         else:
-            self.exitFlag = True
+            self.exit_flag = True
             return
 
     @manager.submit
@@ -221,18 +221,18 @@ class ReducePosition(OKExAPI):
 
         channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
         spot_ticker = swap_ticker = None
-        self.exitFlag = False
+        self.exit_flag = False
 
         # 如果仍未减仓完毕
-        while self.target_position >= self.contract_val and not self.exitFlag:
+        while self.target_position >= self.contract_val and not self.exit_flag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels):
-                if self.exitFlag:
+                if self.exit_flag:
                     break
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
-                    Stat = trading_data.Stat(self.coin)
-                    assert (recent := Stat.recent_close_stat(accelerate_after)), lang.fetch_ticker_first
+                    stat = Stat(self.coin)
+                    assert (recent := stat.recent_close_stat(accelerate_after)), lang.fetch_ticker_first
                     price_diff = recent['avg'] - 2 * recent['std']
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
@@ -258,11 +258,11 @@ class ReducePosition(OKExAPI):
                 else:
                     if self.target_position > spot_position:
                         fprint(lang.insufficient_spot)
-                        self.exitFlag = True
+                        self.exit_flag = True
                         break
                     elif self.target_position > self.swap_position:
                         fprint(lang.insufficient_margin)
-                        self.exitFlag = True
+                        self.exit_flag = True
                         break
                     else:
                         # 计算下单数量
@@ -283,7 +283,7 @@ class ReducePosition(OKExAPI):
                             await self.place_close_order(spot_ticker['bidPx'], spot_size, swap_ticker['askPx'],
                                                          contract_size)
 
-                            if self.exitFlag:
+                            if self.exit_flag:
                                 break
 
                             spot_position = await self.spot_position()
@@ -312,6 +312,7 @@ class ReducePosition(OKExAPI):
         if self.usdt_release:
             fprint(lang.spot_recoup.format(self.usdt_release))
             await self.add_margin(self.usdt_release)
+        self.fut.set_result(self.usdt_release)
         return self.usdt_release
 
     @manager.submit
@@ -353,18 +354,18 @@ class ReducePosition(OKExAPI):
 
         channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
         spot_ticker = swap_ticker = None
-        self.exitFlag = False
+        self.exit_flag = False
 
         # 如果仍未减仓完毕
-        while self.target_position > 0 and not self.exitFlag:
+        while self.target_position > 0 and not self.exit_flag:
             # 下单后重新订阅
             async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
-                if self.exitFlag:
+                if self.exit_flag:
                     break
                 # 判断是否加速
                 if accelerate_after and datetime.utcnow() > time_to_accelerate:
-                    Stat = trading_data.Stat(self.coin)
-                    assert (recent := Stat.recent_close_stat(accelerate_after)), lang.fetch_ticker_first
+                    stat = Stat(self.coin)
+                    assert (recent := stat.recent_close_stat(accelerate_after)), lang.fetch_ticker_first
                     price_diff = recent['avg'] - 2 * recent['std']
                     time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
@@ -390,11 +391,11 @@ class ReducePosition(OKExAPI):
                 else:
                     if self.target_position > spot_position:
                         fprint(lang.insufficient_spot)
-                        self.exitFlag = True
+                        self.exit_flag = True
                         break
                     elif self.target_position > self.swap_position:
                         fprint(lang.insufficient_swap)
-                        self.exitFlag = True
+                        self.exit_flag = True
                         break
                     else:
                         # 计算下单数量
@@ -439,7 +440,7 @@ class ReducePosition(OKExAPI):
                             await self.place_close_order(spot_ticker['bidPx'], spot_size, swap_ticker['askPx'],
                                                          contract_size)
 
-                            if self.exitFlag:
+                            if self.exit_flag:
                                 break
 
                             spot_position = await self.spot_position()
@@ -469,4 +470,5 @@ class ReducePosition(OKExAPI):
         fprint(lang.closed_amount.format(self.swap_filled_sum, self.coin))
         if self.usdt_release:
             fprint(lang.spot_recoup.format(self.usdt_release))
+        self.fut.set_result(self.usdt_release)
         return self.usdt_release

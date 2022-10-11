@@ -61,6 +61,7 @@ class Client:
                     try:
                         response = await self.client.get(request_path, headers=header)
                     except (aiohttp.ClientError, asyncio.TimeoutError):
+                        retry += 1
                         continue
                 elif method == c.POST:
                     response = await self.client.post(request_path, data=body, headers=header)
@@ -87,6 +88,7 @@ class Client:
                         text = await response.text()
                         json_res = await response.json()
                     except asyncio.TimeoutError:
+                        retry += 1
                         continue
                     except ValueError:
                         if 'cloudflare' in text:
