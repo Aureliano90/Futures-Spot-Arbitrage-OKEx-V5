@@ -70,8 +70,10 @@ async def record(accountid=3):
             funding_rate_list = []
             instrumentsID = await fundingRate.get_instruments_ID()
             tasks = [publicAPI.get_historical_funding_rate(instId=swap_ID) for swap_ID in instrumentsID]
-            res = await asyncio.gather(*tasks)
+            res = await asyncio.gather(*tasks, return_exceptions=True)
             for swap_ID, historical_funding_rate in zip(instrumentsID, res):
+                if isinstance(historical_funding_rate, AssertionError):
+                    continue
                 instrument = swap_ID[:swap_ID.find('-')]
                 pipeline = [{'$match': {'instrument': instrument}}]
                 # Results in DB
@@ -87,7 +89,8 @@ async def record(accountid=3):
                         mydict = {'instrument': instrument, 'timestamp': timestamp,
                                   'funding': realized_rate}
                         funding_rate_list.append(mydict)
-            funding.mycol.insert_many(funding_rate_list)
+            if funding_rate_list:
+                funding.mycol.insert_many(funding_rate_list)
             myquery = {'timestamp': {'$lt': timestamp - timedelta(hours=48)}}
             ticker.mycol.delete_many(myquery)
         elif event == ten_seconds:

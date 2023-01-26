@@ -87,10 +87,10 @@ class FundingRate:
         count = days * 3
         task_list = [self.funding_history(instId=m, count=count) for m in await self.get_instruments_ID()]
         funding_rate_list = []
-        for historical_funding_rate in await asyncio.gather(*task_list):
-            instId = historical_funding_rate[0]['instId']
-            if len(historical_funding_rate) < count:
+        for historical_funding_rate in await asyncio.gather(*task_list, return_exceptions=True):
+            if isinstance(historical_funding_rate, AssertionError) or len(historical_funding_rate) < count:
                 continue
+            instId = historical_funding_rate[0]['instId']
             realized_rate = [float(n['realizedRate']) for n in historical_funding_rate]
             instrumentID = instId[:instId.find('-')]
             funding_rate_list.append(dict(instrument=instrumentID, funding_rate=np.mean(realized_rate)))

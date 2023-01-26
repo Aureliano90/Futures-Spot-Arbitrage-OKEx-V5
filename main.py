@@ -7,7 +7,7 @@ assert sys.version_info >= (3, 8), print('Python version >=3.8 is required.\nYou
 
 def main():
     print(datetime_str(datetime.now()))
-    menu.main_menu(accountid=3)
+    menu.main_menu(accountid=1)
 
 
 if __name__ == '__main__':

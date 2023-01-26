@@ -385,6 +385,7 @@ class AddPosition(OKExAPI):
             fprint(lang.hedge_fail.format(self.coin, spot_filled_sum, swap_filled_sum))
         usdt_size = - spot_notional - fee_total + swap_notional / leverage
         self.fut.set_result(usdt_size)
+        self.fut = manager.loop.create_future()
         return usdt_size
 
     @call_coroutine

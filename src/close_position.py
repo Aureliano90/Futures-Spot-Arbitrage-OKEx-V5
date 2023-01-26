@@ -313,6 +313,7 @@ class ReducePosition(OKExAPI):
             fprint(lang.spot_recoup.format(self.usdt_release))
             await self.add_margin(self.usdt_release)
         self.fut.set_result(self.usdt_release)
+        self.fut = manager.loop.create_future()
         return self.usdt_release
 
     @manager.submit
@@ -471,4 +472,5 @@ class ReducePosition(OKExAPI):
         if self.usdt_release:
             fprint(lang.spot_recoup.format(self.usdt_release))
         self.fut.set_result(self.usdt_release)
+        self.fut = manager.loop.create_future()
         return self.usdt_release
