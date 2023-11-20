@@ -1,4 +1,3 @@
-from okex.public import PublicAPI
 import pymongo
 import src.funding_rate as funding_rate
 from src.utils import *

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.100.0] - November 19th, 2023
+
+Refactor and update deps.
+
+### Added
+
+* async_okx_v5 git submodule
+
 ## [0.99.0] - October 11th, 2022
 
 ### Fixed

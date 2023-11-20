@@ -75,61 +75,33 @@ def round_to(number, divider) -> float:
         return round(number / divider // 1 * divider)
 
 
-class REST_Semaphore(asyncio.Semaphore):
-    """A custom semaphore to be used with REST API with velocity limit under asyncio
-    """
-
-    def __init__(self, value: int, interval: int):
-        """控制REST API访问速率
-
-        :param value: API limit
-        :param interval: Reset interval
-        """
-        super().__init__(value)
-        # Queue of inquiry timestamps
-        self._inquiries = collections.deque(maxlen=value)
-        self._loop = asyncio.get_event_loop()
-        self._interval = interval
-
-    def __repr__(self):
-        return f'API velocity: {self._inquiries.maxlen} inquiries/{self._interval}s'
-
-    async def acquire(self):
-        await super().acquire()
-        if self._inquiries:
-            timelapse = time.monotonic() - self._inquiries.popleft()
-            # Wait until interval has passed since the first inquiry in queue returned.
-            if timelapse < self._interval:
-                await asyncio.sleep(self._interval - timelapse)
-        return True
-
-    def release(self):
-        self._inquiries.append(time.monotonic())
-        super().release()
-
-
 class p_Semaphore(ContextManager):
     """A custom semaphore to be used with REST API with velocity limit by processes
     """
 
-    def __init__(self, value: int, interval: int):
+    def __init__(self, concurrency: int, interval: int):
         """控制REST API并发连接
 
-        :param value: API limit
+        :param concurrency: API limit
         :param interval: Reset interval
         """
         self._interval = interval
-        self._sem = multiprocessing.Semaphore(value)
+        self._sem = multiprocessing.Semaphore(concurrency)
         # Queue of inquiry timestamps
         self._inquiries = multiprocessing.Queue()
+        self._count = multiprocessing.Value('I', lock=True)
+        self._count.value = concurrency
 
     def __enter__(self):
         self._sem.acquire()
-        if self._inquiries.qsize():
-            timelapse = time.monotonic() - self._inquiries.get()
-            # Wait until interval has passed since the first inquiry in queue returned.
-            if timelapse < self._interval:
-                time.sleep(self._interval - timelapse)
+        with self._count.get_lock():
+            if self._count.value > 0:
+                self._count.value -= 1
+                return True
+        timelapse = time.monotonic() - self._inquiries.get()
+        # Wait until interval has passed since the first inquiry in queue returned.
+        if timelapse < self._interval:
+            time.sleep(self._interval - timelapse)
         return True
 
     def __exit__(self, *args):
@@ -162,56 +134,6 @@ def columned_output(res: List, header: str, ncols: int, format):
                 if j < ncols - 1:
                     line += '\t'
         fprint(line)
-
-
-async def query_with_pagination(query_api, tag, page_size, count=0, interval=0, **kwargs):
-    """Loop `api` until `limit` is reached
-
-    :param query_api: api coroutine with `after` and `limit` keyword arguments
-    :param tag: tag used by `after` argument
-    :param page_size: max number of results in a single request
-    :param count: number of entries
-    :param interval: time interval between entries
-    :param kwargs: other arguments
-    :return: List
-    """
-    # Number of entries is known.
-    if count > 0:
-        # First time
-        if count < page_size:
-            return await query_api(**kwargs, limit=count)
-        else:
-            res = temp = await query_api(**kwargs, limit=page_size)
-            count -= page_size
-        # Parallelize if time interval is known
-        if interval:
-            after = int(temp[-1][tag])
-            tasks = []
-            while count > 0:
-                if count < page_size:
-                    tasks.append(query_api(**kwargs, after=after, limit=count))
-                else:
-                    tasks.append(query_api(**kwargs, after=after, limit=page_size))
-                after -= page_size * interval
-                count -= page_size
-            for temp in await asyncio.gather(*tasks):
-                res.extend(temp)
-        else:
-            while count > 0:
-                if count < page_size:
-                    temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=count)
-                else:
-                    temp = await query_api(**kwargs, after=temp[page_size - 1][tag], limit=page_size)
-                res.extend(temp)
-                count -= page_size
-    else:
-        # First time
-        res = temp = await query_api(**kwargs)
-        # Results not exhausted
-        while len(temp) == page_size:
-            temp = await query_api(**kwargs, after=temp[page_size - 1][tag])
-            res.extend(temp)
-    return res
 
 
 def debug_timer(cls):

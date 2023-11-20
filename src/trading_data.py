@@ -1,4 +1,4 @@
-from okex.public import PublicAPI
+from okx.async_okx_v5.public import PublicAPI
 import src.record as record
 from src.utils import *
 from src.lang import *
@@ -58,46 +58,12 @@ class Stat:
             self.spot_ID = coin + '-USDT'
             self.swap_ID = coin + '-USDT-SWAP'
 
-    @staticmethod
-    async def aclose():
-        await Stat.publicAPI.aclose()
-
-    async def get_candles(self, instId, days, bar='4H') -> List[List]:
-        """获取4小时K线
-
-        :param instId: 产品ID
-        :param days: 最近几天
-        :param bar: 时间粒度，默认值1m，如 [1m/3m/5m/15m/30m/1H/2H/4H/6H/12H/1D/1W/1M/3M/6M/1Y]
-        """
-        interval = 0
-        if bar.endswith('m'):
-            count = days * 1440 // int(rtruncate(bar, 1)) + 1
-            interval = int(rtruncate(bar, 1)) * 60000
-        elif bar.endswith('H'):
-            count = days * 24 // int(rtruncate(bar, 1)) + 1
-            interval = int(rtruncate(bar, 1)) * 3600000
-        elif bar.endswith('D'):
-            count = days + 1
-            interval = int(rtruncate(bar, 1)) * 86400000
-        elif bar.endswith('W'):
-            count = days // 7 + 1
-            interval = int(rtruncate(bar, 1)) * 604800000
-        elif bar.endswith('M'):
-            count = days // (30 * int(rtruncate(bar, 1))) + 1
-        else:
-            count = days // 365 + 1
-        if count > 1440:
-            return await query_with_pagination(self.publicAPI.history_kline, tag=0, page_size=100, count=count,
-                                               interval=interval, instId=instId, bar=bar)
-        else:
-            return await query_with_pagination(self.publicAPI.get_kline, tag=0, page_size=300, count=count,
-                                               interval=interval, instId=instId, bar=bar)
-
     # @debug_timer
     async def profitability(self, funding_rate_list, days=7) -> List[dict]:
         """显示各币种资金费率除以波动率
         """
-        task_list = [self.get_candles(n['instrument'] + '-USDT', days, '4H') for n in funding_rate_list]
+        task_list = [
+            self.publicAPI.get_candles_for_days(n['instrument'] + '-USDT', days, '4H') for n in funding_rate_list]
         gather_result = await asyncio.gather(*task_list)
         for n in range(len(funding_rate_list)):
             atr = average_true_range(gather_result[n], days, '4H')

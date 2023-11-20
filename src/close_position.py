@@ -1,4 +1,6 @@
+from okx.async_okx_v5.channel import TickersChannel
 from src.okex_api import *
+from src.trading_data import Stat
 
 
 class ReducePosition(OKExAPI):
@@ -219,14 +221,17 @@ class ReducePosition(OKExAPI):
         self.swap_notional = 0.
         time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
-        channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
+        tickers_subscription = await self.websocketAPI.subscribe_public(
+            [TickersChannel(channel='tickers', instId=self.spot_ID),
+             TickersChannel(channel='tickers', instId=self.swap_ID)]
+        )
         spot_ticker = swap_ticker = None
         self.exit_flag = False
 
         # 如果仍未减仓完毕
         while self.target_position >= self.contract_val and not self.exit_flag:
             # 下单后重新订阅
-            async for ticker in subscribe_without_login(self.public_url, channels):
+            async for ticker in tickers_subscription:
                 if self.exit_flag:
                     break
                 # 判断是否加速
@@ -353,14 +358,17 @@ class ReducePosition(OKExAPI):
         self.swap_notional = 0.
         time_to_accelerate = datetime.utcnow() + timedelta(hours=accelerate_after)
 
-        channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
+        tickers_subscription = await self.websocketAPI.subscribe_public(
+            [TickersChannel(channel='tickers', instId=self.spot_ID),
+             TickersChannel(channel='tickers', instId=self.swap_ID)]
+        )
         spot_ticker = swap_ticker = None
         self.exit_flag = False
 
         # 如果仍未减仓完毕
         while self.target_position > 0 and not self.exit_flag:
             # 下单后重新订阅
-            async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
+            async for ticker in tickers_subscription:
                 if self.exit_flag:
                     break
                 # 判断是否加速

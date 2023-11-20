@@ -1,9 +1,12 @@
+from okx.async_okx_v5.client import OkxClient
+from okx.async_okx_v5.utils import query_with_pagination
 from src.close_position import ReducePosition
+from src.funding_rate import FundingRate
 from src.monitor import Monitor
 from src.open_position import AddPosition
 from src.okex_api import *
 from src.lang import *
-from src.utils import *
+from src.trading_data import Stat
 import src.record as record
 
 loop = asyncio.get_event_loop()
@@ -227,9 +230,7 @@ async def main_menu(accountid: int):
     finally:
         if 'process' in locals():
             process.kill()
-        await Stat.aclose()
-        await Monitor.aclose()
-        await FundingRate.aclose()
+        await OkxClient.client.close()
 
 
 async def get_crypto(accountid: int):

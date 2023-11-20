@@ -1,4 +1,6 @@
+from okx.async_okx_v5.channel import TickersChannel
 from src.okex_api import *
+from src.trading_data import Stat
 
 
 class AddPosition(OKExAPI):
@@ -142,14 +144,17 @@ class AddPosition(OKExAPI):
         mydict = dict(account=self.account, instrument=self.coin, op='add', size=target_position)
         OP.insert(mydict)
 
-        channels = [dict(channel='tickers', instId=self.spot_ID), dict(channel='tickers', instId=self.swap_ID)]
+        tickers_subscription = await self.websocketAPI.subscribe_public(
+            [TickersChannel(channel='tickers', instId=self.spot_ID),
+             TickersChannel(channel='tickers', instId=self.swap_ID)]
+        )
         spot_ticker = swap_ticker = None
         self.exit_flag = False
 
         # 如果仍未建仓完毕
         while target_position >= self.contract_val and not self.exit_flag:
             # 下单后重新订阅
-            async for ticker in subscribe_without_login(self.public_url, channels, verbose=False):
+            async for ticker in tickers_subscription:
                 if self.exit_flag:
                     break
                 # 判断是否加速
@@ -419,5 +424,4 @@ class AddPosition(OKExAPI):
                 await self.set_swap_lever(leverage)
                 return await self.add(usdt_size=usdt_size, price_diff=price_diff, accelerate_after=accelerate_after)
             else:
-                fprint(lang.insufficient_USDT)
-                return 0.
+                raise ValueError(lang.insufficient_USDT)

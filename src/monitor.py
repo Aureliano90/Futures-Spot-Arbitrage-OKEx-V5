@@ -1,6 +1,8 @@
 from src.close_position import ReducePosition
+from src.funding_rate import FundingRate
 from src.open_position import AddPosition
 from src.okex_api import *
+from src.trading_data import Stat
 
 
 # 监控一个币种，如果当期资金费+预测资金费小于重新开仓成本（开仓期现差价-平仓期现差价-手续费），进行平仓。

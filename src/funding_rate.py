@@ -11,11 +11,6 @@ class FundingRate:
         else:
             FundingRate.publicAPI = PublicAPI()
 
-    @staticmethod
-    async def aclose():
-        if hasattr(FundingRate, 'publicAPI'):
-            await FundingRate.publicAPI.aclose()
-
     async def get_instruments_ID(self):
         """获取合约币种列表
 
@@ -71,12 +66,6 @@ class FundingRate:
         # 50 s without asyncio
         # 1.6 s with asyncio
 
-    async def funding_history(self, instId, count=270):
-        """下载最近3个月资金费率
-        """
-        return await query_with_pagination(self.publicAPI.get_historical_funding_rate, tag='fundingTime',
-                                           page_size=100, count=count, interval=28800, instId=instId)
-
     async def get_recent_rate(self, days=7):
         """返回最近资金费列表
 
@@ -85,7 +74,7 @@ class FundingRate:
         """
         assert isinstance(days, int) and 0 < days <= 90
         count = days * 3
-        task_list = [self.funding_history(instId=m, count=count) for m in await self.get_instruments_ID()]
+        task_list = [self.publicAPI.get_funding_history(instId=m, count=count) for m in await self.get_instruments_ID()]
         funding_rate_list = []
         for historical_funding_rate in await asyncio.gather(*task_list, return_exceptions=True):
             if isinstance(historical_funding_rate, AssertionError) or len(historical_funding_rate) < count:
@@ -115,7 +104,7 @@ class FundingRate:
     async def print_30day_rate(self):
         """输出最近30天平均资金费到文件
         """
-        task_list = [self.funding_history(instId=m, count=90) for m in await self.get_instruments_ID()]
+        task_list = [self.publicAPI.get_funding_history(instId=m, count=90) for m in await self.get_instruments_ID()]
         funding_rate_list = []
         for historical_funding_rate in await asyncio.gather(*task_list):
             instId = historical_funding_rate[0]['instId']
@@ -170,7 +159,7 @@ class FundingRate:
         """
         Record = record.Record('Funding')
         found = inserted = 0
-        task_list = [self.funding_history(m) for m in await self.get_instruments_ID()]
+        task_list = [self.publicAPI.get_funding_history(m) for m in await self.get_instruments_ID()]
         # API results
         for api_funding in await asyncio.gather(*task_list):
             found += len(api_funding)
@@ -179,7 +168,6 @@ class FundingRate:
             pipeline = [{'$match': {'instrument': instrument}}]
             # Results in DB
             db_funding = [m for m in Record.mycol.aggregate(pipeline)]
-            # print(db_funding)
             for m in api_funding:
                 timestamp = utcfrommillisecs(m['fundingTime'])
                 mydict = dict(instrument=instrument, timestamp=timestamp, funding=float(m['realizedRate']))

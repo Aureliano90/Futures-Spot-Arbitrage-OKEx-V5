@@ -63,6 +63,10 @@ Install Python 3.8+ and required packages.
 or
 `pip install -r requirements.txt`
 
+```shell
+git submodule update --init --recursive
+```
+
 Install [MongoDB](https://www.mongodb.com/try/download/community).
 
 Store API keys in `.env` (use account 3 for demo trading).

@@ -1,11 +1,10 @@
-from okex.account import AccountAPI
-from okex.public import PublicAPI
-from okex.trade import TradeAPI
-from okex.exceptions import OkexException, OkexAPIException
+from okx.async_okx_v5.account import AccountAPI
+from okx.async_okx_v5.public import PublicAPI
+from okx.async_okx_v5.trade import TradeAPI
+from okx.async_okx_v5.exceptions import OkexException, OkexAPIException
+from okx.async_okx_v5.websocket import OkxWebsocket
 from src.config import Key
-from src.funding_rate import FundingRate, Stat
 from src.record import Record
-from src.websocket import subscribe_without_login
 from src.manager import *
 from asyncio import create_task, gather
 
@@ -22,6 +21,7 @@ class OKExAPI:
     accountAPI: AccountAPI
     tradeAPI: TradeAPI
     publicAPI: PublicAPI
+    websocketAPI: OkxWebsocket
 
     def __init__(self, coin: str = None, account=3):
         self.account = account
@@ -36,16 +36,12 @@ class OKExAPI:
                 OKExAPI.accountAPI = AccountAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.tradeAPI = TradeAPI(api_key, secret_key, passphrase, test=True)
                 OKExAPI.publicAPI = PublicAPI(test=True)
-                OKExAPI.public_url = 'wss://wspap.okx.com:8443/ws/v5/public?brokerId=9999'
-                OKExAPI.private_url = 'wss://wspap.okx.com:8443/ws/v5/private?brokerId=9999'
+                OKExAPI.websocketAPI = OkxWebsocket(api_key, secret_key, passphrase, test=True)
             else:
-                OKExAPI.accountAPI = AccountAPI(api_key, secret_key, passphrase, False)
-                OKExAPI.tradeAPI = TradeAPI(api_key, secret_key, passphrase, False)
+                OKExAPI.accountAPI = AccountAPI(api_key, secret_key, passphrase)
+                OKExAPI.tradeAPI = TradeAPI(api_key, secret_key, passphrase)
                 OKExAPI.publicAPI = PublicAPI()
-                OKExAPI.public_url = 'wss://ws.okx.com:8443/ws/v5/public'
-                OKExAPI.private_url = 'wss://ws.okx.com:8443/ws/v5/private'
-                # OKExAPI.public_url = 'wss://wsaws.okx.com:8443/ws/v5/public'
-                # OKExAPI.private_url = 'wss://wsaws.okx.com:8443/ws/v5/private'
+                OKExAPI.websocketAPI = OkxWebsocket(api_key, secret_key, passphrase)
             OKExAPI.api_initiated = True
 
         self.coin = coin
@@ -88,15 +84,6 @@ class OKExAPI:
         else:
             self.exist = False
         return self
-
-    @staticmethod
-    async def aclose():
-        if hasattr(OKExAPI, 'accountAPI'):
-            await OKExAPI.accountAPI.aclose()
-        if hasattr(OKExAPI, 'tradeAPI'):
-            await OKExAPI.tradeAPI.aclose()
-        if hasattr(OKExAPI, 'publicAPI'):
-            await OKExAPI.publicAPI.aclose()
 
     @staticmethod
     def _key():
