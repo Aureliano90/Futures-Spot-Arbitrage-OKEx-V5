@@ -9,6 +9,12 @@ according to [V5 API documentation](https://www.okex.com/docs-v5/en).
 
 Chinese and English support, completed with annotations and docstrings.
 
+## From the author
+
+This project was started when I was a newbie in Python and software development. I am glad it gathers a decent number of stars and hopefully some usage. However it feels outdated and lacking maintenance even though it still functions and makes money.
+
+Therefore I'm soliciting feedbacks or suggestions to make an improvement plan. Given enough feedbacks and community contribution, an improvement plan will take effect. Please see the list of [issues](https://github.com/Aureliano90/Futures-Spot-Arbitrage-OKEx-V5/issues) or create new issues.
+
 ## Features
 
 * Command line interface;
@@ -74,6 +80,10 @@ Store API keys in `.env` (use account 3 for demo trading).
 Set `language='cn'` for Chinese and `language='en'` for English in `config.py`.
 
 Simply `python main.py`.
+
+## Contributing
+
+Contributions are welcome. Please open an issue if you have any questions or suggestions.
 
 ## Background
 
